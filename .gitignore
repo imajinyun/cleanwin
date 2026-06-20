@@ -77,7 +77,10 @@ ipython_config.py
 !.env.example
 
 # IDE / editor metadata
-docs/
+docs/*
+!docs/doc/
+!docs/doc/**
+docs/superpowers/
 .idea/
 .vscode/
 *.swp

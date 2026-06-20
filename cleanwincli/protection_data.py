@@ -20,7 +20,7 @@ READ_ONLY_CATEGORIES = frozenset(
     }
 )
 
-DEFAULT_SAFE_CATEGORIES = frozenset({"temp", "dev-cache", "package-cache", "browser-cache"})
+DEFAULT_SAFE_CATEGORIES = frozenset({"temp", "dev-cache", "package-cache", "browser-cache", "app-leftovers"})
 
 HIGH_RISK_CATEGORIES = frozenset({"recycle-bin", "startup-disable", "registry-clean"})
 

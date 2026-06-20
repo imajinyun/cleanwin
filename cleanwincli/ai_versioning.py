@@ -153,6 +153,22 @@ def _sample_browser_candidate() -> dict[str, Any]:
     return candidate
 
 
+def _sample_app_leftover_candidate() -> dict[str, Any]:
+    candidate = _sample_candidate()
+    candidate.update(
+        {
+            "path": r"C:\Users\tester\AppData\Roaming\Code\CachedData",
+            "category": "app-leftovers",
+            "reason": r"Visual Studio Code uninstall leftover cache/log at C:\Users\tester\AppData\Roaming\Code\CachedData",
+            "rule_id": "app-leftovers.vscode.cached-data",
+            "cache_owner": "Visual Studio Code",
+            "official_cleanup_command": "Uninstall Visual Studio Code from Settings > Apps, then remove reviewed Code cache/log leftovers.",
+            "safe_to_delete_rationale": "VS Code CachedData contains regenerated extension host and workbench cache artifacts, not user projects or settings.",
+        }
+    )
+    return candidate
+
+
 def _sample_finding() -> dict[str, Any]:
     return {
         "category": "docker-report",
@@ -175,11 +191,11 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
     if schema_name == "cleanwin.inspect.v1":
         return {
             "schema": "cleanwin.inspect.v1",
-            "categories": ["dev-cache", "package-cache", "browser-cache", "docker-report"],
-            "filters": {"rule_ids": ["dev-cache.npm.cache", "package-cache.winget.packages", "browser-cache.chrome.default.cache", "report.docker.manual-cleanup"]},
-            "candidates": [_sample_candidate(), _sample_package_candidate(), _sample_browser_candidate()],
+            "categories": ["dev-cache", "package-cache", "browser-cache", "app-leftovers", "docker-report"],
+            "filters": {"rule_ids": ["dev-cache.npm.cache", "package-cache.winget.packages", "browser-cache.chrome.default.cache", "app-leftovers.vscode.cached-data", "report.docker.manual-cleanup"]},
+            "candidates": [_sample_candidate(), _sample_package_candidate(), _sample_browser_candidate(), _sample_app_leftover_candidate()],
             "findings": [_sample_finding()],
-            "summary": {"candidate_count": 3, "finding_count": 1, "bytes_reclaimable": 3072},
+            "summary": {"candidate_count": 4, "finding_count": 1, "bytes_reclaimable": 4096},
         }
     if schema_name == "cleanwin.plan.v1":
         return {

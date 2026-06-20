@@ -235,6 +235,195 @@ class CliTests(unittest.TestCase):
             self.assertIn("winget", by_rule["package-cache.winget.packages"]["official_cleanup_command"].lower())
             self.assertEqual(by_rule["package-cache.uv.cache"]["cache_owner"], "uv")
 
+    def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            roaming = root / "Roaming"
+            local = root / "LocalAppData"
+
+            slack_cache = roaming / "Slack" / "Cache"
+            slack_cache.mkdir(parents=True)
+            (slack_cache / "entry").write_text("slack", encoding="utf-8")
+
+            teams_logs = roaming / "Microsoft" / "Teams" / "logs"
+            teams_logs.mkdir(parents=True)
+            (teams_logs / "current.log").write_text("teams", encoding="utf-8")
+
+            vscode_cache = roaming / "Code" / "CachedData"
+            vscode_cache.mkdir(parents=True)
+            (vscode_cache / "cache.bin").write_text("code", encoding="utf-8")
+
+            jetbrains_logs = local / "JetBrains" / "PyCharm2024.1" / "log"
+            jetbrains_logs.mkdir(parents=True)
+            (jetbrains_logs / "idea.log").write_text("jetbrains", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            paths = {candidate["path"] for candidate in payload["candidates"]}
+            self.assertEqual(payload["summary"]["candidate_count"], 4)
+            self.assertIn(str(slack_cache), paths)
+            self.assertIn(str(teams_logs), paths)
+            self.assertIn(str(vscode_cache), paths)
+            self.assertIn(str(jetbrains_logs), paths)
+            self.assertTrue(all(candidate["category"] == "app-leftovers" for candidate in payload["candidates"]))
+            self.assertTrue(all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"]))
+
+    def test_app_leftovers_skips_when_active_install_marker_exists(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            roaming = root / "Roaming"
+            local = root / "LocalAppData"
+            slack_cache = roaming / "Slack" / "Cache"
+            slack_cache.mkdir(parents=True)
+            (slack_cache / "entry").write_text("slack", encoding="utf-8")
+
+            active_marker = local / "slack" / "slack.exe"
+            active_marker.parent.mkdir(parents=True)
+            active_marker.write_text("exe", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["summary"]["candidate_count"], 0)
+
+    def test_app_leftovers_skips_globbed_active_install_markers(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            roaming = root / "Roaming"
+            local = root / "LocalAppData"
+            program_files = root / "ProgramFiles"
+
+            discord_cache = roaming / "discord" / "Cache"
+            discord_cache.mkdir(parents=True)
+            (discord_cache / "entry").write_text("discord", encoding="utf-8")
+            discord_marker = local / "Discord" / "app-1.2.3" / "Discord.exe"
+            discord_marker.parent.mkdir(parents=True)
+            discord_marker.write_text("exe", encoding="utf-8")
+
+            jetbrains_log = local / "JetBrains" / "PyCharm2024.1" / "log"
+            jetbrains_log.mkdir(parents=True)
+            (jetbrains_log / "idea.log").write_text("jetbrains", encoding="utf-8")
+            jetbrains_marker = program_files / "JetBrains" / "PyCharm 2024.1" / "bin" / "pycharm64.exe"
+            jetbrains_marker.parent.mkdir(parents=True)
+            jetbrains_marker.write_text("exe", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={
+                    "APPDATA": str(roaming),
+                    "LOCALAPPDATA": str(local),
+                    "PROGRAMFILES": str(program_files),
+                    "USERPROFILE": str(root / "User"),
+                },
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            paths = {candidate["path"] for candidate in payload["candidates"]}
+            self.assertNotIn(str(discord_cache), paths)
+            self.assertNotIn(str(jetbrains_log), paths)
+
+    def test_app_leftovers_scans_more_common_app_cache_and_logs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            roaming = root / "Roaming"
+            local = root / "LocalAppData"
+
+            notion_cache = roaming / "Notion" / "Cache"
+            notion_cache.mkdir(parents=True)
+            (notion_cache / "entry").write_text("notion", encoding="utf-8")
+
+            figma_logs = roaming / "Figma" / "logs"
+            figma_logs.mkdir(parents=True)
+            (figma_logs / "figma.log").write_text("figma", encoding="utf-8")
+
+            obs_logs = roaming / "obs-studio" / "logs"
+            obs_logs.mkdir(parents=True)
+            (obs_logs / "obs.log").write_text("obs", encoding="utf-8")
+
+            spotify_cache = local / "Spotify" / "Browser" / "Cache"
+            spotify_cache.mkdir(parents=True)
+            (spotify_cache / "entry").write_text("spotify", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+            self.assertEqual(by_rule["app-leftovers.notion.cache"]["path"], str(notion_cache))
+            self.assertEqual(by_rule["app-leftovers.figma.logs"]["path"], str(figma_logs))
+            self.assertEqual(by_rule["app-leftovers.obs-studio.logs"]["path"], str(obs_logs))
+            self.assertEqual(by_rule["app-leftovers.spotify.browser-cache"]["path"], str(spotify_cache))
+
+    def test_app_leftovers_rule_filter_review_and_dry_run(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            roaming = root / "Roaming"
+            local = root / "LocalAppData"
+            slack_cache = roaming / "Slack" / "Cache"
+            slack_cache.mkdir(parents=True)
+            (slack_cache / "entry").write_text("slack", encoding="utf-8")
+            vscode_cache = roaming / "Code" / "CachedData"
+            vscode_cache.mkdir(parents=True)
+            (vscode_cache / "cache.bin").write_text("code", encoding="utf-8")
+            plan_file = root / "vscode-leftovers-plan.json"
+            env = {"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "CLEANWIN_TEST_MODE": "1"}
+
+            plan_result = self.run_cleanwin(
+                "plan",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                "--rule-id",
+                "app-leftovers.vscode.cached-data",
+                "--output",
+                str(plan_file),
+                env=env,
+            )
+            self.assertEqual(plan_result.returncode, 0, plan_result.stderr)
+            plan_payload = json.loads(plan_file.read_text(encoding="utf-8"))
+            self.assertEqual(plan_payload["summary"]["candidate_count"], 1)
+            self.assertEqual(plan_payload["candidates"][0]["path"], str(vscode_cache))
+            self.assertEqual(plan_payload["candidates"][0]["rule_id"], "app-leftovers.vscode.cached-data")
+
+            review_result = self.run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
+            self.assertEqual(review_result.returncode, 0, review_result.stderr)
+            review = json.loads(review_result.stdout)
+            self.assertEqual(review["rule_ids"], ["app-leftovers.vscode.cached-data"])
+            self.assertTrue(any("Uninstall Visual Studio Code" in command for command in review["cleanup_strategy"]["official_cleanup_commands"]))
+
+            dry_run = self.run_cleanwin("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
+            self.assertEqual(dry_run.returncode, 0, dry_run.stderr)
+            dry_run_payload = json.loads(dry_run.stdout)
+            self.assertEqual(dry_run_payload["results"], [{"status": "dry-run", "path": str(vscode_cache), "mode": "recycle"}])
+            self.assertTrue(vscode_cache.exists())
+            self.assertTrue(slack_cache.exists())
+
     def test_browser_cache_scans_cache_only_directories_without_profile_data(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

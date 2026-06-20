@@ -45,7 +45,7 @@ def capabilities() -> dict[str, Any]:
             "protected user data paths",
             "operation log write failures",
         ],
-        "safe_categories": ["browser-cache", "dev-cache", "package-cache", "temp"],
+        "safe_categories": ["app-leftovers", "browser-cache", "dev-cache", "package-cache", "temp"],
         "read_only_categories": [
             "browser-cache-report",
             "docker-report",
