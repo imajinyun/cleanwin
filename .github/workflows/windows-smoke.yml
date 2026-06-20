@@ -1,0 +1,59 @@
+name: Windows Smoke
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = (Get-Location).Path
+          python -m unittest -v
+
+      - name: Compile Python files
+        shell: pwsh
+        run: python -m compileall -q cleanwin.py cleanwincli tests
+
+      - name: Identity drift smoke
+        shell: pwsh
+        run: |
+          $tmp = New-Item -ItemType Directory -Path ([System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString()))
+          $tempRoot = New-Item -ItemType Directory -Path (Join-Path $tmp.FullName "Temp")
+          $candidate = Join-Path $tempRoot.FullName "stale.tmp"
+          Set-Content -Path $candidate -Value "x" -NoNewline
+          $env:TEMP = $tempRoot.FullName
+          $env:TMP = $tempRoot.FullName
+          python cleanwin.py --json plan --categories temp --older-than-days 0 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
+          Set-Content -Path $candidate -Value "changed" -NoNewline
+          python cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context | Tee-Object -Variable result
+          if ($LASTEXITCODE -eq 0) { throw "validate-plan should fail after identity drift" }
+          if (-not ($result -join "`n").Contains("Filesystem identity mismatch")) { throw "missing identity mismatch error" }
+
+      - name: Test-mode recycle smoke
+        shell: pwsh
+        run: |
+          $tmp = New-Item -ItemType Directory -Path ([System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString()))
+          $tempRoot = New-Item -ItemType Directory -Path (Join-Path $tmp.FullName "Temp")
+          $candidate = Join-Path $tempRoot.FullName "stale.tmp"
+          Set-Content -Path $candidate -Value "x" -NoNewline
+          $env:CLEANWIN_TEST_MODE = "1"
+          $env:TEMP = $tempRoot.FullName
+          $env:TMP = $tempRoot.FullName
+          $plan = Join-Path $tmp.FullName "plan.json"
+          python cleanwin.py --json plan --categories temp --older-than-days 0 --output $plan | Out-Null
+          $dry = python cleanwin.py --json execute-plan --plan-file $plan --no-require-plan-context | ConvertFrom-Json
+          python cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
+          if (Test-Path $candidate) { throw "candidate should have moved to test trash" }

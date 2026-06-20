@@ -1,0 +1,13 @@
+C:\
+C:\Windows
+C:\Windows\System32
+C:\Program Files
+C:\Program Files (x86)
+C:\ProgramData\Microsoft
+C:\Users
+C:\Users\alice
+C:\Users\alice\Documents
+C:\Users\alice\Downloads
+C:\Users\alice\AppData\Roaming\Microsoft\Credentials
+C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Login Data
+C:\Users\alice\.ssh\id_rsa

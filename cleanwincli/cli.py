@@ -1,0 +1,212 @@
+"""CleanWin command-line interface."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from cleanwincli.collectors import parse_categories, parse_rule_ids
+from cleanwincli.core import (
+    ai_readiness_command,
+    ai_runbook_command,
+    ai_self_test_command,
+    ai_tools_report,
+    capabilities,
+    build_plan,
+    doctor_report,
+    execute_plan,
+    host_policy_report,
+    inspect,
+    load_plan,
+    policy_simulate,
+    review_plan,
+    validate_plan_payload,
+)
+
+
+def emit(payload: dict[str, Any], *, as_json: bool) -> None:
+    if as_json:
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+    else:
+        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="cleanwin", description="Conservative Windows cleanup planner")
+    parser.add_argument("--json", action="store_true", help="emit JSON output")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    subparsers.add_parser("capabilities", help="show safety capabilities")
+
+    inspect_parser = subparsers.add_parser("inspect", help="inspect cleanup candidates")
+    inspect_parser.add_argument("--categories", default="temp,dev-cache")
+    inspect_parser.add_argument("--older-than-days", type=int, default=7)
+    inspect_parser.add_argument("--max-items", type=int, default=100)
+    inspect_parser.add_argument("--rule-id", action="append", default=[], help="filter candidates/findings by rule id; may be repeated or comma-separated")
+
+    plan_parser = subparsers.add_parser("plan", help="create a cleanup plan")
+    plan_parser.add_argument("--categories", default="temp,dev-cache")
+    plan_parser.add_argument("--older-than-days", type=int, default=7)
+    plan_parser.add_argument("--max-items", type=int, default=100)
+    plan_parser.add_argument("--rule-id", action="append", default=[], help="filter planned candidates by rule id; may be repeated or comma-separated")
+    plan_parser.add_argument("--output")
+
+    validate_parser = subparsers.add_parser("validate-plan", help="validate a cleanup plan")
+    validate_parser.add_argument("--plan-file", required=True)
+    validate_parser.add_argument("--no-require-plan-context", action="store_true")
+
+    review_parser = subparsers.add_parser("review-plan", help="summarize a cleanup plan for human/AI review")
+    review_parser.add_argument("--plan-file", required=True)
+    review_parser.add_argument("--no-require-plan-context", action="store_true")
+
+    execute_parser = subparsers.add_parser("execute-plan", help="execute a previously validated cleanup plan")
+    execute_parser.add_argument("--plan-file", required=True)
+    execute_parser.add_argument("--execute", action="store_true")
+    execute_parser.add_argument("--yes", action="store_true")
+    execute_parser.add_argument("--no-require-plan-context", action="store_true")
+    execute_parser.add_argument("--operation-log")
+    execute_parser.add_argument("--trash-root")
+    execute_parser.add_argument("--confirmation-phrase")
+    execute_parser.add_argument("--confirmation-token")
+
+    ai_tools_parser = subparsers.add_parser("ai-tools", help="show AI/MCP tool schemas")
+    ai_tools_parser.add_argument(
+        "--provider",
+        choices=[
+            "catalog",
+            "openai",
+            "anthropic",
+            "parity",
+            "validation",
+            "registry",
+            "host-policy",
+            "readiness",
+            "self-test",
+            "runbook",
+            "doctor",
+            "review-sample",
+        ],
+        default="catalog",
+    )
+
+    subparsers.add_parser("schema-registry", help="show machine-readable schema registry")
+    subparsers.add_parser("doctor", help="run non-destructive engineering health checks")
+
+    host_policy_parser = subparsers.add_parser("host-policy", help="show AI host allow/deny policy")
+    host_policy_parser.add_argument("--validate", action="store_true")
+
+    readiness_parser = subparsers.add_parser("ai-readiness", help="show AI host readiness report")
+    readiness_parser.add_argument("--validate", action="store_true")
+
+    subparsers.add_parser("ai-self-test", help="run deterministic AI host self-test checks")
+    subparsers.add_parser("ai-runbook", help="show safe AI/MCP host runbook")
+
+    simulate_parser = subparsers.add_parser("policy-simulate", help="simulate AI host execution policy")
+    simulate_parser.add_argument("--plan-file", required=True)
+    simulate_parser.add_argument("--execute", action="store_true")
+    simulate_parser.add_argument("--delete-mode", choices=["recycle", "permanent"], default="recycle")
+    simulate_parser.add_argument("--operation-log")
+    simulate_parser.add_argument("--no-require-plan-context", action="store_true")
+    simulate_parser.add_argument("--require-confirmation-token", action="store_true")
+    simulate_parser.add_argument("--confirmation-token")
+    simulate_parser.add_argument("--confirmation-phrase")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        if args.command == "capabilities":
+            emit(capabilities(), as_json=args.json)
+            return 0
+        if args.command == "inspect":
+            payload = inspect(
+                parse_categories(args.categories),
+                older_than_days=args.older_than_days,
+                max_items=args.max_items,
+                rule_ids=[rule_id for item in args.rule_id for rule_id in parse_rule_ids(item)],
+            )
+            emit(payload, as_json=args.json)
+            return 0
+        if args.command == "plan":
+            plan = build_plan(
+                parse_categories(args.categories),
+                older_than_days=args.older_than_days,
+                max_items=args.max_items,
+                rule_ids=[rule_id for item in args.rule_id for rule_id in parse_rule_ids(item)],
+            )
+            payload = plan.to_dict()
+            if args.output:
+                Path(args.output).write_text(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False), encoding="utf-8")
+            emit(payload, as_json=args.json)
+            return 0
+        if args.command == "validate-plan":
+            plan, raw = load_plan(Path(args.plan_file))
+            payload = validate_plan_payload(plan, raw, require_context=not args.no_require_plan_context)
+            emit(payload, as_json=args.json)
+            return 0 if payload["valid"] else 2
+        if args.command == "review-plan":
+            plan, raw = load_plan(Path(args.plan_file))
+            payload = review_plan(plan, raw, require_context=not args.no_require_plan_context)
+            emit(payload, as_json=args.json)
+            return 0 if payload["validation"]["valid"] else 2
+        if args.command == "execute-plan":
+            plan, raw = load_plan(Path(args.plan_file))
+            payload = execute_plan(
+                plan,
+                execute=args.execute,
+                yes=args.yes,
+                require_context=not args.no_require_plan_context,
+                raw_payload=raw,
+                operation_log=Path(args.operation_log) if args.operation_log else None,
+                trash_root=Path(args.trash_root) if args.trash_root else None,
+                confirmation_phrase=args.confirmation_phrase,
+                confirmation_token=args.confirmation_token,
+            )
+            emit(payload, as_json=args.json)
+            return 0 if not payload.get("error") and payload.get("validation", {}).get("valid", True) else 2
+        if args.command == "ai-tools":
+            emit(ai_tools_report(args.provider), as_json=args.json)
+            return 0
+        if args.command == "schema-registry":
+            emit(ai_tools_report("registry"), as_json=args.json)
+            return 0
+        if args.command == "doctor":
+            payload = doctor_report()
+            emit(payload, as_json=args.json)
+            return 0 if payload["ready"] else 2
+        if args.command == "host-policy":
+            emit(host_policy_report(validate=args.validate), as_json=args.json)
+            return 0
+        if args.command == "ai-readiness":
+            emit(ai_readiness_command(validate=args.validate), as_json=args.json)
+            return 0
+        if args.command == "ai-self-test":
+            emit(ai_self_test_command(), as_json=args.json)
+            return 0
+        if args.command == "ai-runbook":
+            emit(ai_runbook_command(), as_json=args.json)
+            return 0
+        if args.command == "policy-simulate":
+            plan, raw = load_plan(Path(args.plan_file))
+            payload = policy_simulate(
+                plan,
+                raw,
+                execute=args.execute,
+                delete_mode=args.delete_mode,
+                operation_log=args.operation_log,
+                require_plan_context=not args.no_require_plan_context,
+                require_confirmation_token=args.require_confirmation_token,
+                confirmation_token=args.confirmation_token,
+                confirmation_phrase=args.confirmation_phrase,
+            )
+            emit(payload, as_json=args.json)
+            return 0 if payload["validation"]["valid"] else 2
+    except Exception as exc:  # noqa: BLE001 - CLI must surface structured failure.
+        emit({"error": str(exc), "schema": "cleanwin.error.v1"}, as_json=args.json)
+        return 1
+    print("unreachable command", file=sys.stderr)
+    return 1
