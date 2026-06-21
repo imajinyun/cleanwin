@@ -66,7 +66,7 @@ def schema_registry() -> dict[str, Any]:
     ]
     samples = {}
     for entry in entries:
-        sample = schema_sample(entry["name"])
+        sample = schema_sample(str(entry["name"]))
         if sample is not None:
             samples[entry["name"]] = sample
     return {
@@ -289,8 +289,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
             "dry_run": True,
             "ready": True,
             "failed_check_ids": [],
-            "check_count": 3,
-            "passed_count": 3,
+            "check_count": 4,
+            "passed_count": 4,
             "checks": [
                 {
                     "id": "single_destructive_exit",
@@ -310,10 +310,17 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                     "detail": "AI tool schema and provider parity must validate.",
                     "evidence": {"violation_count": 0},
                 },
+                {
+                    "id": "version_consistency",
+                    "passed": True,
+                    "detail": "Package metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+                    "evidence": {"pyproject_version": "0.1.0", "package_version": "0.1.0", "capabilities_version": "0.1.0"},
+                },
             ],
             "recommended_commands": [
                 ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
                 ["python3", "cleanwin.py", "--json", "doctor"],
+                ["make", "version-smoke"],
             ],
         }
     return None

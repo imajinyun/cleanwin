@@ -262,7 +262,7 @@ def _validate_json_value(value: Any, schema: Mapping[str, Any], path: str) -> li
                 if field not in value:
                     violations.append(f"{path}.{field} is required")
         if isinstance(properties, Mapping):
-            allowed = set(str(key) for key in properties)
+            allowed = {str(key) for key in properties}
             if schema.get("additionalProperties") is False:
                 for field in sorted(str(key) for key in value if str(key) not in allowed):
                     violations.append(f"{path}.{field} is not allowed")

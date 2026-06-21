@@ -17,15 +17,67 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install dev dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip build
+          python -m pip install -e .[dev]
+
       - name: Run unit tests
         shell: pwsh
         run: |
           $env:PYTHONPATH = (Get-Location).Path
-          python -m unittest -v
+          python -m unittest discover -s tests -v
+
+      - name: Lint
+        shell: pwsh
+        run: python -m ruff check cleanwin.py cleanwincli tests
+
+      - name: Type check
+        shell: pwsh
+        run: python -m mypy cleanwin.py cleanwincli tests
 
       - name: Compile Python files
         shell: pwsh
         run: python -m compileall -q cleanwin.py cleanwincli tests
+
+      - name: Docs smoke
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/doc/README.md)) { throw "missing docs/doc/README.md" }
+          if (-not (Test-Path docs/doc/README.CN.md)) { throw "missing docs/doc/README.CN.md" }
+          if ((Get-Item docs/doc/README.md).Length -le 0) { throw "empty docs/doc/README.md" }
+          if ((Get-Item docs/doc/README.CN.md).Length -le 0) { throw "empty docs/doc/README.CN.md" }
+
+      - name: AI readiness smoke
+        shell: pwsh
+        run: |
+          $toolValidation = python cleanwin.py --json ai-tools --provider validation | ConvertFrom-Json
+          if (-not $toolValidation.valid) { throw "ai-tools provider validation failed" }
+          $readiness = python cleanwin.py --json ai-readiness --validate | ConvertFrom-Json
+          if (-not $readiness.valid) { throw "ai-readiness validation failed" }
+          $selfTest = python cleanwin.py --json ai-self-test | ConvertFrom-Json
+          if (-not $selfTest.passed) { throw "ai-self-test failed" }
+          $runbook = python cleanwin.py --json ai-runbook | ConvertFrom-Json
+          if ($runbook.schema -ne "cleanwin.ai-runbook.v1") { throw "ai-runbook schema mismatch" }
+          $doctor = python cleanwin.py --json doctor | ConvertFrom-Json
+          if (-not $doctor.ready) { throw "doctor reported not ready" }
+
+      - name: MCP server compile smoke
+        shell: pwsh
+        run: python -m compileall -q cleanwincli/mcp_server.py
+
+      - name: Version consistency smoke
+        shell: pwsh
+        run: |
+          $doctor = python cleanwin.py --json doctor | ConvertFrom-Json
+          $versionCheck = $doctor.checks | Where-Object { $_.id -eq "version_consistency" }
+          if ($null -eq $versionCheck) { throw "missing version_consistency doctor check" }
+          if (-not $versionCheck.passed) { throw "version_consistency doctor check failed" }
+
+      - name: Package build smoke
+        shell: pwsh
+        run: python -m build --sdist --wheel
 
       - name: Identity drift smoke
         shell: pwsh
@@ -57,3 +109,10 @@ jobs:
           $dry = python cleanwin.py --json execute-plan --plan-file $plan --no-require-plan-context | ConvertFrom-Json
           python cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
           if (Test-Path $candidate) { throw "candidate should have moved to test trash" }
+
+      - name: Cleanup generated artifacts
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, dist, cleanwin.egg-info, .mypy_cache, .ruff_cache
+          Get-ChildItem -Path . -Directory -Recurse -Force -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue

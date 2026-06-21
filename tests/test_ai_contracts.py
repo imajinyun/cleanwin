@@ -7,12 +7,26 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
-from cleanwincli.ai_schema import AI_TOOL_DEFINITIONS, CONFIRMATION_PHRASE, tool_catalog, validate_ai_schema, validate_tool_arguments
+from cleanwincli.ai_schema import (
+    AI_TOOL_DEFINITIONS,
+    CONFIRMATION_PHRASE,
+    tool_catalog,
+    validate_ai_schema,
+    validate_tool_arguments,
+)
 from cleanwincli.ai_versioning import schema_registry, schema_sample
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def require_schema_sample(name: str) -> dict[str, Any]:
+    sample = schema_sample(name)
+    if sample is None:
+        raise AssertionError(f"missing schema sample: {name}")
+    return sample
 
 
 class AIContractTests(unittest.TestCase):
@@ -25,8 +39,7 @@ class AIContractTests(unittest.TestCase):
             cwd=ROOT,
             env=merged_env,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
 
@@ -53,34 +66,34 @@ class AIContractTests(unittest.TestCase):
             self.assertIn(required, names)
 
     def test_schema_samples_include_rule_metadata_and_review_details(self) -> None:
-        inspect_sample = schema_sample("cleanwin.inspect.v1")
+        inspect_sample = require_schema_sample("cleanwin.inspect.v1")
         self.assertEqual(inspect_sample["candidates"][0]["rule_id"], "dev-cache.npm.cache")
         self.assertEqual(inspect_sample["candidates"][0]["cache_owner"], "npm")
         self.assertIn("official_cleanup_command", inspect_sample["candidates"][0])
         self.assertIn("review_details", inspect_sample["findings"][0])
 
-        plan_sample = schema_sample("cleanwin.plan.v1")
+        plan_sample = require_schema_sample("cleanwin.plan.v1")
         self.assertEqual(plan_sample["candidates"][0]["rule_id"], "dev-cache.npm.cache")
         self.assertEqual(plan_sample["candidates"][0]["identity"]["schema"], "cleanwin.filesystem-identity.v1")
 
-        execute_sample = schema_sample("cleanwin.execute.v1")
+        execute_sample = require_schema_sample("cleanwin.execute.v1")
         self.assertEqual(execute_sample["schema"], "cleanwin.execute.v1")
         self.assertTrue(execute_sample["dry_run"])
         self.assertEqual(execute_sample["results"][0]["status"], "dry-run")
         self.assertIn("confirmation_token", execute_sample["confirmation"])
 
-        doctor_sample = schema_sample("cleanwin.doctor.v1")
+        doctor_sample = require_schema_sample("cleanwin.doctor.v1")
         self.assertEqual(doctor_sample["schema"], "cleanwin.doctor.v1")
         self.assertFalse(doctor_sample["destructive"])
         self.assertIn("recommended_commands", doctor_sample)
 
-        review_sample = schema_sample("cleanwin.review.v1")
+        review_sample = require_schema_sample("cleanwin.review.v1")
         self.assertEqual(review_sample["schema"], "cleanwin.review.v1")
         self.assertFalse(review_sample["destructive"])
         self.assertIn("execution_handoff", review_sample)
         self.assertIn("sensitive_exclusions", review_sample)
 
-        argument_validation_sample = schema_sample("cleanwin.ai-tool-argument-validation.v1")
+        argument_validation_sample = require_schema_sample("cleanwin.ai-tool-argument-validation.v1")
         self.assertEqual(argument_validation_sample["schema"], "cleanwin.ai-tool-argument-validation.v1")
         self.assertFalse(argument_validation_sample["valid"])
 
@@ -90,7 +103,7 @@ class AIContractTests(unittest.TestCase):
         self.assertIn("rule_ids", by_name["cleanwin_generate_plan"]["parameters"]["properties"])
 
     def test_schema_samples_cover_package_and_browser_cache_categories(self) -> None:
-        inspect_sample = schema_sample("cleanwin.inspect.v1")
+        inspect_sample = require_schema_sample("cleanwin.inspect.v1")
         self.assertIn("browser-cache", inspect_sample["categories"])
         self.assertIn("package-cache", inspect_sample["categories"])
         candidate_categories = {candidate["category"] for candidate in inspect_sample["candidates"]}

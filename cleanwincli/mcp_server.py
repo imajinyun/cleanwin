@@ -16,6 +16,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from cleanwincli import __version__
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import AI_TOOL_DEFINITIONS, validate_tool_arguments
 from cleanwincli.core import ai_tools_report, host_policy_report
@@ -171,7 +172,7 @@ def build_cleanwin_argv(tool_name: str, arguments: Mapping[str, Any]) -> list[st
 
 
 def tool_error(tool_name: str, message: str, *, policy_decision: dict[str, Any] | None = None) -> dict[str, Any]:
-    structured = {
+    structured: dict[str, Any] = {
         "schema": "cleanwin.mcp-tool-error.v1",
         "tool": tool_name,
         "message": message,
@@ -218,8 +219,7 @@ def call_tool(name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
         completed = subprocess.run(
             argv,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
             timeout=30,
         )
@@ -275,7 +275,7 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
             "result": {
                 "protocolVersion": MCP_PROTOCOL_VERSION,
                 "capabilities": {"tools": {}, "resources": {}},
-                "serverInfo": {"name": "cleanwin-mcp", "version": "0.1.0"},
+                "serverInfo": {"name": "cleanwin-mcp", "version": __version__},
             },
         }
     if method == "notifications/initialized":
@@ -283,9 +283,11 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
     if method == "tools/list":
         return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": mcp_tools()}}
     if method == "tools/call":
-        params = request.get("params") if isinstance(request.get("params"), Mapping) else {}
+        raw_params = request.get("params")
+        params: Mapping[str, Any] = raw_params if isinstance(raw_params, Mapping) else {}
         name = str(params.get("name") or "")
-        arguments = params.get("arguments") if isinstance(params.get("arguments"), Mapping) else {}
+        raw_arguments = params.get("arguments")
+        arguments: Mapping[str, Any] = raw_arguments if isinstance(raw_arguments, Mapping) else {}
         return {"jsonrpc": "2.0", "id": request_id, "result": call_tool(name, arguments)}
     if method == "resources/list":
         resources = [
@@ -301,8 +303,9 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
         ]
         return {"jsonrpc": "2.0", "id": request_id, "result": {"resources": resources}}
     if method == "resources/read":
-        params = request.get("params") if isinstance(request.get("params"), Mapping) else {}
-        uri = str(params.get("uri") or "")
+        raw_resource_params = request.get("params")
+        resource_params: Mapping[str, Any] = raw_resource_params if isinstance(raw_resource_params, Mapping) else {}
+        uri = str(resource_params.get("uri") or "")
         try:
             payload = resource_payload(uri)
         except KeyError:

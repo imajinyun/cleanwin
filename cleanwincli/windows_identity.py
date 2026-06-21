@@ -42,7 +42,7 @@ def capture_windows_volume_identity(path: Path) -> dict[str, Any]:
     if not root:
         return _empty_native_identity(available=False, reason="missing-volume-root")
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     volume_name = ctypes.create_unicode_buffer(261)
     filesystem_name = ctypes.create_unicode_buffer(261)
     serial = ctypes.c_uint32(0)
@@ -59,7 +59,7 @@ def capture_windows_volume_identity(path: Path) -> dict[str, Any]:
         len(filesystem_name),
     )
     if not ok:
-        error = ctypes.get_last_error()
+        error = ctypes.get_last_error()  # type: ignore[attr-defined]
         return _empty_native_identity(available=False, reason=f"GetVolumeInformationW failed: {error}")
     payload = _empty_native_identity(available=True)
     payload.update(
@@ -78,7 +78,7 @@ def capture_windows_handle_identity(path: Path) -> dict[str, Any]:
     if os.name != "nt":
         return _empty_native_identity(available=False, reason="not-windows")
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
     class BY_HANDLE_FILE_INFORMATION(ctypes.Structure):  # type: ignore[misc]
         _fields_ = [
             ("dwFileAttributes", wintypes.DWORD),
@@ -112,13 +112,13 @@ def capture_windows_handle_identity(path: Path) -> dict[str, Any]:
         None,
     )
     if handle == invalid_handle_value:
-        error = ctypes.get_last_error()
+        error = ctypes.get_last_error()  # type: ignore[attr-defined]
         return _empty_native_identity(available=False, reason=f"CreateFileW failed: {error}")
     try:
         info = BY_HANDLE_FILE_INFORMATION()
         ok = kernel32.GetFileInformationByHandle(handle, ctypes.byref(info))
         if not ok:
-            error = ctypes.get_last_error()
+            error = ctypes.get_last_error()  # type: ignore[attr-defined]
             return _empty_native_identity(available=False, reason=f"GetFileInformationByHandle failed: {error}")
         file_index = (int(info.nFileIndexHigh) << 32) | int(info.nFileIndexLow)
         payload = _empty_native_identity(available=True)

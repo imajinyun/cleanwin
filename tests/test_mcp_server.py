@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from cleanwincli import __version__
+
 ROOT = Path(__file__).resolve().parents[1]
 MCP_MODULE = "cleanwincli.mcp_server"
 
@@ -39,6 +41,7 @@ class CleanWinMCPServerTests(unittest.TestCase):
     def test_initialize_and_tools_list(self) -> None:
         initialized = mcp_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
         self.assertEqual(initialized["result"]["serverInfo"]["name"], "cleanwin-mcp")
+        self.assertEqual(initialized["result"]["serverInfo"]["version"], __version__)
 
         response = mcp_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         tools = response["result"]["tools"]
@@ -140,9 +143,8 @@ class CleanWinMCPServerTests(unittest.TestCase):
                 cwd=ROOT,
                 env=env,
                 check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
                 text=True,
+                capture_output=True,
             )
             proc = subprocess.Popen(
                 [sys.executable, "-m", MCP_MODULE],
@@ -187,9 +189,8 @@ class CleanWinMCPServerTests(unittest.TestCase):
                 cwd=ROOT,
                 env=env,
                 check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
                 text=True,
+                capture_output=True,
             )
             proc = subprocess.Popen(
                 [sys.executable, "-m", MCP_MODULE],

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
+from cleanwincli import __version__
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call, render_ai_host_policy, validate_ai_host_policy
 from cleanwincli.ai_readiness import ai_readiness_report, validate_ai_readiness
 from cleanwincli.ai_runbook import ai_runbook_report
@@ -32,7 +33,7 @@ from cleanwincli.protection import validate_filesystem_candidate
 def capabilities() -> dict[str, Any]:
     return {
         "tool": "cleanwin",
-        "version": "0.1.0",
+        "version": __version__,
         "default_dry_run": True,
         "plan_schema": PLAN_SCHEMA,
         "execution_requires_execute_flag": True,
@@ -254,6 +255,24 @@ def _doctor_check(check_id: str, passed: bool, detail: str, evidence: dict[str, 
     return {"id": check_id, "passed": passed, "detail": detail, "evidence": evidence or {}}
 
 
+def _pyproject_project_version(project_root: Path) -> str | None:
+    in_project_section = False
+    try:
+        lines = (project_root / "pyproject.toml").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_project_section = line == "[project]"
+            continue
+        if in_project_section and line.startswith("version") and "=" in line:
+            return line.split("=", 1)[1].strip().strip('"')
+    return None
+
+
 def _delete_primitive_violations() -> list[dict[str, Any]]:
     project_root = Path(__file__).resolve().parents[1]
     allowed = {str((project_root / "cleanwincli" / "delete_ops.py").resolve())}
@@ -283,7 +302,9 @@ def _delete_primitive_violations() -> list[dict[str, Any]]:
 
 
 def doctor_report() -> dict[str, Any]:
+    project_root = Path(__file__).resolve().parents[1]
     capabilities_report = capabilities()
+    pyproject_version = _pyproject_project_version(project_root)
     catalog = tool_catalog()
     schema_validation = validate_ai_schema()
     policy = render_ai_host_policy(tool_catalog=catalog)
@@ -347,6 +368,16 @@ def doctor_report() -> dict[str, Any]:
             "Windows-native identity backend module must be importable on non-Windows hosts for packaging checks.",
             {"error": windows_identity_error},
         ),
+        _doctor_check(
+            "version_consistency",
+            bool(pyproject_version) and pyproject_version == __version__ == capabilities_report.get("version"),
+            "Package metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+            {
+                "pyproject_version": pyproject_version,
+                "package_version": __version__,
+                "capabilities_version": capabilities_report.get("version"),
+            },
+        ),
     ]
     failed = [check["id"] for check in checks if not check["passed"]]
     return {
@@ -360,9 +391,21 @@ def doctor_report() -> dict[str, Any]:
         "checks": checks,
         "recommended_commands": [
             ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
+            ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"],
+            ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "compileall", "cleanwin.py", "cleanwincli", "tests"],
+            ["python3", "-m", "build", "--sdist", "--wheel"],
             ["python3", "cleanwin.py", "--json", "ai-tools", "--provider", "validation"],
+            ["python3", "cleanwin.py", "--json", "ai-readiness", "--validate"],
+            ["python3", "cleanwin.py", "--json", "ai-self-test"],
+            ["python3", "cleanwin.py", "--json", "ai-runbook"],
             ["python3", "cleanwin.py", "--json", "doctor"],
+            ["make", "docs-smoke"],
+            ["make", "ai-smoke"],
+            ["make", "mcp-smoke"],
+            ["make", "version-smoke"],
+            ["make", "clean"],
+            ["make", "quality"],
         ],
     }
 

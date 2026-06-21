@@ -25,8 +25,7 @@ class CliTests(unittest.TestCase):
             cwd=ROOT,
             env=merged_env,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
 

@@ -32,7 +32,7 @@ class HostContext:
     home: str
 
     @classmethod
-    def current(cls) -> "HostContext":
+    def current(cls) -> HostContext:
         return cls(
             hostname=socket.gethostname(),
             platform=platform.platform(),

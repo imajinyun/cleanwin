@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import fnmatch
+import os
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +12,6 @@ from cleanwincli.identity import capture_filesystem_identity
 from cleanwincli.models import Candidate, Finding
 from cleanwincli.protection import validate_filesystem_candidate
 from cleanwincli.protection_data import DEFAULT_SAFE_CATEGORIES, READ_ONLY_CATEGORIES
-
 
 DEV_CACHE_RULES: tuple[dict[str, str], ...] = (
     {
@@ -648,7 +647,8 @@ def app_leftover_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, object]
     program_files_x86 = env.get("PROGRAMFILES(X86)") or env.get("ProgramFiles(x86)") or r"C:\Program Files (x86)"
     roots: list[tuple[dict[str, object], Path]] = []
     for rule in APP_LEFTOVER_RULES:
-        markers = tuple(str(marker) for marker in rule.get("active_markers", ()))
+        raw_markers = rule.get("active_markers", ())
+        markers = tuple(str(marker) for marker in raw_markers) if isinstance(raw_markers, Iterable) else ()
         if any(_active_marker_exists(marker, env=env) for marker in markers):
             continue
         default = str(rule["default"])
@@ -820,18 +820,18 @@ def collect_candidates(
             if len(candidates) >= max_items:
                 return candidates
     if "app-leftovers" in categories:
-        for rule, root in app_leftover_rule_roots(env):
-            rule_id = str(rule["rule_id"])
+        for app_rule, root in app_leftover_rule_roots(env):
+            rule_id = str(app_rule["rule_id"])
             if not _matches_rule_filter(rule_id, allowed_rule_ids):
                 continue
             candidate = candidate_for(
                 root,
                 category="app-leftovers",
-                reason=f"{rule['owner']} uninstall leftover cache/log at {root}",
+                reason=f"{app_rule['owner']} uninstall leftover cache/log at {root}",
                 rule_id=rule_id,
-                cache_owner=str(rule["owner"]),
-                official_cleanup_command=str(rule["official_cleanup_command"]),
-                safe_to_delete_rationale=str(rule["rationale"]),
+                cache_owner=str(app_rule["owner"]),
+                official_cleanup_command=str(app_rule["official_cleanup_command"]),
+                safe_to_delete_rationale=str(app_rule["rationale"]),
             )
             if candidate:
                 candidates.append(candidate)

@@ -4,7 +4,12 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from cleanwincli.protection import is_protected_registry_key, is_sensitive_user_data, validate_filesystem_candidate, validate_path_text
+from cleanwincli.protection import (
+    is_protected_registry_key,
+    is_sensitive_user_data,
+    validate_filesystem_candidate,
+    validate_path_text,
+)
 
 
 class SafetyTests(unittest.TestCase):

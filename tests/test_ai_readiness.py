@@ -7,11 +7,12 @@ import sys
 import unittest
 from pathlib import Path
 
+from cleanwincli import __version__
 from cleanwincli.ai_readiness import ai_readiness_report, validate_ai_readiness
 from cleanwincli.ai_runbook import ai_runbook_report
 from cleanwincli.ai_self_test import ai_self_test_report
-from cleanwincli.core import doctor_report
 from cleanwincli.ai_versioning import schema_registry
+from cleanwincli.core import doctor_report
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -25,8 +26,7 @@ class AIReadinessTests(unittest.TestCase):
             cwd=ROOT,
             env=env,
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
 
@@ -99,7 +99,22 @@ class AIReadinessTests(unittest.TestCase):
         self.assertIn("single_destructive_exit", check_ids)
         self.assertIn("delete_primitives_owned_by_delete_ops", check_ids)
         self.assertIn("ai_contracts_valid", check_ids)
+        self.assertIn("version_consistency", check_ids)
+        version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
+        self.assertTrue(version_check["passed"], version_check)
+        self.assertEqual(version_check["evidence"]["package_version"], __version__)
+        self.assertEqual(version_check["evidence"]["pyproject_version"], __version__)
+        self.assertEqual(version_check["evidence"]["capabilities_version"], __version__)
         self.assertIn(["python3", "-m", "unittest", "discover", "-s", "tests", "-v"], report["recommended_commands"])
+        self.assertIn(["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"], report["recommended_commands"])
+        self.assertIn(["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"], report["recommended_commands"])
+        self.assertIn(["python3", "-m", "build", "--sdist", "--wheel"], report["recommended_commands"])
+        self.assertIn(["make", "docs-smoke"], report["recommended_commands"])
+        self.assertIn(["make", "ai-smoke"], report["recommended_commands"])
+        self.assertIn(["make", "mcp-smoke"], report["recommended_commands"])
+        self.assertIn(["make", "version-smoke"], report["recommended_commands"])
+        self.assertIn(["make", "clean"], report["recommended_commands"])
+        self.assertIn(["make", "quality"], report["recommended_commands"])
 
     def test_ai_tools_provider_aliases_readiness_reports(self) -> None:
         for provider, schema in [
