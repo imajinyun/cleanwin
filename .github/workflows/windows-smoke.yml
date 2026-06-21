@@ -79,6 +79,58 @@ jobs:
         shell: pwsh
         run: python -m build --sdist --wheel
 
+      - name: Package install smoke
+        shell: pwsh
+        run: |
+          $installRoot = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
+          try {
+            python -m venv $installRoot
+            $venvPython = Join-Path $installRoot "Scripts\python.exe"
+            $venvCli = Join-Path $installRoot "Scripts\cleanwin.exe"
+            $venvMcp = Join-Path $installRoot "Scripts\cleanwin-mcp.exe"
+            $wheel = Get-ChildItem -Path dist -Filter "cleanwin-*.whl" | Sort-Object Name | Select-Object -Last 1
+            if ($null -eq $wheel) { throw "missing built wheel" }
+            & $venvPython -m pip install $wheel.FullName
+            if (-not (Test-Path $venvCli)) { throw "missing cleanwin console script" }
+            if (-not (Test-Path $venvMcp)) { throw "missing cleanwin-mcp console script" }
+            $moduleDoctor = & $venvPython -m cleanwin --json doctor | ConvertFrom-Json
+            if (-not $moduleDoctor.ready) { throw "installed cleanwin module doctor reported not ready" }
+            $cliDoctor = & $venvCli --json doctor | ConvertFrom-Json
+            if (-not $cliDoctor.ready) { throw "installed cleanwin CLI doctor reported not ready" }
+            $mcpInitialize = @{ jsonrpc = "2.0"; id = 1; method = "initialize" } | ConvertTo-Json -Compress
+            $mcpResponse = $mcpInitialize | & $venvMcp | ConvertFrom-Json
+            if ($mcpResponse.result.serverInfo.name -ne "cleanwin-mcp") { throw "installed cleanwin MCP initialize failed" }
+          }
+          finally {
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installRoot
+          }
+
+      - name: Source dist install smoke
+        shell: pwsh
+        run: |
+          $installRoot = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
+          try {
+            python -m venv $installRoot
+            $venvPython = Join-Path $installRoot "Scripts\python.exe"
+            $venvCli = Join-Path $installRoot "Scripts\cleanwin.exe"
+            $venvMcp = Join-Path $installRoot "Scripts\cleanwin-mcp.exe"
+            $sdist = Get-ChildItem -Path dist -Filter "cleanwin-*.tar.gz" | Sort-Object Name | Select-Object -Last 1
+            if ($null -eq $sdist) { throw "missing built sdist" }
+            & $venvPython -m pip install $sdist.FullName
+            if (-not (Test-Path $venvCli)) { throw "missing cleanwin console script from sdist install" }
+            if (-not (Test-Path $venvMcp)) { throw "missing cleanwin-mcp console script from sdist install" }
+            $moduleDoctor = & $venvPython -m cleanwin --json doctor | ConvertFrom-Json
+            if (-not $moduleDoctor.ready) { throw "sdist cleanwin module doctor reported not ready" }
+            $cliDoctor = & $venvCli --json doctor | ConvertFrom-Json
+            if (-not $cliDoctor.ready) { throw "sdist cleanwin CLI doctor reported not ready" }
+            $mcpInitialize = @{ jsonrpc = "2.0"; id = 1; method = "initialize" } | ConvertTo-Json -Compress
+            $mcpResponse = $mcpInitialize | & $venvMcp | ConvertFrom-Json
+            if ($mcpResponse.result.serverInfo.name -ne "cleanwin-mcp") { throw "sdist cleanwin MCP initialize failed" }
+          }
+          finally {
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $installRoot
+          }
+
       - name: Identity drift smoke
         shell: pwsh
         run: |

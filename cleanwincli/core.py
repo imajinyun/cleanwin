@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 from pathlib import Path
 from typing import Any
@@ -273,6 +274,13 @@ def _pyproject_project_version(project_root: Path) -> str | None:
     return None
 
 
+def _installed_distribution_version() -> str | None:
+    try:
+        return importlib.metadata.version("cleanwin")
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
 def _delete_primitive_violations() -> list[dict[str, Any]]:
     project_root = Path(__file__).resolve().parents[1]
     allowed = {str((project_root / "cleanwincli" / "delete_ops.py").resolve())}
@@ -305,6 +313,7 @@ def doctor_report() -> dict[str, Any]:
     project_root = Path(__file__).resolve().parents[1]
     capabilities_report = capabilities()
     pyproject_version = _pyproject_project_version(project_root)
+    distribution_version = _installed_distribution_version()
     catalog = tool_catalog()
     schema_validation = validate_ai_schema()
     policy = render_ai_host_policy(tool_catalog=catalog)
@@ -370,10 +379,14 @@ def doctor_report() -> dict[str, Any]:
         ),
         _doctor_check(
             "version_consistency",
-            bool(pyproject_version) and pyproject_version == __version__ == capabilities_report.get("version"),
-            "Package metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+            (pyproject_version is not None or distribution_version is not None)
+            and capabilities_report.get("version") == __version__
+            and (pyproject_version is None or pyproject_version == __version__)
+            and (distribution_version is None or distribution_version == __version__),
+            "Package metadata, installed distribution metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
             {
                 "pyproject_version": pyproject_version,
+                "distribution_version": distribution_version,
                 "package_version": __version__,
                 "capabilities_version": capabilities_report.get("version"),
             },
@@ -395,6 +408,9 @@ def doctor_report() -> dict[str, Any]:
             ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "compileall", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "build", "--sdist", "--wheel"],
+            ["make", "package-install-smoke"],
+            ["make", "sdist-install-smoke"],
+            ["make", "mcp-install-smoke"],
             ["python3", "cleanwin.py", "--json", "ai-tools", "--provider", "validation"],
             ["python3", "cleanwin.py", "--json", "ai-readiness", "--validate"],
             ["python3", "cleanwin.py", "--json", "ai-self-test"],

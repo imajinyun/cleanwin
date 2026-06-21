@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+import queue
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -35,6 +37,40 @@ def mcp_request(request: dict) -> dict:
     if not stdout.strip():
         raise RuntimeError(f"empty MCP stdout; stderr={stderr}")
     return json.loads(stdout.strip().splitlines()[0])
+
+
+def persistent_mcp_request(request: dict) -> dict:
+    proc = subprocess.Popen(
+        [sys.executable, "-m", MCP_MODULE],
+        cwd=ROOT,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=mcp_env(),
+    )
+    assert proc.stdin is not None
+    assert proc.stdout is not None
+    stdout_pipe = proc.stdout
+    proc.stdin.write(json.dumps(request) + "\n")
+    proc.stdin.flush()
+    lines: queue.Queue[str] = queue.Queue()
+    reader = threading.Thread(target=lambda: lines.put(stdout_pipe.readline()), daemon=True)
+    reader.start()
+    try:
+        line = lines.get(timeout=5)
+    except queue.Empty:
+        proc.kill()
+        stdout, stderr = proc.communicate(timeout=5)
+        raise RuntimeError(f"timed out waiting for persistent MCP response; stdout={stdout}; stderr={stderr}") from None
+    if line.strip():
+        proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 999, "method": "shutdown"}) + "\n")
+        proc.stdin.flush()
+        proc.communicate(timeout=5)
+        return json.loads(line)
+    proc.kill()
+    stdout, stderr = proc.communicate(timeout=5)
+    raise RuntimeError(f"empty persistent MCP response; stdout={stdout}; stderr={stderr}")
 
 
 class CleanWinMCPServerTests(unittest.TestCase):
@@ -95,6 +131,18 @@ class CleanWinMCPServerTests(unittest.TestCase):
                 )
                 payload = json.loads(read["result"]["contents"][0]["text"])
                 self.assertEqual(payload["schema"], schema)
+
+    def test_resources_read_responds_before_persistent_stdin_eof(self) -> None:
+        read = persistent_mcp_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 41,
+                "method": "resources/read",
+                "params": {"uri": "cleanwin://ai/runbook"},
+            }
+        )
+        payload = json.loads(read["result"]["contents"][0]["text"])
+        self.assertEqual(payload["schema"], "cleanwin.ai-runbook.v1")
 
     def test_tools_call_readonly_capabilities(self) -> None:
         response = mcp_request(

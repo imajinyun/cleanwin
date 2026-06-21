@@ -330,6 +330,25 @@ def iter_input_payloads(stdin_text: str) -> list[str]:
 
 
 def main() -> None:
+    for stdin_line in sys.stdin:
+        stop = False
+        for payload in iter_input_payloads(stdin_line):
+            request: Any = None
+            try:
+                request = json.loads(payload)
+                response = handle_request(request)
+            except json.JSONDecodeError:
+                response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+            if response is not None:
+                print(json.dumps(response, sort_keys=True, ensure_ascii=False), flush=True)
+            if isinstance(request, Mapping) and request.get("method") == "shutdown":
+                stop = True
+                break
+        if stop:
+            break
+
+
+def main_once() -> None:
     for payload in iter_input_payloads(sys.stdin.read()):
         try:
             request = json.loads(payload)

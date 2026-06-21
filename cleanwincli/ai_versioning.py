@@ -313,14 +313,16 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 {
                     "id": "version_consistency",
                     "passed": True,
-                    "detail": "Package metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
-                    "evidence": {"pyproject_version": "0.1.0", "package_version": "0.1.0", "capabilities_version": "0.1.0"},
+                    "detail": "Package metadata, installed distribution metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+                    "evidence": {"pyproject_version": "0.1.0", "distribution_version": "0.1.0", "package_version": "0.1.0", "capabilities_version": "0.1.0"},
                 },
             ],
             "recommended_commands": [
                 ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
                 ["python3", "cleanwin.py", "--json", "doctor"],
                 ["make", "version-smoke"],
+                ["make", "package-install-smoke"],
+                ["make", "sdist-install-smoke"],
             ],
         }
     return None
