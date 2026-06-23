@@ -354,6 +354,10 @@ CI entrypoint:
 
 - `.github/workflows/windows-smoke.yml` runs unit tests, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 
+Governance roadmap:
+
+- [Windows cleaner gap roadmap](../governance/windows-cleaner-gap-roadmap.md) tracks prioritized TODOs for cleaner coverage, read-only evidence, recovery gates, and future execution model expansion.
+
 ---
 
 ## 🗺️ Project Map
@@ -364,6 +368,8 @@ CI entrypoint:
 | `cleanwincli/cli.py` | Argument parsing and command dispatch |
 | `cleanwincli/core.py` | Inspect/plan/validate/review/execute orchestration and reports |
 | `cleanwincli/collectors.py` | Conservative candidate and read-only finding collectors |
+| `cleanwincli/rule_catalog.py` | Versioned cleanup rule catalog loader and validation |
+| `cleanwincli/rules/cleanup_rules.v1.json` | Governed cleanup rule catalog data |
 | `cleanwincli/protection_data.py` | Windows safety policy data |
 | `cleanwincli/protection.py` | Path and filesystem candidate validation |
 | `cleanwincli/delete_ops.py` | Single destructive exit and recycle/permanent routing primitives |

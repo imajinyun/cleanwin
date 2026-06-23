@@ -354,6 +354,10 @@ CI 入口：
 
 - `.github/workflows/windows-smoke.yml` 在 `windows-latest` 上运行 unit tests、compile checks、identity drift smoke 和 test-mode recycle smoke。
 
+治理路线图：
+
+- [Windows cleaner gap roadmap](../governance/windows-cleaner-gap-roadmap.md) 跟踪清理覆盖、只读证据、恢复门禁和后续执行模型扩展的优先级 TODO。
+
 ---
 
 ## 🗺️ 项目地图
@@ -364,6 +368,8 @@ CI 入口：
 | `cleanwincli/cli.py` | 参数解析和命令分发 |
 | `cleanwincli/core.py` | inspect/plan/validate/review/execute 编排和报告 |
 | `cleanwincli/collectors.py` | 保守候选项和只读 finding 收集器 |
+| `cleanwincli/rule_catalog.py` | versioned 清理规则 catalog 加载与校验 |
+| `cleanwincli/rules/cleanup_rules.v1.json` | 治理化清理规则 catalog 数据 |
 | `cleanwincli/protection_data.py` | Windows 安全策略数据 |
 | `cleanwincli/protection.py` | 路径和文件系统候选项校验 |
 | `cleanwincli/delete_ops.py` | 唯一破坏性出口和 recycle/permanent 路由 primitive |

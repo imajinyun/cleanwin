@@ -53,6 +53,7 @@ python3 -m cleanwincli.mcp_server
 |---|---|
 | 📗 **English** — full CLI reference, safety model, AI/MCP patterns, development | [docs/doc/README.md](docs/doc/README.md) |
 | 📕 **中文** — 完整命令参考、安全模型、AI/MCP 调用姿势、开发验证 | [docs/doc/README.CN.md](docs/doc/README.CN.md) |
+| 🗺️ **Governance roadmap** — prioritized Windows cleaner gap TODOs | [docs/governance/windows-cleaner-gap-roadmap.md](docs/governance/windows-cleaner-gap-roadmap.md) |
 
 ---
 
@@ -64,6 +65,7 @@ python3 -m cleanwincli.mcp_server
 - [🤖 AI Invocation Patterns](docs/doc/README.md#-ai-invocation-patterns)
 - [🏗️ MCP Server](docs/doc/README.md#️-mcp-server)
 - [✅ Development & CI](docs/doc/README.md#-development--ci)
+- [🗺️ Governance Roadmap](docs/governance/windows-cleaner-gap-roadmap.md)
 - [📕 中文安全模型](docs/doc/README.CN.md#️-安全模型)
 - [📕 中文 AI 调用姿势](docs/doc/README.CN.md#-ai-调用姿势)
 
@@ -89,5 +91,6 @@ cleanwin-mcp
 
 - [📗 Full English Guide](docs/doc/README.md)
 - [📕 中文文档](docs/doc/README.CN.md)
+- [🗺️ Governance roadmap](docs/governance/windows-cleaner-gap-roadmap.md)
 - [🧪 Windows smoke workflow](.github/workflows/windows-smoke.yml)
 - [📦 Project metadata](pyproject.toml)

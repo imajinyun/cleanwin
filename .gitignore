@@ -80,6 +80,8 @@ ipython_config.py
 docs/*
 !docs/doc/
 !docs/doc/**
+!docs/governance/
+!docs/governance/**
 docs/superpowers/
 .idea/
 .vscode/
@@ -99,3 +101,5 @@ Icon?
 # Project-local generated artifacts
 *.log
 *.json
+!cleanwincli/rules/
+!cleanwincli/rules/*.json

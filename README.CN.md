@@ -50,6 +50,7 @@ python3 cleanwin.py --json ai-tools --provider anthropic
 |---|---|
 | 📕 **中文指南** — 完整命令参考、安全模型、AI/MCP 调用姿势、开发验证 | [docs/doc/README.CN.md](docs/doc/README.CN.md) |
 | 📗 **English Guide** — full CLI reference, safety model, AI/MCP patterns, development | [docs/doc/README.md](docs/doc/README.md) |
+| 🗺️ **治理路线图** — Windows 清理项目差距与优先级 TODO | [docs/governance/windows-cleaner-gap-roadmap.md](docs/governance/windows-cleaner-gap-roadmap.md) |
 
 ---
 
@@ -61,6 +62,7 @@ python3 cleanwin.py --json ai-tools --provider anthropic
 - [🤖 AI 调用姿势](docs/doc/README.CN.md#-ai-调用姿势)
 - [🏗️ MCP 服务器](docs/doc/README.CN.md#️-mcp-服务器)
 - [✅ 开发与 CI](docs/doc/README.CN.md#-开发与-ci)
+- [🗺️ 治理路线图](docs/governance/windows-cleaner-gap-roadmap.md)
 
 ---
 
@@ -84,5 +86,6 @@ cleanwin-mcp
 
 - [📕 详细中文文档](docs/doc/README.CN.md)
 - [📗 English Documentation](docs/doc/README.md)
+- [🗺️ 治理路线图](docs/governance/windows-cleaner-gap-roadmap.md)
 - [🧪 Windows smoke workflow](.github/workflows/windows-smoke.yml)
 - [📦 项目元数据](pyproject.toml)

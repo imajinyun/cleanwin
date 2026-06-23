@@ -41,6 +41,9 @@ py-modules = ["cleanwin"]
 [tool.setuptools.packages.find]
 include = ["cleanwincli*"]
 
+[tool.setuptools.package-data]
+cleanwincli = ["rules/*.json"]
+
 [tool.ruff]
 line-length = 120
 target-version = "py310"

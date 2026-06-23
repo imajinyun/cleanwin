@@ -624,6 +624,33 @@ class CliTests(unittest.TestCase):
         self.assertIn("suggested_paths", finding["review_details"])
         self.assertIn("risk_notes", finding["review_details"])
         self.assertIn("manual_review_steps", finding["review_details"])
+        self.assertIn("path_evidence", finding["review_details"])
+        self.assertIn("evidence_summary", finding["review_details"])
+
+    def test_read_only_findings_report_existing_path_evidence_without_candidates(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "LocalAppData"
+            docker_log = local / "Docker" / "log"
+            docker_log.mkdir(parents=True)
+            (docker_log / "service.log").write_text("docker", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "docker-report",
+                env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["summary"]["candidate_count"], 0)
+
+            details = payload["findings"][0]["review_details"]
+            evidence = {item["path"]: item for item in details["path_evidence"]}
+            self.assertEqual(evidence[str(docker_log)]["kind"], "directory")
+            self.assertTrue(evidence[str(docker_log)]["exists"])
+            self.assertEqual(evidence[str(docker_log)]["child_count"], 1)
+            self.assertGreaterEqual(details["evidence_summary"]["existing_path_count"], 1)
 
     def test_validate_plan_rejects_permanent_and_admin_candidates(self) -> None:
         with TemporaryDirectory() as tmp:
