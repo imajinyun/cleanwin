@@ -132,3 +132,47 @@ def backup_delete_contract_report() -> dict[str, Any]:
             "This report does not replace recycle-mode execution for ordinary low-risk cleanup.",
         ],
     }
+
+
+def permanent_delete_denial_report() -> dict[str, Any]:
+    return {
+        "schema": PERMANENT_DELETE_DENIAL_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "capability": {
+            "id": "permanent-delete",
+            "risk": "critical",
+            "default_state": "denied",
+            "execution_enabled": False,
+            "ai_auto_call_allowed": False,
+            "mcp_tool_exposed": False,
+            "allowed_delete_modes": ["recycle"],
+            "denied_delete_modes": ["permanent"],
+        },
+        "required_future_gates": [
+            "separate explicit permanent-delete command surface",
+            "stronger human confirmation phrase",
+            "non-AI auto-call policy",
+            "backup or recovery proof",
+            "operation log with irreversible-delete marker",
+            "release-specific destructive capability review",
+        ],
+        "current_enforcement": {
+            "plan_validation_rejects_permanent": True,
+            "execute_plan_passes_allow_permanent_false": True,
+            "ai_host_policy_requires_recycle": True,
+            "mcp_execute_schema_allows_recycle_only": True,
+            "delete_ops_requires_allow_permanent_true": True,
+        },
+        "summary": {
+            "execution_enabled_count": 0,
+            "denied_mode_count": 1,
+            "future_gate_count": 6,
+        },
+        "non_goals": [
+            "This report does not enable permanent deletion.",
+            "This report does not add permanent deletion to AI or MCP tools.",
+            "This report does not relax recycle-mode execution requirements.",
+        ],
+    }
