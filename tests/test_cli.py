@@ -15,6 +15,7 @@ RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(cleanwin_json: CleanWinJSON) -> None:
@@ -399,30 +400,27 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(tmp_path: Path, clea
     assert by_rule["app-leftovers.obs-studio.logs"]["path"] == str(obs_logs)
     assert by_rule["app-leftovers.spotify.browser-cache"]["path"] == str(spotify_cache)
 
-def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
+def test_app_leftovers_scans_additional_vendor_cache_and_logs(
+    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
-    adobe_logs = local / "Adobe" / "Creative Cloud" / "Logs"
-    adobe_logs.mkdir(parents=True)
-    (adobe_logs / "acc.log").write_text("adobe", encoding="utf-8")
-    office_telemetry = local / "Microsoft" / "Office" / "16.0" / "Telemetry"
-    office_telemetry.mkdir(parents=True)
-    (office_telemetry / "telemetry.log").write_text("office", encoding="utf-8")
-    steam_cache = local / "Steam" / "htmlcache"
-    steam_cache.mkdir(parents=True)
-    (steam_cache / "entry").write_text("steam", encoding="utf-8")
-    epic_cache = local / "EpicGamesLauncher" / "Saved" / "webcache"
-    epic_cache.mkdir(parents=True)
-    (epic_cache / "entry").write_text("epic", encoding="utf-8")
-    battlenet_cache = local / "Battle.net" / "Cache"
-    battlenet_cache.mkdir(parents=True)
-    (battlenet_cache / "entry").write_text("battle", encoding="utf-8")
-    nvidia_cache = local / "NVIDIA" / "DXCache"
-    nvidia_cache.mkdir(parents=True)
-    (nvidia_cache / "shader.bin").write_text("nvidia", encoding="utf-8")
-    amd_cache = local / "AMD" / "DxCache"
-    amd_cache.mkdir(parents=True)
-    (amd_cache / "shader.bin").write_text("amd", encoding="utf-8")
+    cases = [
+        ("app-leftovers.adobe.creative-cloud.logs", local / "Adobe" / "Creative Cloud" / "Logs", "acc.log", "adobe"),
+        (
+            "app-leftovers.office.telemetry-logs",
+            local / "Microsoft" / "Office" / "16.0" / "Telemetry",
+            "telemetry.log",
+            "office",
+        ),
+        ("app-leftovers.steam.htmlcache", local / "Steam" / "htmlcache", "entry", "steam"),
+        ("app-leftovers.epic.webcache", local / "EpicGamesLauncher" / "Saved" / "webcache", "entry", "epic"),
+        ("app-leftovers.battlenet.cache", local / "Battle.net" / "Cache", "entry", "battle"),
+        ("app-leftovers.nvidia.dxcache", local / "NVIDIA" / "DXCache", "shader.bin", "nvidia"),
+        ("app-leftovers.amd.dxcache", local / "AMD" / "DxCache", "shader.bin", "amd"),
+    ]
+    for _, path, filename, contents in cases:
+        write_text_file(path / filename, contents)
 
     payload = cleanwin_json(
         "inspect",
@@ -433,13 +431,8 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, cl
         env={"APPDATA": str(root / "Roaming"), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["app-leftovers.adobe.creative-cloud.logs"]["path"] == str(adobe_logs)
-    assert by_rule["app-leftovers.office.telemetry-logs"]["path"] == str(office_telemetry)
-    assert by_rule["app-leftovers.steam.htmlcache"]["path"] == str(steam_cache)
-    assert by_rule["app-leftovers.epic.webcache"]["path"] == str(epic_cache)
-    assert by_rule["app-leftovers.battlenet.cache"]["path"] == str(battlenet_cache)
-    assert by_rule["app-leftovers.nvidia.dxcache"]["path"] == str(nvidia_cache)
-    assert by_rule["app-leftovers.amd.dxcache"]["path"] == str(amd_cache)
+    for rule_id, path, _, _ in cases:
+        assert by_rule[rule_id]["path"] == str(path)
 
 def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
     tmp_path: Path, cleanwin_json: CleanWinJSON
@@ -537,18 +530,18 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert all(candidate["category"] == "browser-cache" for candidate in payload["candidates"])
     assert all("cookies" not in candidate["path"].lower() for candidate in payload["candidates"])
 
-def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
+def test_browser_cache_discovers_additional_browser_profiles(
+    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
-    chrome_profile_cache = local / "Google" / "Chrome" / "User Data" / "Profile 2" / "Cache"
-    chrome_profile_cache.mkdir(parents=True)
-    (chrome_profile_cache / "entry").write_text("chrome", encoding="utf-8")
-    edge_default_cache = local / "Microsoft" / "Edge" / "User Data" / "Default" / "Cache"
-    edge_default_cache.mkdir(parents=True)
-    (edge_default_cache / "entry").write_text("edge", encoding="utf-8")
-    firefox_cache = local / "Mozilla" / "Firefox" / "Profiles" / "abcd1234.work" / "cache2"
-    firefox_cache.mkdir(parents=True)
-    (firefox_cache / "entry").write_text("firefox", encoding="utf-8")
+    cache_paths = [
+        local / "Google" / "Chrome" / "User Data" / "Profile 2" / "Cache",
+        local / "Microsoft" / "Edge" / "User Data" / "Default" / "Cache",
+        local / "Mozilla" / "Firefox" / "Profiles" / "abcd1234.work" / "cache2",
+    ]
+    for path in cache_paths:
+        write_text_file(path / "entry", path.parts[-4].lower())
 
     payload = cleanwin_json(
         "inspect",
@@ -560,9 +553,7 @@ def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, cle
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 3
-    assert str(chrome_profile_cache) in paths
-    assert str(edge_default_cache) in paths
-    assert str(firefox_cache) in paths
+    assert paths == {str(path) for path in cache_paths}
 
 def test_browser_cache_discovers_brave_profile_caches(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path

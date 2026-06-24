@@ -4,10 +4,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA, startup_service_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def test_report_is_non_destructive_and_gated() -> None:
@@ -22,14 +25,13 @@ def test_report_is_non_destructive_and_gated() -> None:
     assert any("does not disable startup" in item for item in report["non_goals"])
 
 
-def test_registry_and_startup_folder_entries_are_inventory_only(tmp_path: Path) -> None:
+def test_registry_and_startup_folder_entries_are_inventory_only(
+    tmp_path: Path, write_text_file: WriteTextFile
+) -> None:
     appdata = tmp_path / "Roaming"
     startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
-    startup.mkdir(parents=True)
-    shortcut = startup / "Example.lnk"
-    shortcut.write_text("shortcut", encoding="utf-8")
-    target = tmp_path / "Example.exe"
-    target.write_text("exe", encoding="utf-8")
+    write_text_file(startup / "Example.lnk", "shortcut")
+    target = write_text_file(tmp_path / "Example.exe", "exe")
 
     report = startup_service_inventory_report(
         raw_registry_values={
@@ -68,9 +70,12 @@ def test_service_and_scheduled_task_fixtures_are_report_only() -> None:
     assert report["scheduled_tasks"][0]["target_exists"] is False
 
 
-def test_cli_and_ai_provider_expose_inventory(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("startup-service-inventory")
-    assert cli["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "startup-service-inventory")
-    assert provider["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("startup-service-inventory",),
+        ("ai-tools", "--provider", "startup-service-inventory"),
+    ],
+)
+def test_cli_and_ai_provider_expose_inventory(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
+    assert cleanwin_json(*args)["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA

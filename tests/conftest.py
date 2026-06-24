@@ -16,11 +16,22 @@ RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 @pytest.fixture
 def repo_root() -> Path:
     return ROOT
+
+
+@pytest.fixture
+def write_text_file() -> WriteTextFile:
+    def _write_text_file(path: Path, text: str = "x") -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    return _write_text_file
 
 
 @pytest.fixture

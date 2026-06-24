@@ -4,10 +4,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from cleanwincli.debloat_privacy import DEBLOAT_PRIVACY_REPORT_SCHEMA, debloat_privacy_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def test_report_is_non_destructive_and_gated() -> None:
@@ -46,10 +49,10 @@ def test_registry_policy_values_are_classified() -> None:
     assert report["summary"]["privacy_hardened_count"] == 1
 
 
-def test_appx_and_oem_findings_are_review_only(tmp_path: Path) -> None:
+def test_appx_and_oem_findings_are_review_only(tmp_path: Path, write_text_file: WriteTextFile) -> None:
     program_files = tmp_path / "Program Files"
     support_assist = program_files / "Dell" / "SupportAssistAgent"
-    support_assist.mkdir(parents=True)
+    write_text_file(support_assist / "SupportAssist.exe", "exe")
 
     report = debloat_privacy_report(
         raw_registry_values={},
@@ -68,9 +71,12 @@ def test_appx_and_oem_findings_are_review_only(tmp_path: Path) -> None:
     assert report["summary"]["oem_location_count"] == 1
 
 
-def test_cli_and_ai_provider_expose_report(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("debloat-privacy-report")
-    assert cli["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "debloat-privacy-report")
-    assert provider["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("debloat-privacy-report",),
+        ("ai-tools", "--provider", "debloat-privacy-report"),
+    ],
+)
+def test_cli_and_ai_provider_expose_report(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
+    assert cleanwin_json(*args)["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA

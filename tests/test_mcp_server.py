@@ -20,6 +20,7 @@ JSONPayload = dict[str, Any]
 MCPRequest = dict[str, Any]
 MCPResponse = dict[str, Any]
 CleanWinPlanFile = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def mcp_env() -> dict[str, str]:
@@ -27,6 +28,18 @@ def mcp_env() -> dict[str, str]:
     env["PYTHONPATH"] = str(ROOT)
     env["CLEANWIN_TEST_MODE"] = "1"
     return env
+
+
+def parse_mcp_stdout(stdout: str, stderr: str) -> MCPResponse:
+    lines = [line for line in stdout.splitlines() if line.strip()]
+    if not lines:
+        raise RuntimeError(f"empty MCP stdout; stderr={stderr}")
+    try:
+        response = json.loads(lines[0])
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"invalid MCP JSON response: {lines[0]!r}; stderr={stderr}") from exc
+    assert isinstance(response, dict)
+    return response
 
 
 def mcp_request(request: MCPRequest) -> MCPResponse:
@@ -40,9 +53,7 @@ def mcp_request(request: MCPRequest) -> MCPResponse:
         env=mcp_env(),
     )
     stdout, stderr = proc.communicate(input=json.dumps(request), timeout=15)
-    if not stdout.strip():
-        raise RuntimeError(f"empty MCP stdout; stderr={stderr}")
-    return json.loads(stdout.strip().splitlines()[0])
+    return parse_mcp_stdout(stdout, stderr)
 
 
 def persistent_mcp_request(request: MCPRequest) -> MCPResponse:
@@ -91,11 +102,12 @@ def read_mcp_resource(uri: str) -> JSONPayload:
     return json.loads(read["result"]["contents"][0]["text"])
 
 
-def generate_temp_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile) -> tuple[Path, Path, dict[str, str]]:
+def generate_temp_plan(
+    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+) -> tuple[Path, Path, dict[str, str]]:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
-    stale_file = temp_root / "stale.tmp"
-    stale_file.write_text("x", encoding="utf-8")
+    stale_file = write_text_file(temp_root / "stale.tmp", "x")
     plan_file = tmp_path / "plan.json"
     env = mcp_env()
     env["TEMP"] = str(temp_root)
@@ -127,8 +139,7 @@ def call_mcp_tool(
         ),
         timeout=15,
     )
-    assert stdout.strip(), stderr
-    return json.loads(stdout.strip().splitlines()[0])
+    return parse_mcp_stdout(stdout, stderr)
 
 
 @pytest.mark.parametrize(
@@ -246,8 +257,10 @@ def test_tools_call_inspect_supports_rule_id_filter() -> None:
     assert result["structuredContent"]["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
 
 
-def test_tools_call_review_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile) -> None:
-    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file)
+def test_tools_call_review_plan(
+    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+) -> None:
+    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file)
     response = call_mcp_tool(
         "cleanwin_review_plan",
         {"plan_file": str(plan_file), "require_plan_context": False},
@@ -262,9 +275,9 @@ def test_tools_call_review_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlan
 
 
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
-    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile
+    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
 ) -> None:
-    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file)
+    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     result = response["result"]
 
