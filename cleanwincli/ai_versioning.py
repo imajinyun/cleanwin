@@ -55,6 +55,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.promotion-gates.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-evidence.v1", 1, "cleanwincli.debloat_privacy", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.disable-revert-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-smoke-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
@@ -570,6 +571,38 @@ def _sample_system_health_report() -> dict[str, Any]:
     }
 
 
+def _sample_disable_revert_contract() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.disable-revert-contract.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "action_contracts": [
+            {
+                "id": "disable-revert.startup-entry",
+                "target_action": "startup-disable",
+                "source_report": "cleanwin.startup-service-inventory.v1",
+                "required_snapshots": ["registry-export", "startup-folder-snapshot"],
+                "required_rollback_metadata": ["startup_location", "entry_name", "previous_command", "restore_action"],
+                "required_review_evidence": ["publisher", "signature_status", "target_exists", "risk"],
+                "revert_plan_schema": "cleanwin.revert.startup-entry.v1",
+                "execution_enabled": False,
+                "auto_executable": False,
+            }
+        ],
+        "summary": {"contract_count": 1, "execution_enabled_count": 0, "requires_snapshot_count": 1},
+        "execution_gate": {
+            "disable_revert_execution_enabled": False,
+            "requires_snapshot_artifacts": True,
+            "requires_revert_plan": True,
+            "requires_policy_simulation": True,
+            "requires_matching_dry_run_token": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not disable startup entries."],
+    }
+
+
 def _sample_promotion_gates() -> dict[str, Any]:
     return {
         "schema": "cleanwin.promotion-gates.v1",
@@ -883,6 +916,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_debloat_privacy_report()
     if schema_name == "cleanwin.registry-privacy-evidence.v1":
         return _sample_debloat_privacy_report()["findings"][0]["change_evidence"]
+    if schema_name == "cleanwin.disable-revert-contract.v1":
+        return _sample_disable_revert_contract()
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":

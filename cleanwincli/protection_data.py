@@ -19,6 +19,7 @@ READ_ONLY_CATEGORIES = frozenset(
         "wsl-report",
         "visual-studio-report",
         "browser-cache-report",
+        "disable-revert-contract",
         "file-report",
     }
 )

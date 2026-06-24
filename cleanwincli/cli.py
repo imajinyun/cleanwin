@@ -18,6 +18,7 @@ from cleanwincli.core import (
     build_plan,
     capabilities,
     debloat_privacy_report_command,
+    disable_revert_contract_command,
     doctor_report,
     execute_plan,
     file_report_command,
@@ -108,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
             "promotion-gates",
             "browser-profile-inventory",
             "debloat-privacy-report",
+            "disable-revert-contract",
             "startup-service-inventory",
             "system-health-report",
             "windows-smoke-matrix",
@@ -127,6 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("promotion-gates", help="show report-to-execution promotion gates")
     subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
+    subparsers.add_parser("disable-revert-contract", help="show non-executable disable/revert action contracts")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
     subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
@@ -240,6 +243,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "debloat-privacy-report":
             emit(debloat_privacy_report_command(), as_json=args.json)
+            return 0
+        if args.command == "disable-revert-contract":
+            emit(disable_revert_contract_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)
