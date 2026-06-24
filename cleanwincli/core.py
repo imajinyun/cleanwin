@@ -46,6 +46,7 @@ from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
+from cleanwincli.workflow_router import workflow_router_report
 
 
 def capabilities() -> dict[str, Any]:
@@ -86,6 +87,7 @@ def capabilities() -> dict[str, Any]:
         "promotion_gates_schema": "cleanwin.promotion-gates.v1",
         "ai": {
             "tool_catalog_schema": "cleanwin.ai-tools.v1",
+            "workflow_router_schema": "cleanwin.workflow-router.v1",
             "host_policy_schema": "cleanwin.ai-host-policy.v1",
             "destructive_tool": "cleanwin_execute_plan",
             "confirmation_phrase": CONFIRMATION_PHRASE,
@@ -574,6 +576,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return ai_self_test_report()
     if provider == "runbook":
         return ai_runbook_report()
+    if provider == "workflow-router":
+        return workflow_router_report()
     if provider == "doctor":
         return doctor_report()
     if provider == "file-report":
@@ -634,6 +638,10 @@ def ai_self_test_command() -> dict[str, Any]:
 
 def ai_runbook_command() -> dict[str, Any]:
     return ai_runbook_report()
+
+
+def workflow_router_command() -> dict[str, Any]:
+    return workflow_router_report()
 
 
 def recovery_readiness_command() -> dict[str, Any]:

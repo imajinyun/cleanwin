@@ -4,10 +4,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA, installed_app_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def test_report_is_non_destructive_and_supports_non_windows() -> None:
@@ -54,21 +57,22 @@ def test_registry_entries_are_normalized_without_uninstalling() -> None:
     assert correlation["recommendation"] == "skip-leftover-cleanup-until-uninstalled"
 
 
-def test_filesystem_package_sources_and_leftover_correlation(tmp_path: Path) -> None:
+def test_filesystem_package_sources_and_leftover_correlation(
+    tmp_path: Path, write_text_file: WriteTextFile
+) -> None:
     local = tmp_path / "Local"
     profile = tmp_path / "Profile"
     program_data = tmp_path / "ProgramData"
     app_data = tmp_path / "Roaming"
-    (profile / "scoop" / "apps" / "git").mkdir(parents=True)
+    write_text_file(profile / "scoop" / "apps" / "git" / "manifest.json", "{}")
     choco_dir = program_data / "chocolatey" / "lib" / "nodejs"
-    choco_dir.mkdir(parents=True)
-    (choco_dir / "nodejs.nuspec").write_text(
+    write_text_file(
+        choco_dir / "nodejs.nuspec",
         "<package><metadata><id>nodejs</id><version>22.0.0</version></metadata></package>",
-        encoding="utf-8",
     )
-    (local / "Programs" / "PortableTool").mkdir(parents=True)
+    write_text_file(local / "Programs" / "PortableTool" / "PortableTool.exe", "exe")
     slack_cache = app_data / "Slack" / "Cache"
-    slack_cache.mkdir(parents=True)
+    write_text_file(slack_cache / "entry", "cache")
 
     report = installed_app_inventory_report(
         raw_registry_entries=[],
@@ -145,9 +149,12 @@ def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans() -> N
     assert report["summary"]["uninstall_strategy_counts"]["winget-uninstall"] == 1
 
 
-def test_cli_and_ai_provider_expose_inventory(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("installed-app-inventory")
-    assert cli["schema"] == INSTALLED_APP_INVENTORY_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "installed-app-inventory")
-    assert provider["schema"] == INSTALLED_APP_INVENTORY_SCHEMA
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("installed-app-inventory",),
+        ("ai-tools", "--provider", "installed-app-inventory"),
+    ],
+)
+def test_cli_and_ai_provider_expose_inventory(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
+    assert cleanwin_json(*args)["schema"] == INSTALLED_APP_INVENTORY_SCHEMA

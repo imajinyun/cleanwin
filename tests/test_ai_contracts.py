@@ -20,6 +20,7 @@ RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
+MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 
 
 def require_schema_sample(name: str) -> dict[str, Any]:
@@ -47,6 +48,7 @@ def test_schema_registry_includes_ai_host_critical_schemas() -> None:
         "cleanwin.ai-host-tool-call-decision.v1",
         "cleanwin.ai-tool-argument-validation.v1",
         "cleanwin.ai-policy-simulation.v1",
+        "cleanwin.workflow-router.v1",
         "cleanwin.review.v1",
         "cleanwin.doctor.v1",
     ]:
@@ -93,6 +95,26 @@ def test_ai_tools_expose_rule_id_filter_for_inspect_and_plan() -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     assert "rule_ids" in by_name["cleanwin_inspect"]["parameters"]["properties"]
     assert "rule_ids" in by_name["cleanwin_generate_plan"]["parameters"]["properties"]
+
+
+def test_ai_tools_expose_readonly_workflow_router() -> None:
+    by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
+    router = by_name["cleanwin_workflow_router"]
+    assert router["risk"] == "readonly"
+    assert router["auto_call_allowed"] is True
+    assert router["requires_confirmation"] is False
+    assert router["parameters"]["additionalProperties"] is False
+
+
+def test_workflow_router_sample_keeps_execution_non_auto_callable() -> None:
+    sample = require_schema_sample("cleanwin.workflow-router.v1")
+    assert sample["schema"] == "cleanwin.workflow-router.v1"
+    assert sample["destructive"] is False
+    execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
+    assert execution_route["destructive"] is True
+    assert execution_route["auto_call_allowed"] is False
+    assert execution_route["required_arguments"]["delete_mode"] == "recycle"
+    assert "raw shell command" in execution_route["blocked_actions"]
 
 
 def test_schema_samples_cover_package_and_browser_cache_categories() -> None:
@@ -164,12 +186,9 @@ def test_execute_requires_dry_run_confirmation_token(
     cleanwin_result_json: CleanWinResultJSON,
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
+    make_temp_plan_fixture: MakeTempPlan,
 ) -> None:
-    temp_root = tmp_path / "Temp"
-    temp_root.mkdir()
-    target = temp_root / "stale.tmp"
-    target.write_text("x", encoding="utf-8")
-    env = {"TEMP": str(temp_root), "TMP": str(temp_root), "CLEANWIN_TEST_MODE": "1"}
+    _, target, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
 

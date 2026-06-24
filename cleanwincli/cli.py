@@ -39,6 +39,7 @@ from cleanwincli.core import (
     system_health_report_command,
     validate_plan_payload,
     windows_smoke_matrix_command,
+    workflow_router_command,
 )
 
 
@@ -101,6 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
             "readiness",
             "self-test",
             "runbook",
+            "workflow-router",
             "doctor",
             "backup-delete-contract",
             "file-report",
@@ -148,6 +150,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("ai-self-test", help="run deterministic AI host self-test checks")
     subparsers.add_parser("ai-runbook", help="show safe AI/MCP host runbook")
+    subparsers.add_parser("workflow-router", help="show AI-safe workflow routing contract")
 
     simulate_parser = subparsers.add_parser("policy-simulate", help="simulate AI host execution policy")
     simulate_parser.add_argument("--plan-file", required=True)
@@ -279,6 +282,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "ai-runbook":
             emit(ai_runbook_command(), as_json=args.json)
+            return 0
+        if args.command == "workflow-router":
+            emit(workflow_router_command(), as_json=args.json)
             return 0
         if args.command == "policy-simulate":
             plan, raw = load_plan(Path(args.plan_file))

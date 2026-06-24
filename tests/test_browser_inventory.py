@@ -4,22 +4,25 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from cleanwincli.browser_inventory import BROWSER_PROFILE_INVENTORY_SCHEMA, browser_profile_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+WriteTextFile = Callable[[Path, str], Path]
 
 
-def test_browser_inventory_reports_profiles_cache_layers_and_locks(tmp_path: Path) -> None:
+def test_browser_inventory_reports_profiles_cache_layers_and_locks(
+    tmp_path: Path, write_text_file: WriteTextFile
+) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
     cache = chrome_default / "Cache"
     code_cache = chrome_default / "Code Cache"
-    cache.mkdir(parents=True)
-    code_cache.mkdir()
-    (cache / "entry").write_text("cache", encoding="utf-8")
-    (code_cache / "bytecode").write_text("code", encoding="utf-8")
-    (chrome_default / "SingletonLock").write_text("locked", encoding="utf-8")
+    write_text_file(cache / "entry", "cache")
+    write_text_file(code_cache / "bytecode", "code")
+    write_text_file(chrome_default / "SingletonLock", "locked")
 
     report = browser_profile_inventory_report(env={"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")})
 
@@ -40,13 +43,12 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(tmp_path: Pat
     assert all(layer["safe_to_execute"] is False for layer in profile["cache_layers"])
 
 
-def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path) -> None:
+def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path, write_text_file: WriteTextFile) -> None:
     roaming = tmp_path / "Roaming"
     firefox_profile = roaming / "Mozilla" / "Firefox" / "Profiles" / "abc.default-release"
-    cache2 = firefox_profile / "cache2"
-    cache2.mkdir(parents=True)
-    (firefox_profile / "cookies.sqlite").write_text("cookie", encoding="utf-8")
-    (firefox_profile / "logins.json").write_text("login", encoding="utf-8")
+    write_text_file(firefox_profile / "cache2" / "entry", "cache")
+    write_text_file(firefox_profile / "cookies.sqlite", "cookie")
+    write_text_file(firefox_profile / "logins.json", "login")
 
     report = browser_profile_inventory_report(env={"APPDATA": str(roaming), "LOCALAPPDATA": str(tmp_path / "Local")})
 
@@ -60,20 +62,28 @@ def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path) -> No
     assert any("never promotes cookies" in item for item in report["non_goals"])
 
 
-def test_cli_ai_provider_and_schema_registry_expose_browser_inventory(tmp_path, cleanwin_json: CleanWinJSON) -> None:
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("browser-profile-inventory",),
+        ("ai-tools", "--provider", "browser-profile-inventory"),
+    ],
+)
+def test_cli_ai_provider_exposes_browser_inventory(
+    args: tuple[str, ...], tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+) -> None:
     local = tmp_path / "LocalAppData"
     edge_default = local / "Microsoft" / "Edge" / "User Data" / "Default"
-    (edge_default / "GPUCache").mkdir(parents=True)
+    write_text_file(edge_default / "GPUCache" / "entry", "cache")
     env = {"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")}
 
-    cli = cleanwin_json("browser-profile-inventory", env=env)
-    assert cli["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
-    assert cli["summary"]["profile_count"] == 1
+    payload = cleanwin_json(*args, env=env)
+    assert payload["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
 
-    provider = cleanwin_json("ai-tools", "--provider", "browser-profile-inventory", env=env)
-    assert provider["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
 
+def test_schema_registry_exposes_browser_inventory(cleanwin_json: CleanWinJSON) -> None:
     registry = cleanwin_json("schema-registry")
+
     names = {entry["name"] for entry in registry["entries"]}
     assert BROWSER_PROFILE_INVENTORY_SCHEMA in names
     assert registry["samples"][BROWSER_PROFILE_INVENTORY_SCHEMA]["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA

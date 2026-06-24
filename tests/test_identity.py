@@ -15,11 +15,12 @@ from cleanwincli.windows_identity import capture_windows_native_identity
 
 JSONPayload = dict[str, Any]
 CleanWinPlanFile = Callable[..., JSONPayload]
+MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
+WriteTextFile = Callable[[Path, str], Path]
 
 
-def test_capture_identity_contains_replay_fields(tmp_path: Path) -> None:
-    target = tmp_path / "candidate.tmp"
-    target.write_text("x", encoding="utf-8")
+def test_capture_identity_contains_replay_fields(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
     assert identity["schema"] == "cleanwin.filesystem-identity.v1"
@@ -43,11 +44,10 @@ def test_windows_native_identity_falls_back_off_windows(tmp_path: Path) -> None:
     assert identity["volume_serial_number"] is None
 
 
-def test_compare_identity_detects_content_replacement(tmp_path: Path) -> None:
-    target = tmp_path / "candidate.tmp"
-    target.write_text("x", encoding="utf-8")
+def test_compare_identity_detects_content_replacement(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "candidate.tmp", "x")
     planned = capture_filesystem_identity(target)
-    target.write_text("changed", encoding="utf-8")
+    write_text_file(target, "changed")
     current = capture_filesystem_identity(target)
 
     mismatches = compare_identity(planned, current)
@@ -58,13 +58,11 @@ def test_compare_identity_detects_content_replacement(tmp_path: Path) -> None:
 def test_generated_plan_contains_identity_and_validate_rejects_drift(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
+    make_temp_plan_fixture: MakeTempPlan,
+    write_text_file: WriteTextFile,
 ) -> None:
-    temp_root = tmp_path / "Temp"
-    temp_root.mkdir()
-    target = temp_root / "stale.tmp"
-    target.write_text("x", encoding="utf-8")
+    _, target, env = make_temp_plan_fixture(tmp_path, False)
     plan_file = tmp_path / "plan.json"
-    env = {"TEMP": str(temp_root), "TMP": str(temp_root)}
 
     raw = cleanwin_plan_file(
         plan_file,
@@ -79,17 +77,16 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     plan = plan_from_dict(raw)
     assert validate_plan_payload(plan, raw, require_context=False)["valid"] is True
 
-    target.write_text("changed", encoding="utf-8")
+    write_text_file(target, "changed")
     validation = validate_plan_payload(plan, raw, require_context=False)
     assert validation["valid"] is False
     assert "Filesystem identity mismatch" in "\n".join(validation["errors"])
 
 
-def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path) -> None:
-    target = tmp_path / "candidate.tmp"
-    target.write_text("x", encoding="utf-8")
+def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "candidate.tmp", "x")
     planned = capture_filesystem_identity(target)
-    target.write_text("changed", encoding="utf-8")
+    write_text_file(target, "changed")
 
     with pytest.raises(RuntimeError):
         safe_delete(

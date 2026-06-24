@@ -62,6 +62,15 @@ AI_TOOL_DEFINITIONS: tuple[dict[str, Any], ...] = (
         "argv_template": ["cleanwin", "--json", "capabilities"],
     },
     {
+        "name": "cleanwin_workflow_router",
+        "description": "Route user intent to the safest CleanWin workflow before selecting cleanup tools.",
+        "risk": "readonly",
+        "auto_call_allowed": True,
+        "requires_confirmation": False,
+        "parameters": object_schema({}),
+        "argv_template": ["cleanwin", "--json", "workflow-router"],
+    },
+    {
         "name": "cleanwin_inspect",
         "description": "Preview cleanup candidates without deleting files.",
         "risk": "readonly",

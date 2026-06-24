@@ -42,6 +42,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.ai-readiness-validation.v1", 1, "cleanwincli.ai_readiness", "stable", "ai", "cleanwin", ("ai-host", "ci")),
     ("cleanwin.ai-self-test.v1", 1, "cleanwincli.ai_self_test", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.ai-runbook.v1", 1, "cleanwincli.ai_runbook", "stable", "ai", "cleanwin", ("ai-host", "mcp")),
+    ("cleanwin.workflow-router.v1", 1, "cleanwincli.workflow_router", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.backup-delete-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -813,6 +814,54 @@ def _sample_windows_smoke_matrix() -> dict[str, Any]:
     }
 
 
+def _sample_workflow_router() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.workflow-router.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "purpose": "Route AI/MCP host intent to the safest CleanWin command path before selecting tools.",
+        "routing_dimensions": ["intent", "risk", "required_artifacts"],
+        "global_invariants": [
+            "Default to read-only inventory and planning.",
+            "No route may accept raw shell commands.",
+            "Destructive cleanup is never auto-callable.",
+        ],
+        "routes": [
+            {
+                "id": "read-only-inventory",
+                "intents": ["inspect", "inventory", "report"],
+                "risk": "readonly",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_inspect"],
+                "required_previous_steps": [],
+                "blocked_actions": ["delete", "registry mutation", "startup disable"],
+            },
+            {
+                "id": "recycle-execution",
+                "intents": ["execute", "cleanup", "delete-reviewed-candidates"],
+                "risk": "destructive",
+                "destructive": True,
+                "auto_call_allowed": False,
+                "allowed_tools": ["cleanwin_execute_plan"],
+                "required_previous_steps": ["validate-and-review", "dry-run-execution"],
+                "required_artifacts": ["validated plan", "human review", "policy simulation allow decision", "matching dry-run confirmation token", "operation log path"],
+                "required_arguments": {
+                    "delete_mode": "recycle",
+                    "operation_log": "required JSONL path",
+                    "require_plan_context": True,
+                    "confirmation_phrase": "exact cleanwin confirmation phrase",
+                    "confirmation_token": "must match dry-run token",
+                },
+                "blocked_actions": ["permanent delete", "raw shell command"],
+            },
+        ],
+        "route_not_matched": {"default_action": "fall back to read-only capabilities and ask for explicit intent", "allowed_tools": ["cleanwin_capabilities"], "destructive": False},
+        "non_goals": ["This router does not execute cleanup."],
+    }
+
+
 def schema_sample(schema_name: str) -> dict[str, Any] | None:
     if schema_name == "cleanwin.inspect.v1":
         return {
@@ -991,6 +1040,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_system_health_report()
     if schema_name == "cleanwin.windows-smoke-matrix.v1":
         return _sample_windows_smoke_matrix()
+    if schema_name == "cleanwin.workflow-router.v1":
+        return _sample_workflow_router()
     return None
 
 

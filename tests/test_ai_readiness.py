@@ -15,6 +15,7 @@ from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA
+from cleanwincli.workflow_router import WORKFLOW_ROUTER_SCHEMA, workflow_router_report
 
 JSONPayload = dict[str, object]
 CleanWinJSON = Callable[..., JSONPayload]
@@ -34,6 +35,7 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas() -> None:
         "cleanwin.ai-readiness-validation.v1",
         "cleanwin.ai-self-test.v1",
         "cleanwin.ai-runbook.v1",
+        WORKFLOW_ROUTER_SCHEMA,
         RECOVERY_READINESS_SCHEMA,
         INSTALLED_APP_INVENTORY_SCHEMA,
         OFFICIAL_COMMAND_PLAN_SCHEMA,
@@ -57,11 +59,25 @@ def test_ai_runbook_documents_safe_execution_gates() -> None:
     report = ai_runbook_report()
     assert report["schema"] == "cleanwin.ai-runbook.v1"
     tools = [step["tool"] for step in report["workflow"]]
+    assert tools[0] == "cleanwin_workflow_router"
     assert tools[-1] == "cleanwin_execute_plan"
     assert report["workflow"][-1]["destructive"]
     required_args = report["required_execution_arguments"]
     assert required_args["delete_mode"] == "recycle"
     assert required_args["require_plan_context"]
+
+
+def test_workflow_router_routes_intents_without_enabling_execution() -> None:
+    report = workflow_router_report()
+    assert report["schema"] == WORKFLOW_ROUTER_SCHEMA
+    assert report["destructive"] is False
+    routes = {route["id"]: route for route in report["routes"]}
+    assert routes["read-only-inventory"]["auto_call_allowed"] is True
+    assert routes["dry-run-execution"]["destructive"] is False
+    assert routes["recycle-execution"]["destructive"] is True
+    assert routes["recycle-execution"]["auto_call_allowed"] is False
+    assert "dry-run-execution" in routes["recycle-execution"]["required_previous_steps"]
+    assert "permanent delete" in routes["recycle-execution"]["blocked_actions"]
 
 
 def test_cli_exposes_readiness_self_test_and_runbook(
@@ -71,6 +87,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     assert cleanwin_json("ai-readiness", "--validate")["valid"]
     assert cleanwin_json("ai-self-test")["passed"]
     assert cleanwin_json("ai-runbook")["schema"] == "cleanwin.ai-runbook.v1"
+    assert cleanwin_json("workflow-router")["schema"] == WORKFLOW_ROUTER_SCHEMA
 
     doctor_payload = cleanwin_json("doctor")
     assert doctor_payload["schema"] == "cleanwin.doctor.v1"
@@ -137,6 +154,7 @@ def test_ai_readiness_release_gates_use_pytest_workflow() -> None:
         ("readiness", "cleanwin.ai-readiness.v1"),
         ("self-test", "cleanwin.ai-self-test.v1"),
         ("runbook", "cleanwin.ai-runbook.v1"),
+        ("workflow-router", WORKFLOW_ROUTER_SCHEMA),
         ("doctor", "cleanwin.doctor.v1"),
         ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
         ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),

@@ -1,0 +1,140 @@
+"""Machine-readable workflow routing for AI-safe CleanWin operation."""
+
+from __future__ import annotations
+
+from typing import Any
+
+WORKFLOW_ROUTER_SCHEMA = "cleanwin.workflow-router.v1"
+
+
+def workflow_router_report() -> dict[str, Any]:
+    return {
+        "schema": WORKFLOW_ROUTER_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "purpose": "Route AI/MCP host intent to the safest CleanWin command path before selecting tools.",
+        "routing_dimensions": ["intent", "risk", "required_artifacts"],
+        "global_invariants": [
+            "Default to read-only inventory and planning.",
+            "No route may accept raw shell commands.",
+            "Destructive cleanup is never auto-callable.",
+            "Execution routes require validated plan context, human review, policy simulation, dry-run token, recycle mode, and operation log.",
+            "Non-Windows destructive execution fails closed outside explicit test mode.",
+        ],
+        "routes": [
+            {
+                "id": "discover-capabilities",
+                "intents": ["discover", "capabilities", "what-can-cleanwin-do"],
+                "risk": "readonly",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_capabilities"],
+                "cli_commands": [["cleanwin", "--json", "capabilities"]],
+                "produces": ["cleanwin.ai-tools.v1", "cleanwin.promotion-gates.v1"],
+                "required_previous_steps": [],
+                "blocked_actions": ["cleanup execution"],
+            },
+            {
+                "id": "read-only-inventory",
+                "intents": ["inspect", "inventory", "report", "find-reclaimable-space"],
+                "risk": "readonly",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_inspect"],
+                "cli_commands": [
+                    ["cleanwin", "--json", "inspect"],
+                    ["cleanwin", "--json", "installed-app-inventory"],
+                    ["cleanwin", "--json", "browser-profile-inventory"],
+                    ["cleanwin", "--json", "startup-service-inventory"],
+                    ["cleanwin", "--json", "system-health-report"],
+                ],
+                "produces": [
+                    "cleanwin.inspect.v1",
+                    "cleanwin.installed-app-inventory.v1",
+                    "cleanwin.browser-profile-inventory.v1",
+                    "cleanwin.startup-service-inventory.v1",
+                    "cleanwin.system-health-report.v1",
+                ],
+                "required_previous_steps": [],
+                "blocked_actions": ["delete", "registry mutation", "startup disable", "official command execution"],
+            },
+            {
+                "id": "plan-cleanup",
+                "intents": ["plan", "generate-plan", "prepare-cleanup"],
+                "risk": "planning",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_generate_plan"],
+                "cli_commands": [["cleanwin", "--json", "plan"]],
+                "produces": ["cleanwin.plan.v1"],
+                "required_previous_steps": ["discover-capabilities", "read-only-inventory"],
+                "blocked_actions": ["delete"],
+            },
+            {
+                "id": "validate-and-review",
+                "intents": ["validate", "review", "check-plan", "human-review"],
+                "risk": "planning",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_validate_plan", "cleanwin_review_plan", "cleanwin_policy_simulate"],
+                "cli_commands": [
+                    ["cleanwin", "--json", "validate-plan"],
+                    ["cleanwin", "--json", "review-plan"],
+                    ["cleanwin", "--json", "policy-simulate"],
+                ],
+                "produces": ["cleanwin.validate-plan.v1", "cleanwin.review.v1", "cleanwin.ai-policy-simulation.v1"],
+                "required_previous_steps": ["plan-cleanup"],
+                "blocked_actions": ["delete"],
+            },
+            {
+                "id": "dry-run-execution",
+                "intents": ["dry-run", "preview-execution", "get-confirmation-token"],
+                "risk": "dry-run",
+                "destructive": False,
+                "auto_call_allowed": True,
+                "allowed_tools": ["cleanwin_dry_run_plan"],
+                "cli_commands": [["cleanwin", "--json", "execute-plan"]],
+                "produces": ["cleanwin.execute.v1", "cleanwin.ai-confirmation-summary.v1"],
+                "required_previous_steps": ["validate-and-review"],
+                "required_artifacts": ["validated plan", "review summary", "policy simulation"],
+                "blocked_actions": ["real delete"],
+            },
+            {
+                "id": "recycle-execution",
+                "intents": ["execute", "cleanup", "delete-reviewed-candidates"],
+                "risk": "destructive",
+                "destructive": True,
+                "auto_call_allowed": False,
+                "allowed_tools": ["cleanwin_execute_plan"],
+                "cli_commands": [["cleanwin", "--json", "execute-plan", "--execute"]],
+                "produces": ["cleanwin.execute.v1", "cleanwin.operation-log.jsonl"],
+                "required_previous_steps": ["validate-and-review", "dry-run-execution"],
+                "required_artifacts": [
+                    "validated plan",
+                    "human review",
+                    "policy simulation allow decision",
+                    "matching dry-run confirmation token",
+                    "operation log path",
+                ],
+                "required_arguments": {
+                    "delete_mode": "recycle",
+                    "operation_log": "required JSONL path",
+                    "require_plan_context": True,
+                    "confirmation_phrase": "exact cleanwin confirmation phrase",
+                    "confirmation_token": "must match dry-run token",
+                },
+                "blocked_actions": ["permanent delete", "raw shell command", "registry mutation", "startup disable", "Windows component direct deletion"],
+            },
+        ],
+        "route_not_matched": {
+            "default_action": "fall back to read-only capabilities and ask for explicit intent",
+            "allowed_tools": ["cleanwin_capabilities"],
+            "destructive": False,
+        },
+        "non_goals": [
+            "This router does not execute cleanup.",
+            "This router does not install tools or modify global agent configuration.",
+            "This router does not add new destructive command surfaces.",
+        ],
+    }

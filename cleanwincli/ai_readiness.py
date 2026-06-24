@@ -23,6 +23,7 @@ REQUIRED_AI_SCHEMAS = frozenset(
         "cleanwin.ai-readiness.v1",
         "cleanwin.ai-self-test.v1",
         "cleanwin.ai-runbook.v1",
+        "cleanwin.workflow-router.v1",
         "cleanwin.doctor.v1",
         "cleanwin.recovery-readiness.v1",
         "cleanwin.backup-delete-contract.v1",

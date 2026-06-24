@@ -93,6 +93,8 @@ def build_cleanwin_argv(tool_name: str, arguments: Mapping[str, Any]) -> list[st
     argv = [*find_cleanwin(), "--json"]
     if tool_name == "cleanwin_capabilities":
         return [*argv, "capabilities"]
+    if tool_name == "cleanwin_workflow_router":
+        return [*argv, "workflow-router"]
     if tool_name == "cleanwin_inspect":
         result = [*argv, "inspect"]
         categories = categories_arg(arguments)
@@ -256,6 +258,8 @@ def resource_payload(uri: str) -> dict[str, Any]:
         return ai_tools_report("self-test")
     if uri == "cleanwin://ai/runbook":
         return ai_tools_report("runbook")
+    if uri == "cleanwin://ai/workflow-router":
+        return ai_tools_report("workflow-router")
     if uri == "cleanwin://engineering/doctor":
         return ai_tools_report("doctor")
     if uri == "cleanwin://engineering/recovery-readiness":
@@ -308,6 +312,7 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
             {"uri": "cleanwin://ai/readiness", "name": "CleanWin AI readiness", "mimeType": "application/json"},
             {"uri": "cleanwin://ai/self-test", "name": "CleanWin AI self-test", "mimeType": "application/json"},
             {"uri": "cleanwin://ai/runbook", "name": "CleanWin AI runbook", "mimeType": "application/json"},
+            {"uri": "cleanwin://ai/workflow-router", "name": "CleanWin workflow router", "mimeType": "application/json"},
             {"uri": "cleanwin://engineering/doctor", "name": "CleanWin engineering doctor", "mimeType": "application/json"},
             {"uri": "cleanwin://engineering/recovery-readiness", "name": "CleanWin recovery readiness", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/installed-apps", "name": "CleanWin installed app inventory", "mimeType": "application/json"},

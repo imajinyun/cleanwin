@@ -150,6 +150,7 @@ def call_mcp_tool(
         "cleanwin://ai/readiness",
         "cleanwin://ai/self-test",
         "cleanwin://ai/runbook",
+        "cleanwin://ai/workflow-router",
         "cleanwin://engineering/doctor",
         "cleanwin://engineering/recovery-readiness",
         "cleanwin://inventory/installed-apps",
@@ -179,6 +180,7 @@ def test_host_policy_resource_exposes_execute_plan_denial() -> None:
         ("cleanwin://ai/readiness", "cleanwin.ai-readiness.v1"),
         ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
         ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
+        ("cleanwin://ai/workflow-router", "cleanwin.workflow-router.v1"),
         ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
         ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
         ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
@@ -203,10 +205,12 @@ def test_initialize_and_tools_list() -> None:
     tools = response["result"]["tools"]
     names = {tool["name"] for tool in tools}
     assert "cleanwin_capabilities" in names
+    assert "cleanwin_workflow_router" in names
     assert "cleanwin_execute_plan" in names
     assert "cleanwin_review_plan" in names
     tool_by_name = {tool["name"]: tool for tool in tools}
     assert tool_by_name["cleanwin_capabilities"]["annotations"]["readOnlyHint"]
+    assert tool_by_name["cleanwin_workflow_router"]["annotations"]["readOnlyHint"]
     assert tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"]
 
 
@@ -237,6 +241,22 @@ def test_tools_call_readonly_capabilities() -> None:
     assert result["structuredContent"]["tool"] == "cleanwin"
     assert result["governanceDecision"]["schema"] == "cleanwin.ai-host-tool-call-decision.v1"
     assert result["governanceDecision"]["allowed"]
+
+
+def test_tools_call_workflow_router() -> None:
+    response = mcp_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 50,
+            "method": "tools/call",
+            "params": {"name": "cleanwin_workflow_router", "arguments": {}},
+        }
+    )
+    result = response["result"]
+    assert not result["isError"], result
+    assert result["structuredContent"]["schema"] == "cleanwin.workflow-router.v1"
+    routes = {route["id"]: route for route in result["structuredContent"]["routes"]}
+    assert routes["recycle-execution"]["auto_call_allowed"] is False
 
 
 def test_tools_call_inspect_supports_rule_id_filter() -> None:

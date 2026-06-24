@@ -17,6 +17,9 @@ CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+WriteBytesFile = Callable[[Path, bytes], Path]
+TempPlanFixture = tuple[Path, Path, dict[str, str]]
+MakeTempPlan = Callable[[Path, bool], TempPlanFixture]
 
 
 @pytest.fixture
@@ -32,6 +35,29 @@ def write_text_file() -> WriteTextFile:
         return path
 
     return _write_text_file
+
+
+@pytest.fixture
+def write_bytes_file() -> WriteBytesFile:
+    def _write_bytes_file(path: Path, contents: bytes = b"x") -> Path:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+        return path
+
+    return _write_bytes_file
+
+
+@pytest.fixture
+def make_temp_plan_fixture(write_text_file: WriteTextFile) -> MakeTempPlan:
+    def _make_temp_plan_fixture(tmp_path: Path, test_mode: bool = False) -> TempPlanFixture:
+        temp_root = tmp_path / "Temp"
+        target = write_text_file(temp_root / "stale.tmp", "x")
+        env = {"TEMP": str(temp_root), "TMP": str(temp_root)}
+        if test_mode:
+            env["CLEANWIN_TEST_MODE"] = "1"
+        return temp_root, target, env
+
+    return _make_temp_plan_fixture
 
 
 @pytest.fixture
