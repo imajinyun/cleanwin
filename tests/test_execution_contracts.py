@@ -21,6 +21,16 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertNoExecutableItems = Callable[[list[JSONPayload]], None]
+
+
+@pytest.fixture
+def assert_no_executable_items() -> AssertNoExecutableItems:
+    def _assert_no_executable_items(items: list[JSONPayload]) -> None:
+        assert all(item["execution_enabled"] is False for item in items)
+        assert all(item["auto_executable"] is False for item in items)
+
+    return _assert_no_executable_items
 
 
 def test_disable_revert_contract_is_non_executable(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -33,7 +43,9 @@ def test_disable_revert_contract_is_non_executable(assert_readonly_report: Asser
     assert any("does not disable startup" in item for item in report["non_goals"])
 
 
-def test_disable_revert_contracts_require_snapshots_and_revert_metadata() -> None:
+def test_disable_revert_contracts_require_snapshots_and_revert_metadata(
+    assert_no_executable_items: AssertNoExecutableItems,
+) -> None:
     report = disable_revert_contract_report()
     by_id = {contract["id"]: contract for contract in report["action_contracts"]}
 
@@ -45,12 +57,12 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata() -> Non
     assert "service-state" in by_id["disable-revert.service"]["required_snapshots"]
     assert "scheduled-task-state" in by_id["disable-revert.scheduled-task"]["required_snapshots"]
     assert "previous_value" in by_id["disable-revert.policy"]["required_rollback_metadata"]
-    assert all(contract["execution_enabled"] is False for contract in report["action_contracts"])
-    assert all(contract["auto_executable"] is False for contract in report["action_contracts"])
+    assert_no_executable_items(report["action_contracts"])
 
 
 def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
     assert_readonly_report: AssertReadonlyReport,
+    assert_no_executable_items: AssertNoExecutableItems,
 ) -> None:
     report = backup_delete_contract_report()
 
@@ -67,8 +79,7 @@ def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
     assert "cleanwin.filesystem-identity.v1" in by_id["backup-delete.file-tree"]["required_identity"]
     assert "verification_digest" in by_id["backup-delete.file-tree"]["required_backup_metadata"]
     assert "operation_log_ref" in by_id["backup-delete.registry-key"]["required_audit_refs"]
-    assert all(scope["execution_enabled"] is False for scope in report["backup_scopes"])
-    assert all(scope["auto_executable"] is False for scope in report["backup_scopes"])
+    assert_no_executable_items(report["backup_scopes"])
 
 
 def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
