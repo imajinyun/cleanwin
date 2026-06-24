@@ -5,36 +5,35 @@ import subprocess
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from cleanwincli.core import validate_plan_payload
 from cleanwincli.models import Candidate, Plan
 
+JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
-def test_capabilities_reports_dry_run_and_single_exit(run_cleanwin: RunCleanWin) -> None:
-    result = run_cleanwin("capabilities")
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
+def test_capabilities_reports_dry_run_and_single_exit(cleanwin_json: CleanWinJSON) -> None:
+    payload = cleanwin_json("capabilities")
     assert payload["default_dry_run"]
     assert payload["deletion_exit"] == "cleanwincli.delete_ops.safe_delete"
     assert "browser-cache" in payload["safe_categories"]
     assert "package-cache" in payload["safe_categories"]
     assert "registry-clean" in payload["never_auto_execute"]
 
-def test_inspect_temp_finds_sandbox_candidate(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_inspect_temp_finds_sandbox_candidate(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
     stale_file = temp_root / "stale.tmp"
     stale_file.write_text("x", encoding="utf-8")
-    result = run_cleanwin("inspect", "--categories", "temp", "--older-than-days", "0", env={"TEMP": str(temp_root), "TMP": str(temp_root)})
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
+    payload = cleanwin_json("inspect", "--categories", "temp", "--older-than-days", "0", env={"TEMP": str(temp_root), "TMP": str(temp_root)})
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["path"] == str(stale_file)
     assert payload["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
-def test_plan_validate_round_trip(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_plan_validate_round_trip(tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
     (temp_root / "stale.tmp").write_text("x", encoding="utf-8")
@@ -42,11 +41,11 @@ def test_plan_validate_round_trip(tmp_path: Path, run_cleanwin: RunCleanWin) -> 
     env = {"TEMP": str(temp_root), "TMP": str(temp_root)}
     plan_result = run_cleanwin("plan", "--categories", "temp", "--older-than-days", "0", "--output", str(plan_file), env=env)
     assert plan_result.returncode == 0, plan_result.stderr
-    validate_result = run_cleanwin("validate-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert validate_result.returncode == 0, validate_result.stderr
-    assert json.loads(validate_result.stdout)["valid"]
+    assert cleanwin_json("validate-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)["valid"]
 
-def test_execute_plan_dry_run_reports_candidate_results_without_deleting(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
     stale_file = temp_root / "stale.tmp"
@@ -56,10 +55,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(tmp_pat
 
     plan_result = run_cleanwin("plan", "--categories", "temp", "--older-than-days", "0", "--output", str(plan_file), env=env)
     assert plan_result.returncode == 0, plan_result.stderr
-    dry_run_result = run_cleanwin("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert dry_run_result.returncode == 0, dry_run_result.stderr
-
-    payload = json.loads(dry_run_result.stdout)
+    payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert payload["schema"] == "cleanwin.execute.v1"
     assert not payload["executed"]
     assert payload["dry_run"]
@@ -69,7 +65,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(tmp_pat
     assert "confirmation_token" in payload["confirmation"]
     assert stale_file.exists()
 
-def test_review_plan_summarizes_execution_handoff(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_review_plan_summarizes_execution_handoff(tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON) -> None:
     npm_cache = tmp_path / "npm-cache"
     npm_cache.mkdir()
     entry = npm_cache / "_cacache"
@@ -91,9 +87,7 @@ def test_review_plan_summarizes_execution_handoff(tmp_path: Path, run_cleanwin: 
     )
     assert plan_result.returncode == 0, plan_result.stderr
 
-    review_result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review_result.returncode == 0, review_result.stderr
-    review = json.loads(review_result.stdout)
+    review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert review["schema"] == "cleanwin.review.v1"
     assert not review["destructive"]
     assert review["validation"]["valid"]
@@ -127,14 +121,12 @@ def test_review_plan_rejects_invalid_plan_exit_code(tmp_path: Path, run_cleanwin
     assert not payload["validation"]["valid"]
     assert not payload["execution_handoff"]["safe_to_execute"]
 
-def test_read_only_categories_do_not_create_candidates(run_cleanwin: RunCleanWin) -> None:
-    result = run_cleanwin(
-    "inspect",
-    "--categories",
-    "registry-report,startup-report,windows-report,large-files,docker-report,wsl-report,visual-studio-report,browser-cache-report",
+def test_read_only_categories_do_not_create_candidates(cleanwin_json: CleanWinJSON) -> None:
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "registry-report,startup-report,windows-report,large-files,docker-report,wsl-report,visual-studio-report,browser-cache-report",
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert payload["summary"]["candidate_count"] == 0
     assert payload["summary"]["finding_count"] == 8
     assert all(not finding["safe_to_execute"] for finding in payload["findings"])
@@ -143,7 +135,9 @@ def test_read_only_categories_do_not_create_candidates(run_cleanwin: RunCleanWin
     assert by_category["wsl-report"]["owner"] == "WSL"
     assert "browser profiles" in by_category["browser-cache-report"]["detail"].lower()
 
-def test_dev_cache_candidates_include_rule_metadata_and_official_commands(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
     npm_cache.mkdir()
@@ -151,7 +145,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(tmp_pa
     entry.mkdir()
     (entry / "index").write_text("x", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "dev-cache",
@@ -159,8 +153,6 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(tmp_pa
         "0",
         env={"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(root / "LocalAppData"), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert payload["summary"]["candidate_count"] == 1
     candidate = payload["candidates"][0]
     assert candidate["category"] == "dev-cache"
@@ -170,7 +162,9 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(tmp_pa
     assert "regenerated" in candidate["safe_to_delete_rationale"].lower()
     assert candidate["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
-def test_package_cache_scans_common_windows_package_manager_caches(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_package_cache_scans_common_windows_package_manager_caches(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     winget_cache = local / "Microsoft" / "WinGet" / "Packages"
@@ -186,7 +180,7 @@ def test_package_cache_scans_common_windows_package_manager_caches(tmp_path: Pat
     uv_cache.mkdir(parents=True)
     (uv_cache / "wheel.whl").write_text("uv", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "package-cache",
@@ -194,8 +188,6 @@ def test_package_cache_scans_common_windows_package_manager_caches(tmp_path: Pat
         "0",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "PROGRAMDATA": str(root / "ProgramData")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     rule_ids = {candidate["rule_id"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 4
     assert "package-cache.winget.packages" in rule_ids
@@ -207,7 +199,9 @@ def test_package_cache_scans_common_windows_package_manager_caches(tmp_path: Pat
     assert "winget" in by_rule["package-cache.winget.packages"]["official_cleanup_command"].lower()
     assert by_rule["package-cache.uv.cache"]["cache_owner"] == "uv"
 
-def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     roaming = root / "Roaming"
     local = root / "LocalAppData"
@@ -228,7 +222,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(tmp_path: Pat
     jetbrains_logs.mkdir(parents=True)
     (jetbrains_logs / "idea.log").write_text("jetbrains", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -236,8 +230,6 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(tmp_path: Pat
         "0",
         env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 4
     assert str(slack_cache) in paths
@@ -247,7 +239,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(tmp_path: Pat
     assert all(candidate["category"] == "app-leftovers" for candidate in payload["candidates"])
     assert all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"])
 
-def test_app_leftovers_skips_when_active_install_marker_exists(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_skips_when_active_install_marker_exists(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     roaming = root / "Roaming"
     local = root / "LocalAppData"
@@ -259,7 +251,7 @@ def test_app_leftovers_skips_when_active_install_marker_exists(tmp_path: Path, r
     active_marker.parent.mkdir(parents=True)
     active_marker.write_text("exe", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -267,11 +259,9 @@ def test_app_leftovers_skips_when_active_install_marker_exists(tmp_path: Path, r
         "0",
         env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert payload["summary"]["candidate_count"] == 0
 
-def test_app_leftovers_skips_globbed_active_install_markers(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_skips_globbed_active_install_markers(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     roaming = root / "Roaming"
     local = root / "LocalAppData"
@@ -291,7 +281,7 @@ def test_app_leftovers_skips_globbed_active_install_markers(tmp_path: Path, run_
     jetbrains_marker.parent.mkdir(parents=True)
     jetbrains_marker.write_text("exe", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -304,13 +294,11 @@ def test_app_leftovers_skips_globbed_active_install_markers(tmp_path: Path, run_
             "USERPROFILE": str(root / "User"),
         },
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert str(discord_cache) not in paths
     assert str(jetbrains_log) not in paths
 
-def test_app_leftovers_scans_more_common_app_cache_and_logs(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_scans_more_common_app_cache_and_logs(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     roaming = root / "Roaming"
     local = root / "LocalAppData"
@@ -331,7 +319,7 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(tmp_path: Path, run_
     spotify_cache.mkdir(parents=True)
     (spotify_cache / "entry").write_text("spotify", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -339,15 +327,13 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(tmp_path: Path, run_
         "0",
         env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["app-leftovers.notion.cache"]["path"] == str(notion_cache)
     assert by_rule["app-leftovers.figma.logs"]["path"] == str(figma_logs)
     assert by_rule["app-leftovers.obs-studio.logs"]["path"] == str(obs_logs)
     assert by_rule["app-leftovers.spotify.browser-cache"]["path"] == str(spotify_cache)
 
-def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     adobe_logs = local / "Adobe" / "Creative Cloud" / "Logs"
@@ -372,7 +358,7 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, ru
     amd_cache.mkdir(parents=True)
     (amd_cache / "shader.bin").write_text("amd", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -380,8 +366,6 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, ru
         "0",
         env={"APPDATA": str(root / "Roaming"), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["app-leftovers.adobe.creative-cloud.logs"]["path"] == str(adobe_logs)
     assert by_rule["app-leftovers.office.telemetry-logs"]["path"] == str(office_telemetry)
@@ -391,7 +375,9 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(tmp_path: Path, ru
     assert by_rule["app-leftovers.nvidia.dxcache"]["path"] == str(nvidia_cache)
     assert by_rule["app-leftovers.amd.dxcache"]["path"] == str(amd_cache)
 
-def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     program_files = root / "ProgramFiles"
@@ -402,7 +388,7 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(t
     steam_marker.parent.mkdir(parents=True)
     steam_marker.write_text("exe", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "app-leftovers",
@@ -415,11 +401,11 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(t
             "USERPROFILE": str(root / "User"),
         },
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert "app-leftovers.steam.htmlcache" not in {candidate["rule_id"] for candidate in payload["candidates"]}
 
-def test_app_leftovers_rule_filter_review_and_dry_run(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_app_leftovers_rule_filter_review_and_dry_run(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     roaming = root / "Roaming"
     local = root / "LocalAppData"
@@ -450,20 +436,18 @@ def test_app_leftovers_rule_filter_review_and_dry_run(tmp_path: Path, run_cleanw
     assert plan_payload["candidates"][0]["path"] == str(vscode_cache)
     assert plan_payload["candidates"][0]["rule_id"] == "app-leftovers.vscode.cached-data"
 
-    review_result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review_result.returncode == 0, review_result.stderr
-    review = json.loads(review_result.stdout)
+    review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert review["rule_ids"] == ["app-leftovers.vscode.cached-data"]
     assert any("Uninstall Visual Studio Code" in command for command in review["cleanup_strategy"]["official_cleanup_commands"])
 
-    dry_run = run_cleanwin("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert dry_run.returncode == 0, dry_run.stderr
-    dry_run_payload = json.loads(dry_run.stdout)
+    dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert dry_run_payload["results"] == [{"status": "dry-run", "path": str(vscode_cache), "mode": "recycle"}]
     assert vscode_cache.exists()
     assert slack_cache.exists()
 
-def test_browser_cache_scans_cache_only_directories_without_profile_data(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_browser_cache_scans_cache_only_directories_without_profile_data(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     chrome_cache = local / "Google" / "Chrome" / "User Data" / "Default" / "Cache"
@@ -475,7 +459,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(tmp_pat
     cookies = local / "Google" / "Chrome" / "User Data" / "Default" / "Cookies"
     cookies.write_text("do-not-touch", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "browser-cache",
@@ -483,8 +467,6 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(tmp_pat
         "0",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 2
     assert str(chrome_cache) in paths
@@ -493,7 +475,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(tmp_pat
     assert all(candidate["category"] == "browser-cache" for candidate in payload["candidates"])
     assert all("cookies" not in candidate["path"].lower() for candidate in payload["candidates"])
 
-def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     chrome_profile_cache = local / "Google" / "Chrome" / "User Data" / "Profile 2" / "Cache"
@@ -506,7 +488,7 @@ def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, run
     firefox_cache.mkdir(parents=True)
     (firefox_cache / "entry").write_text("firefox", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "browser-cache",
@@ -514,15 +496,13 @@ def test_browser_cache_discovers_additional_browser_profiles(tmp_path: Path, run
         "0",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 3
     assert str(chrome_profile_cache) in paths
     assert str(edge_default_cache) in paths
     assert str(firefox_cache) in paths
 
-def test_browser_cache_discovers_brave_profile_caches(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_browser_cache_discovers_brave_profile_caches(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     brave_cache = local / "BraveSoftware" / "Brave-Browser" / "User Data" / "Default" / "Cache"
@@ -534,7 +514,7 @@ def test_browser_cache_discovers_brave_profile_caches(tmp_path: Path, run_cleanw
     cookies = brave_cache.parent / "Cookies"
     cookies.write_text("do-not-touch", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "browser-cache",
@@ -542,14 +522,14 @@ def test_browser_cache_discovers_brave_profile_caches(tmp_path: Path, run_cleanw
         "0",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["browser-cache.brave.cache"]["path"] == str(brave_cache)
     assert by_rule["browser-cache.brave.code-cache"]["path"] == str(brave_code_cache)
     assert str(cookies) not in {candidate["path"] for candidate in payload["candidates"]}
 
-def test_review_plan_for_browser_cache_reports_sensitive_exclusions(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     chrome_cache = local / "Google" / "Chrome" / "User Data" / "Default" / "Cache"
@@ -561,9 +541,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(tmp_path: Pa
     plan_result = run_cleanwin("plan", "--categories", "browser-cache", "--older-than-days", "0", "--output", str(plan_file), env=env)
     assert plan_result.returncode == 0, plan_result.stderr
 
-    review_result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review_result.returncode == 0, review_result.stderr
-    review = json.loads(review_result.stdout)
+    review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     exclusions = review["sensitive_exclusions"]
     assert exclusions
     assert exclusions[0]["category"] == "browser-cache"
@@ -577,7 +555,9 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(tmp_path: Pa
     assert strategy["requires_review"]
     assert "Use Chrome > Clear browsing data" in strategy["official_cleanup_commands"]
 
-def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     uv_cache = local / "uv" / "cache"
@@ -606,20 +586,16 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(tmp_path: Pat
     assert plan_payload["summary"]["candidate_count"] == 1
     assert plan_payload["candidates"][0]["rule_id"] == "package-cache.uv.cache"
 
-    review_result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review_result.returncode == 0, review_result.stderr
-    review = json.loads(review_result.stdout)
+    review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert review["rule_ids"] == ["package-cache.uv.cache"]
     assert "uv cache clean" in review["cleanup_strategy"]["official_cleanup_commands"]
 
-    dry_run = run_cleanwin("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert dry_run.returncode == 0, dry_run.stderr
-    dry_run_payload = json.loads(dry_run.stdout)
+    dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert dry_run_payload["results"] == [{"status": "dry-run", "path": str(uv_cache), "mode": "recycle"}]
     assert uv_cache.exists()
     assert winget_cache.exists()
 
-def test_package_cache_scans_additional_developer_package_caches(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_package_cache_scans_additional_developer_package_caches(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     vcpkg_downloads = local / "vcpkg" / "downloads"
@@ -629,7 +605,7 @@ def test_package_cache_scans_additional_developer_package_caches(tmp_path: Path,
     pipx_cache.mkdir(parents=True)
     (pipx_cache / "wheel.whl").write_text("pipx", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "package-cache",
@@ -637,13 +613,11 @@ def test_package_cache_scans_additional_developer_package_caches(tmp_path: Path,
         "0",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "PROGRAMDATA": str(root / "ProgramData")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["package-cache.vcpkg.downloads"]["path"] == str(vcpkg_downloads)
     assert by_rule["package-cache.pipx.cache"]["path"] == str(pipx_cache)
 
-def test_inspect_rule_id_filters_dev_cache_candidates(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_inspect_rule_id_filters_dev_cache_candidates(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path
     pip_cache = root / "LocalAppData" / "pip" / "Cache"
     pip_cache.mkdir(parents=True)
@@ -655,7 +629,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(tmp_path: Path, run_cleanw
     (npm_cache / "_cacache").mkdir()
     ((npm_cache / "_cacache") / "entry").write_text("npm", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "dev-cache",
@@ -665,8 +639,6 @@ def test_inspect_rule_id_filters_dev_cache_candidates(tmp_path: Path, run_cleanw
         "dev-cache.npm.cache",
         env={"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(root / "LocalAppData"), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
 
@@ -700,10 +672,8 @@ def test_plan_rule_id_filters_candidates_before_write(tmp_path: Path, run_cleanw
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["rule_id"] == "dev-cache.pip.cache"
 
-def test_read_only_findings_include_structured_review_details(run_cleanwin: RunCleanWin) -> None:
-    result = run_cleanwin("inspect", "--categories", "docker-report")
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
+def test_read_only_findings_include_structured_review_details(cleanwin_json: CleanWinJSON) -> None:
+    payload = cleanwin_json("inspect", "--categories", "docker-report")
     finding = payload["findings"][0]
     assert "review_details" in finding
     assert "suggested_paths" in finding["review_details"]
@@ -712,21 +682,21 @@ def test_read_only_findings_include_structured_review_details(run_cleanwin: RunC
     assert "path_evidence" in finding["review_details"]
     assert "evidence_summary" in finding["review_details"]
 
-def test_read_only_findings_report_existing_path_evidence_without_candidates(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_read_only_findings_report_existing_path_evidence_without_candidates(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     docker_log = local / "Docker" / "log"
     docker_log.mkdir(parents=True)
     (docker_log / "service.log").write_text("docker", encoding="utf-8")
 
-    result = run_cleanwin(
+    payload = cleanwin_json(
         "inspect",
         "--categories",
         "docker-report",
         env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
     )
-    assert result.returncode == 0, result.stderr
-    payload = json.loads(result.stdout)
     assert payload["summary"]["candidate_count"] == 0
 
     details = payload["findings"][0]["review_details"]
