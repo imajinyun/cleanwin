@@ -8,7 +8,7 @@ from cleanwincli.windows_smoke import WINDOWS_SMOKE_MATRIX_SCHEMA, windows_smoke
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
-AssertSchemaSample = Callable[[str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
@@ -45,7 +45,7 @@ def test_windows_smoke_matrix_covers_expected_edge_scenarios() -> None:
 
 
 def test_cli_ai_provider_and_schema_registry_expose_windows_smoke_matrix(
-    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_samples: AssertSchemaSamples
 ) -> None:
     assert_cli_provider_schema("windows-smoke-matrix", WINDOWS_SMOKE_MATRIX_SCHEMA)
-    assert_schema_sample(WINDOWS_SMOKE_MATRIX_SCHEMA)
+    assert_schema_samples([WINDOWS_SMOKE_MATRIX_SCHEMA])

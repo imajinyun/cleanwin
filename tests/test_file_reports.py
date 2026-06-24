@@ -12,7 +12,7 @@ from cleanwincli.file_reports import FILE_REPORT_SCHEMA, file_report
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteBytesFile = Callable[[Path, bytes], Path]
-AssertSchemaSample = Callable[[str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
@@ -81,5 +81,5 @@ def test_cli_provider_exposes_file_report(
     assert cleanwin_json(*args, env=env)["schema"] == FILE_REPORT_SCHEMA
 
 
-def test_schema_registry_exposes_file_report(assert_schema_sample: AssertSchemaSample) -> None:
-    assert_schema_sample(FILE_REPORT_SCHEMA)
+def test_schema_registry_exposes_file_report(assert_schema_samples: AssertSchemaSamples) -> None:
+    assert_schema_samples([FILE_REPORT_SCHEMA])

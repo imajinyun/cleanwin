@@ -8,7 +8,7 @@ from cleanwincli.system_health import SYSTEM_HEALTH_REPORT_SCHEMA, system_health
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
-AssertSchemaSample = Callable[[str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
@@ -38,8 +38,7 @@ def test_system_health_recommendations_use_official_tools_without_execution() ->
 
 
 def test_cli_provider_and_schema_registry_expose_system_health(
-    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_samples: AssertSchemaSamples
 ) -> None:
     assert_cli_provider_schema("system-health-report", SYSTEM_HEALTH_REPORT_SCHEMA)
-    assert_schema_sample(SYSTEM_HEALTH_REPORT_SCHEMA)
-    assert_schema_sample("cleanwin.registry-privacy-evidence.v1")
+    assert_schema_samples([SYSTEM_HEALTH_REPORT_SCHEMA, "cleanwin.registry-privacy-evidence.v1"])

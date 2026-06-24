@@ -8,7 +8,7 @@ from cleanwincli.promotion_gates import PROMOTION_GATES_SCHEMA, promotion_gates_
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
-AssertSchemaSample = Callable[[str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
@@ -46,7 +46,7 @@ def test_promotion_gates_cover_high_risk_report_surfaces() -> None:
 
 
 def test_cli_ai_provider_and_schema_registry_expose_promotion_gates(
-    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_samples: AssertSchemaSamples
 ) -> None:
     assert_cli_provider_schema("promotion-gates", PROMOTION_GATES_SCHEMA)
-    assert_schema_sample(PROMOTION_GATES_SCHEMA)
+    assert_schema_samples([PROMOTION_GATES_SCHEMA])
