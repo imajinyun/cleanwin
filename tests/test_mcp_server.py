@@ -16,7 +16,10 @@ from cleanwincli import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
 MCP_MODULE = "cleanwincli.mcp_server"
-CleanWinPlanFile = Callable[..., dict[str, Any]]
+JSONPayload = dict[str, Any]
+MCPRequest = dict[str, Any]
+MCPResponse = dict[str, Any]
+CleanWinPlanFile = Callable[..., JSONPayload]
 
 
 def mcp_env() -> dict[str, str]:
@@ -26,7 +29,7 @@ def mcp_env() -> dict[str, str]:
     return env
 
 
-def mcp_request(request: dict) -> dict:
+def mcp_request(request: MCPRequest) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
         cwd=ROOT,
@@ -42,7 +45,7 @@ def mcp_request(request: dict) -> dict:
     return json.loads(stdout.strip().splitlines()[0])
 
 
-def persistent_mcp_request(request: dict) -> dict:
+def persistent_mcp_request(request: MCPRequest) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
         cwd=ROOT,
@@ -76,7 +79,7 @@ def persistent_mcp_request(request: dict) -> dict:
     raise RuntimeError(f"empty persistent MCP response; stdout={stdout}; stderr={stderr}")
 
 
-def read_mcp_resource(uri: str) -> dict:
+def read_mcp_resource(uri: str) -> JSONPayload:
     read = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -101,7 +104,9 @@ def generate_temp_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile) -> 
     return plan_file, stale_file, env
 
 
-def call_mcp_tool(name: str, arguments: dict, env: dict[str, str] | None = None, request_id: int = 52) -> dict:
+def call_mcp_tool(
+    name: str, arguments: JSONPayload, env: dict[str, str] | None = None, request_id: int = 52
+) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
         cwd=ROOT,

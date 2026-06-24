@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from cleanwincli.debloat_privacy import DEBLOAT_PRIVACY_REPORT_SCHEMA, debloat_privacy_report
+
+JSONPayload = dict[str, Any]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated() -> None:
@@ -57,7 +62,7 @@ def test_appx_and_oem_findings_are_review_only(tmp_path: Path) -> None:
     assert report["summary"]["oem_location_count"] == 1
 
 
-def test_cli_and_ai_provider_expose_report(cleanwin_json) -> None:
+def test_cli_and_ai_provider_expose_report(cleanwin_json: CleanWinJSON) -> None:
     cli = cleanwin_json("debloat-privacy-report")
     assert cli["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA
 

@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA, recovery_readiness_report
+
+JSONPayload = dict[str, Any]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates() -> None:
@@ -30,14 +36,14 @@ def test_recovery_readiness_declares_snapshot_specs() -> None:
     assert "registry-change" in specs["registry-export"]["required_before"]
 
 
-def test_cli_exposes_recovery_readiness(cleanwin_json) -> None:
+def test_cli_exposes_recovery_readiness(cleanwin_json: CleanWinJSON) -> None:
     payload = cleanwin_json("recovery-readiness")
 
     assert payload["schema"] == RECOVERY_READINESS_SCHEMA
     assert payload["executes_system_commands"] is False
 
 
-def test_ai_tools_provider_exposes_recovery_readiness(cleanwin_json) -> None:
+def test_ai_tools_provider_exposes_recovery_readiness(cleanwin_json: CleanWinJSON) -> None:
     payload = cleanwin_json("ai-tools", "--provider", "recovery-readiness")
 
     assert payload["schema"] == RECOVERY_READINESS_SCHEMA

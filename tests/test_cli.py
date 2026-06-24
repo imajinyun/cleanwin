@@ -12,6 +12,7 @@ from cleanwincli.models import Candidate, Plan
 
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 
@@ -95,7 +96,9 @@ def test_review_plan_summarizes_execution_handoff(
     assert review["official_cleanup_commands"] == ["npm cache clean --force"]
     assert "cleanwin_dry_run_plan" in review["execution_handoff"]["required_predecessor_tools"]
 
-def test_review_plan_rejects_invalid_plan_exit_code(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_review_plan_rejects_invalid_plan_exit_code(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_result_json: CleanWinResultJSON
+) -> None:
     target = tmp_path / "candidate.tmp"
     target.write_text("x", encoding="utf-8")
     plan = Plan(
@@ -115,7 +118,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(tmp_path: Path, run_cleanwin
     plan_file.write_text(json.dumps(plan.to_dict(), indent=2), encoding="utf-8")
     result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context")
     assert result.returncode == 2
-    payload = json.loads(result.stdout)
+    payload = cleanwin_result_json(result)
     assert not payload["validation"]["valid"]
     assert not payload["execution_handoff"]["safe_to_execute"]
 

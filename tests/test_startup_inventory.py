@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA, startup_service_inventory_report
+
+JSONPayload = dict[str, Any]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated() -> None:
@@ -63,7 +68,7 @@ def test_service_and_scheduled_task_fixtures_are_report_only() -> None:
     assert report["scheduled_tasks"][0]["target_exists"] is False
 
 
-def test_cli_and_ai_provider_expose_inventory(cleanwin_json) -> None:
+def test_cli_and_ai_provider_expose_inventory(cleanwin_json: CleanWinJSON) -> None:
     cli = cleanwin_json("startup-service-inventory")
     assert cli["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA
 

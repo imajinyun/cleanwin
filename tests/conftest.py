@@ -13,6 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 
@@ -42,16 +43,22 @@ def run_cleanwin(repo_root: Path) -> RunCleanWin:
 
 
 def load_json_stdout(result: subprocess.CompletedProcess[str]) -> JSONPayload:
-    assert result.returncode == 0, result.stderr
     payload = json.loads(result.stdout)
     assert isinstance(payload, dict)
     return payload
 
 
 @pytest.fixture
+def cleanwin_result_json() -> CleanWinResultJSON:
+    return load_json_stdout
+
+
+@pytest.fixture
 def cleanwin_json(run_cleanwin: RunCleanWin) -> CleanWinJSON:
     def _cleanwin_json(*args: str, env: dict[str, str] | None = None) -> JSONPayload:
-        return load_json_stdout(run_cleanwin(*args, env=env))
+        result = run_cleanwin(*args, env=env)
+        assert result.returncode == 0, result.stderr
+        return load_json_stdout(result)
 
     return _cleanwin_json
 

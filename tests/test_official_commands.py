@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA, official_command_plan_report
+
+JSONPayload = dict[str, Any]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution() -> None:
@@ -33,7 +39,7 @@ def test_report_covers_windows_owned_cleanup_surfaces() -> None:
     assert all(not command["auto_executable"] for command in report["commands"])
 
 
-def test_cli_and_ai_provider_expose_official_command_plan(cleanwin_json) -> None:
+def test_cli_and_ai_provider_expose_official_command_plan(cleanwin_json: CleanWinJSON) -> None:
     cli = cleanwin_json("official-command-plan")
     assert cli["schema"] == OFFICIAL_COMMAND_PLAN_SCHEMA
 

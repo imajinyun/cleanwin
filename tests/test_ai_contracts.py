@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -18,6 +17,7 @@ from cleanwincli.ai_versioning import schema_registry, schema_sample
 
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 
@@ -156,7 +156,11 @@ def test_cli_ai_tools_and_host_policy_are_valid(cleanwin_json: CleanWinJSON) -> 
 
 
 def test_execute_requires_dry_run_confirmation_token(
-    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_plan_file: CleanWinPlanFile, cleanwin_json: CleanWinJSON
+    tmp_path: Path,
+    run_cleanwin: RunCleanWin,
+    cleanwin_result_json: CleanWinResultJSON,
+    cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_json: CleanWinJSON,
 ) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
@@ -184,7 +188,7 @@ def test_execute_requires_dry_run_confirmation_token(
         env=env,
     )
     assert denied.returncode == 2
-    assert "confirmation phrase" in json.loads(denied.stdout)["error"]
+    assert "confirmation phrase" in cleanwin_result_json(denied)["error"]
     assert target.exists()
 
     allowed = run_cleanwin(

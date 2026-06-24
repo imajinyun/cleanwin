@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA, installed_app_inventory_report
+
+JSONPayload = dict[str, Any]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows() -> None:
@@ -81,7 +86,7 @@ def test_filesystem_package_sources_and_leftover_correlation(tmp_path: Path) -> 
     assert slack_correlation["leftover_path"] == str(slack_cache)
 
 
-def test_cli_and_ai_provider_expose_inventory(cleanwin_json) -> None:
+def test_cli_and_ai_provider_expose_inventory(cleanwin_json: CleanWinJSON) -> None:
     cli = cleanwin_json("installed-app-inventory")
     assert cli["schema"] == INSTALLED_APP_INVENTORY_SCHEMA
 
