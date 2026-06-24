@@ -20,26 +20,31 @@ jobs:
       - name: Install dev dependencies
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip build
-          python -m pip install -e .[dev]
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip build
+          .\.venv\Scripts\python.exe -m pip install -e .[dev]
 
       - name: Run unit tests
         shell: pwsh
         run: |
           $env:PYTHONPATH = (Get-Location).Path
-          python -m unittest discover -s tests -v
+          .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+
+      - name: Run pytest
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m pytest -q
 
       - name: Lint
         shell: pwsh
-        run: python -m ruff check cleanwin.py cleanwincli tests
+        run: .\.venv\Scripts\python.exe -m ruff check cleanwin.py cleanwincli tests
 
       - name: Type check
         shell: pwsh
-        run: python -m mypy cleanwin.py cleanwincli tests
+        run: .\.venv\Scripts\python.exe -m mypy cleanwin.py cleanwincli tests
 
       - name: Compile Python files
         shell: pwsh
-        run: python -m compileall -q cleanwin.py cleanwincli tests
+        run: .\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests
 
       - name: Docs smoke
         shell: pwsh
@@ -52,32 +57,32 @@ jobs:
       - name: AI readiness smoke
         shell: pwsh
         run: |
-          $toolValidation = python cleanwin.py --json ai-tools --provider validation | ConvertFrom-Json
+          $toolValidation = .\.venv\Scripts\python.exe cleanwin.py --json ai-tools --provider validation | ConvertFrom-Json
           if (-not $toolValidation.valid) { throw "ai-tools provider validation failed" }
-          $readiness = python cleanwin.py --json ai-readiness --validate | ConvertFrom-Json
+          $readiness = .\.venv\Scripts\python.exe cleanwin.py --json ai-readiness --validate | ConvertFrom-Json
           if (-not $readiness.valid) { throw "ai-readiness validation failed" }
-          $selfTest = python cleanwin.py --json ai-self-test | ConvertFrom-Json
+          $selfTest = .\.venv\Scripts\python.exe cleanwin.py --json ai-self-test | ConvertFrom-Json
           if (-not $selfTest.passed) { throw "ai-self-test failed" }
-          $runbook = python cleanwin.py --json ai-runbook | ConvertFrom-Json
+          $runbook = .\.venv\Scripts\python.exe cleanwin.py --json ai-runbook | ConvertFrom-Json
           if ($runbook.schema -ne "cleanwin.ai-runbook.v1") { throw "ai-runbook schema mismatch" }
-          $doctor = python cleanwin.py --json doctor | ConvertFrom-Json
+          $doctor = .\.venv\Scripts\python.exe cleanwin.py --json doctor | ConvertFrom-Json
           if (-not $doctor.ready) { throw "doctor reported not ready" }
 
       - name: MCP server compile smoke
         shell: pwsh
-        run: python -m compileall -q cleanwincli/mcp_server.py
+        run: .\.venv\Scripts\python.exe -m compileall -q cleanwincli/mcp_server.py
 
       - name: Version consistency smoke
         shell: pwsh
         run: |
-          $doctor = python cleanwin.py --json doctor | ConvertFrom-Json
+          $doctor = .\.venv\Scripts\python.exe cleanwin.py --json doctor | ConvertFrom-Json
           $versionCheck = $doctor.checks | Where-Object { $_.id -eq "version_consistency" }
           if ($null -eq $versionCheck) { throw "missing version_consistency doctor check" }
           if (-not $versionCheck.passed) { throw "version_consistency doctor check failed" }
 
       - name: Package build smoke
         shell: pwsh
-        run: python -m build --sdist --wheel
+        run: .\.venv\Scripts\python.exe -m build --sdist --wheel
 
       - name: Package install smoke
         shell: pwsh
@@ -140,9 +145,9 @@ jobs:
           Set-Content -Path $candidate -Value "x" -NoNewline
           $env:TEMP = $tempRoot.FullName
           $env:TMP = $tempRoot.FullName
-          python cleanwin.py --json plan --categories temp --older-than-days 0 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
+          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
           Set-Content -Path $candidate -Value "changed" -NoNewline
-          python cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context | Tee-Object -Variable result
+          .\.venv\Scripts\python.exe cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context | Tee-Object -Variable result
           if ($LASTEXITCODE -eq 0) { throw "validate-plan should fail after identity drift" }
           if (-not ($result -join "`n").Contains("Filesystem identity mismatch")) { throw "missing identity mismatch error" }
 
@@ -157,9 +162,9 @@ jobs:
           $env:TEMP = $tempRoot.FullName
           $env:TMP = $tempRoot.FullName
           $plan = Join-Path $tmp.FullName "plan.json"
-          python cleanwin.py --json plan --categories temp --older-than-days 0 --output $plan | Out-Null
-          $dry = python cleanwin.py --json execute-plan --plan-file $plan --no-require-plan-context | ConvertFrom-Json
-          python cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
+          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --output $plan | Out-Null
+          $dry = .\.venv\Scripts\python.exe cleanwin.py --json execute-plan --plan-file $plan --no-require-plan-context | ConvertFrom-Json
+          .\.venv\Scripts\python.exe cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
           if (Test-Path $candidate) { throw "candidate should have moved to test trash" }
 
       - name: Cleanup generated artifacts

@@ -10,6 +10,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import pytest
+
 from cleanwincli import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,6 +75,70 @@ def persistent_mcp_request(request: dict) -> dict:
     raise RuntimeError(f"empty persistent MCP response; stdout={stdout}; stderr={stderr}")
 
 
+def read_mcp_resource(uri: str) -> dict:
+    read = mcp_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 40,
+            "method": "resources/read",
+            "params": {"uri": uri},
+        }
+    )
+    return json.loads(read["result"]["contents"][0]["text"])
+
+
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "cleanwin://ai/host-policy",
+        "cleanwin://ai/schema-registry",
+        "cleanwin://ai/readiness",
+        "cleanwin://ai/self-test",
+        "cleanwin://ai/runbook",
+        "cleanwin://engineering/doctor",
+        "cleanwin://engineering/recovery-readiness",
+        "cleanwin://inventory/installed-apps",
+        "cleanwin://plan/official-command-plan",
+        "cleanwin://inventory/debloat-privacy",
+        "cleanwin://inventory/startup-services",
+        "cleanwin://plan/review-sample",
+    ],
+)
+def test_resources_list_exposes_expected_uri(uri: str) -> None:
+    listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"})
+    uris = {resource["uri"] for resource in listed["result"]["resources"]}
+
+    assert uri in uris
+
+
+def test_host_policy_resource_exposes_execute_plan_denial() -> None:
+    payload = read_mcp_resource("cleanwin://ai/host-policy")
+
+    assert payload["schema"] == "cleanwin.ai-host-policy.v1"
+    assert "cleanwin_execute_plan" in payload["auto_call"]["deny"]
+
+
+@pytest.mark.parametrize(
+    ("uri", "schema"),
+    [
+        ("cleanwin://ai/readiness", "cleanwin.ai-readiness.v1"),
+        ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
+        ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
+        ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
+        ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
+        ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
+        ("cleanwin://plan/official-command-plan", "cleanwin.official-command-plan.v1"),
+        ("cleanwin://inventory/debloat-privacy", "cleanwin.debloat-privacy-report.v1"),
+        ("cleanwin://inventory/startup-services", "cleanwin.startup-service-inventory.v1"),
+        ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
+    ],
+)
+def test_resources_readiness_self_test_and_runbook(uri: str, schema: str) -> None:
+    payload = read_mcp_resource(uri)
+
+    assert payload["schema"] == schema
+
+
 class CleanWinMCPServerTests(unittest.TestCase):
     def test_initialize_and_tools_list(self) -> None:
         initialized = mcp_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
@@ -88,55 +154,6 @@ class CleanWinMCPServerTests(unittest.TestCase):
         tool_by_name = {tool["name"]: tool for tool in tools}
         self.assertTrue(tool_by_name["cleanwin_capabilities"]["annotations"]["readOnlyHint"])
         self.assertTrue(tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"])
-
-    def test_resources_expose_ai_contracts(self) -> None:
-        listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"})
-        uris = {resource["uri"] for resource in listed["result"]["resources"]}
-        self.assertIn("cleanwin://ai/host-policy", uris)
-        self.assertIn("cleanwin://ai/schema-registry", uris)
-        self.assertIn("cleanwin://ai/readiness", uris)
-        self.assertIn("cleanwin://ai/self-test", uris)
-        self.assertIn("cleanwin://ai/runbook", uris)
-        self.assertIn("cleanwin://engineering/doctor", uris)
-        self.assertIn("cleanwin://engineering/recovery-readiness", uris)
-        self.assertIn("cleanwin://inventory/installed-apps", uris)
-        self.assertIn("cleanwin://plan/official-command-plan", uris)
-        self.assertIn("cleanwin://plan/review-sample", uris)
-
-        read = mcp_request(
-            {
-                "jsonrpc": "2.0",
-                "id": 4,
-                "method": "resources/read",
-                "params": {"uri": "cleanwin://ai/host-policy"},
-            }
-        )
-        payload = json.loads(read["result"]["contents"][0]["text"])
-        self.assertEqual(payload["schema"], "cleanwin.ai-host-policy.v1")
-        self.assertIn("cleanwin_execute_plan", payload["auto_call"]["deny"])
-
-    def test_resources_readiness_self_test_and_runbook(self) -> None:
-        for uri, schema in [
-            ("cleanwin://ai/readiness", "cleanwin.ai-readiness.v1"),
-            ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
-            ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
-            ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
-            ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
-            ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
-            ("cleanwin://plan/official-command-plan", "cleanwin.official-command-plan.v1"),
-            ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
-        ]:
-            with self.subTest(uri=uri):
-                read = mcp_request(
-                    {
-                        "jsonrpc": "2.0",
-                        "id": 40,
-                        "method": "resources/read",
-                        "params": {"uri": uri},
-                    }
-                )
-                payload = json.loads(read["result"]["contents"][0]["text"])
-                self.assertEqual(payload["schema"], schema)
 
     def test_resources_read_responds_before_persistent_stdin_eof(self) -> None:
         read = persistent_mcp_request(

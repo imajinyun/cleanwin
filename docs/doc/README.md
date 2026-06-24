@@ -240,6 +240,8 @@ python3 cleanwin.py --json doctor
 python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
 python3 cleanwin.py --json official-command-plan
+python3 cleanwin.py --json debloat-privacy-report
+python3 cleanwin.py --json startup-service-inventory
 ```
 
 ---
@@ -300,7 +302,7 @@ The server:
 - Rejects unknown tools and invalid arguments.
 - Denies raw command arguments.
 - Applies cleanwin host-policy checks before calling the CLI.
-- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, and `cleanwin://plan/official-command-plan`.
+- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, and `cleanwin://inventory/startup-services`.
 
 To point the MCP server at a specific CLI script or binary:
 
@@ -332,33 +334,36 @@ Use the dry-run output token only for the same plan payload.
 
 ## ✅ Development & CI
 
-Common local checks:
+Common local checks run through a project virtual environment:
 
 ```bash
-python3 -m unittest -v
-python3 -m compileall -q cleanwin.py cleanwincli tests
-python3 cleanwin.py --json capabilities
-python3 cleanwin.py --json ai-tools --provider parity
-python3 cleanwin.py --json host-policy --validate
-python3 cleanwin.py --json ai-readiness --validate
-python3 cleanwin.py --json recovery-readiness
-python3 cleanwin.py --json installed-app-inventory
-python3 cleanwin.py --json official-command-plan
+make dev-install
+make quality
 ```
 
-With dev dependencies:
+The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for unittest, pytest, Ruff, mypy, compile, package, AI, and MCP checks. Equivalent manual commands:
 
 ```bash
-python3 -m pip install -e '.[dev]'
-python3 -m ruff format --check .
-python3 -m ruff check .
-python3 -m mypy cleanwin.py cleanwincli tests
-python3 -m pytest -q
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m pytest -q
+.venv/bin/python -m ruff check cleanwin.py cleanwincli tests
+.venv/bin/python -m mypy cleanwin.py cleanwincli tests
+.venv/bin/python -m compileall -q cleanwin.py cleanwincli tests
+.venv/bin/python cleanwin.py --json ai-readiness --validate
+.venv/bin/python cleanwin.py --json doctor
+```
+
+New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` instead of repeating `unittest.TestCase` setup methods.
+
+Optional Docker sandbox:
+
+```bash
+make docker-quality
 ```
 
 CI entrypoint:
 
-- `.github/workflows/windows-smoke.yml` runs unit tests, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
+- `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs unittest, pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 
 Governance roadmap:
 
@@ -379,6 +384,8 @@ Governance roadmap:
 | `cleanwincli/recovery.py` | Recovery readiness gates and snapshot format declarations |
 | `cleanwincli/installed_apps.py` | Read-only installed app inventory and leftover correlation |
 | `cleanwincli/official_commands.py` | Read-only official Windows cleanup command plans |
+| `cleanwincli/debloat_privacy.py` | Read-only debloat and privacy telemetry reporting |
+| `cleanwincli/startup_inventory.py` | Read-only startup, service, and task inventory |
 | `cleanwincli/protection_data.py` | Windows safety policy data |
 | `cleanwincli/protection.py` | Path and filesystem candidate validation |
 | `cleanwincli/delete_ops.py` | Single destructive exit and recycle/permanent routing primitives |

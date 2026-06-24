@@ -45,6 +45,8 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.installed-app-inventory.v1", 1, "cleanwincli.installed_apps", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-command-plan.v1", 1, "cleanwincli.official_commands", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.mcp-tool-error.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
     ("cleanwin.mcp-text-output.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
 )
@@ -323,6 +325,76 @@ def _sample_official_command_plan() -> dict[str, Any]:
     }
 
 
+def _sample_debloat_privacy_report() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.debloat-privacy-report.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "sources": [{"id": "registry-fixture", "available": True, "reason": "registry-value-read", "evidence": {"key": "HKLM\\...\\AllowTelemetry"}}],
+        "findings": [
+            {
+                "id": "privacy.telemetry.allow-telemetry",
+                "title": "Windows telemetry policy",
+                "kind": "registry-policy",
+                "risk": "high",
+                "state": "review-recommended",
+                "registry_value": r"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\AllowTelemetry",
+                "observed_value": "3",
+                "expected_private_values": ["0"],
+                "safe_to_execute": False,
+                "review_steps": ["Export the policy key before any future registry mutation."],
+            }
+        ],
+        "summary": {"finding_count": 1, "review_recommended_count": 1, "privacy_hardened_count": 0, "appx_review_count": 0, "oem_location_count": 0},
+        "execution_gate": {
+            "system_execution_enabled": False,
+            "requires_restore_point": True,
+            "requires_registry_export": True,
+            "requires_appx_inventory_snapshot": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not remove AppX packages."],
+    }
+
+
+def _sample_startup_service_inventory() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.startup-service-inventory.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "sources": [{"id": "registry-startup", "available": True, "reason": "registry-key-read", "evidence": {"key": r"HKCU\\...\\Run"}}],
+        "startup_entries": [
+            {
+                "source": "registry-run",
+                "location": r"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                "name": "Example",
+                "command": r"C:\\Program Files\\Example\\example.exe",
+                "target_exists": True,
+                "publisher": "",
+                "signature_status": "not-checked",
+                "risk": "medium",
+                "safe_to_execute": False,
+            }
+        ],
+        "services": [],
+        "scheduled_tasks": [],
+        "summary": {"startup_entry_count": 1, "service_count": 0, "scheduled_task_count": 0, "missing_target_count": 0, "auto_executable_count": 0},
+        "execution_gate": {
+            "system_execution_enabled": False,
+            "requires_service_snapshot": True,
+            "requires_scheduled_task_snapshot": True,
+            "requires_registry_export": True,
+            "requires_publisher_or_signature_review": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not disable startup entries."],
+    }
+
+
 def schema_sample(schema_name: str) -> dict[str, Any] | None:
     if schema_name == "cleanwin.inspect.v1":
         return {
@@ -467,6 +539,10 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_installed_app_inventory()
     if schema_name == "cleanwin.official-command-plan.v1":
         return _sample_official_command_plan()
+    if schema_name == "cleanwin.debloat-privacy-report.v1":
+        return _sample_debloat_privacy_report()
+    if schema_name == "cleanwin.startup-service-inventory.v1":
+        return _sample_startup_service_inventory()
     return None
 
 

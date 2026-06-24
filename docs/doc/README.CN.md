@@ -240,6 +240,8 @@ python3 cleanwin.py --json doctor
 python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
 python3 cleanwin.py --json official-command-plan
+python3 cleanwin.py --json debloat-privacy-report
+python3 cleanwin.py --json startup-service-inventory
 ```
 
 ---
@@ -300,7 +302,7 @@ cleanwin-mcp
 - 拒绝未知工具和非法参数。
 - 拒绝 raw command 参数。
 - 调用 CLI 前应用 cleanwin host-policy 检查。
-- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor`、`cleanwin://engineering/recovery-readiness`、`cleanwin://inventory/installed-apps`、`cleanwin://plan/official-command-plan` 等资源。
+- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor`、`cleanwin://engineering/recovery-readiness`、`cleanwin://inventory/installed-apps`、`cleanwin://plan/official-command-plan`、`cleanwin://inventory/debloat-privacy`、`cleanwin://inventory/startup-services` 等资源。
 
 指定 MCP server 使用的 CLI 脚本或二进制：
 
@@ -332,33 +334,36 @@ dry-run 输出的 token 只应复用于同一个计划 payload。
 
 ## ✅ 开发与 CI
 
-常用本地检查：
+常用本地检查通过项目虚拟环境运行：
 
 ```bash
-python3 -m unittest -v
-python3 -m compileall -q cleanwin.py cleanwincli tests
-python3 cleanwin.py --json capabilities
-python3 cleanwin.py --json ai-tools --provider parity
-python3 cleanwin.py --json host-policy --validate
-python3 cleanwin.py --json ai-readiness --validate
-python3 cleanwin.py --json recovery-readiness
-python3 cleanwin.py --json installed-app-inventory
-python3 cleanwin.py --json official-command-plan
+make dev-install
+make quality
 ```
 
-安装开发依赖后：
+`dev-install` target 会创建 `.venv`，安装 `.[dev]`，并用该环境运行 unittest、pytest、Ruff、mypy、compile、package、AI 和 MCP 检查。等价手动命令：
 
 ```bash
-python3 -m pip install -e '.[dev]'
-python3 -m ruff format --check .
-python3 -m ruff check .
-python3 -m mypy cleanwin.py cleanwincli tests
-python3 -m pytest -q
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m pytest -q
+.venv/bin/python -m ruff check cleanwin.py cleanwincli tests
+.venv/bin/python -m mypy cleanwin.py cleanwincli tests
+.venv/bin/python -m compileall -q cleanwin.py cleanwincli tests
+.venv/bin/python cleanwin.py --json ai-readiness --validate
+.venv/bin/python cleanwin.py --json doctor
+```
+
+新增测试优先使用 pytest 函数风格，包括原生 `assert`、`tmp_path`、`monkeypatch`、`pytest.raises` 和 `pytest.mark.parametrize`。可复用的 subprocess 或 JSON helper 放入 `tests/conftest.py`，不要继续复制 `unittest.TestCase` setup 方法。
+
+可选 Docker 沙箱：
+
+```bash
+make docker-quality
 ```
 
 CI 入口：
 
-- `.github/workflows/windows-smoke.yml` 在 `windows-latest` 上运行 unit tests、compile checks、identity drift smoke 和 test-mode recycle smoke。
+- `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 unittest、pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
 
 治理路线图：
 
@@ -379,6 +384,8 @@ CI 入口：
 | `cleanwincli/recovery.py` | 恢复 readiness 门禁与 snapshot 格式声明 |
 | `cleanwincli/installed_apps.py` | 只读已安装应用 inventory 与 leftover 关联 |
 | `cleanwincli/official_commands.py` | 只读 Windows 官方清理命令计划 |
+| `cleanwincli/debloat_privacy.py` | 只读 debloat 和隐私 telemetry 报告 |
+| `cleanwincli/startup_inventory.py` | 只读启动项、服务和计划任务 inventory |
 | `cleanwincli/protection_data.py` | Windows 安全策略数据 |
 | `cleanwincli/protection.py` | 路径和文件系统候选项校验 |
 | `cleanwincli/delete_ops.py` | 唯一破坏性出口和 recycle/permanent 路由 primitive |

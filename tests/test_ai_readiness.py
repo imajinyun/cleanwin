@@ -13,9 +13,11 @@ from cleanwincli.ai_runbook import ai_runbook_report
 from cleanwincli.ai_self_test import ai_self_test_report
 from cleanwincli.ai_versioning import schema_registry
 from cleanwincli.core import doctor_report
+from cleanwincli.debloat_privacy import DEBLOAT_PRIVACY_REPORT_SCHEMA
 from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
+from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -50,6 +52,8 @@ class AIReadinessTests(unittest.TestCase):
             RECOVERY_READINESS_SCHEMA,
             INSTALLED_APP_INVENTORY_SCHEMA,
             OFFICIAL_COMMAND_PLAN_SCHEMA,
+            DEBLOAT_PRIVACY_REPORT_SCHEMA,
+            STARTUP_SERVICE_INVENTORY_SCHEMA,
         ]:
             self.assertIn(required, names)
 
@@ -108,6 +112,14 @@ class AIReadinessTests(unittest.TestCase):
         self.assertEqual(official_commands.returncode, 0, official_commands.stderr)
         self.assertEqual(json.loads(official_commands.stdout)["schema"], OFFICIAL_COMMAND_PLAN_SCHEMA)
 
+        debloat_privacy = self.run_cleanwin("debloat-privacy-report")
+        self.assertEqual(debloat_privacy.returncode, 0, debloat_privacy.stderr)
+        self.assertEqual(json.loads(debloat_privacy.stdout)["schema"], DEBLOAT_PRIVACY_REPORT_SCHEMA)
+
+        startup_services = self.run_cleanwin("startup-service-inventory")
+        self.assertEqual(startup_services.returncode, 0, startup_services.stderr)
+        self.assertEqual(json.loads(startup_services.stdout)["schema"], STARTUP_SERVICE_INVENTORY_SCHEMA)
+
     def test_doctor_report_checks_static_safety_and_contracts(self) -> None:
         report = doctor_report()
         self.assertEqual(report["schema"], "cleanwin.doctor.v1")
@@ -147,6 +159,8 @@ class AIReadinessTests(unittest.TestCase):
             ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
             ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
             ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
+            ("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA),
+            ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
         ]:
             with self.subTest(provider=provider):
                 result = self.run_cleanwin("ai-tools", "--provider", provider)

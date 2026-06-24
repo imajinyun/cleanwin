@@ -1,0 +1,68 @@
+name: cleanwin
+root: .
+language: python
+
+workspace:
+  include_globs:
+    - "*.py"
+    - "pyproject.toml"
+    - "Makefile"
+    - "Dockerfile.test"
+    - "aiflow.yaml"
+    - ".github/*"
+    - ".github/workflows/*"
+    - "cleanwincli/*"
+    - "cleanwincli/rules/*"
+    - "tests/*"
+    - "tests/data/*"
+    - "docs/*"
+    - "docs/doc/*"
+    - "docs/governance/*"
+    - "docs/superpowers/plans/*"
+  exclude_globs:
+    - ".git"
+    - ".git/*"
+    - ".harness"
+    - ".harness/*"
+    - ".venv"
+    - ".venv/*"
+    - "build"
+    - "build/*"
+    - "dist"
+    - "dist/*"
+    - "*.egg-info"
+    - "*.egg-info/*"
+    - "__pycache__"
+    - "__pycache__/*"
+
+commands:
+  allowlist:
+    - make dev-install
+    - make lint
+    - make type
+    - make test
+    - make pytest
+    - make compile
+    - make quality
+    - make docker-quality
+  test:
+    - make test
+    - make pytest
+  release:
+    - make quality
+
+acceptance:
+  criteria:
+    - pytest migration keeps the test suite behaviorally equivalent
+    - venv-first unit, pytest, lint, type, compile, AI, MCP, and packaging gates pass
+    - docker-quality remains an optional sandbox validation path when Docker Hub access is available
+  required_commands:
+    - make quality
+  require_review: false
+  require_clean_diff: false
+  require_fix_diff: false
+
+permissions:
+  require_plan_approval: false
+  allow_commit: false
+  allow_push: false

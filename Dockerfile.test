@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+
+WORKDIR /workspace
+COPY . /workspace
+
+RUN python -m venv .venv \
+    && .venv/bin/python -m pip install --upgrade pip build \
+    && .venv/bin/python -m pip install -e ".[dev]"
+
+CMD ["/bin/sh", "-c", ".venv/bin/python -m ruff check cleanwin.py cleanwincli tests && .venv/bin/python -m mypy cleanwin.py cleanwincli tests && .venv/bin/python -m unittest discover -s tests -v && .venv/bin/python -m pytest -q && .venv/bin/python -m compileall -q cleanwin.py cleanwincli tests && .venv/bin/python cleanwin.py --json ai-readiness --validate && .venv/bin/python cleanwin.py --json doctor"]

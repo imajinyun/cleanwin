@@ -264,6 +264,10 @@ def resource_payload(uri: str) -> dict[str, Any]:
         return ai_tools_report("installed-app-inventory")
     if uri == "cleanwin://plan/official-command-plan":
         return ai_tools_report("official-command-plan")
+    if uri == "cleanwin://inventory/debloat-privacy":
+        return ai_tools_report("debloat-privacy-report")
+    if uri == "cleanwin://inventory/startup-services":
+        return ai_tools_report("startup-service-inventory")
     if uri == "cleanwin://plan/review-sample":
         return ai_tools_report("review-sample")
     raise KeyError(uri)
@@ -308,6 +312,8 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
             {"uri": "cleanwin://engineering/recovery-readiness", "name": "CleanWin recovery readiness", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/installed-apps", "name": "CleanWin installed app inventory", "mimeType": "application/json"},
             {"uri": "cleanwin://plan/official-command-plan", "name": "CleanWin official command plan", "mimeType": "application/json"},
+            {"uri": "cleanwin://inventory/debloat-privacy", "name": "CleanWin debloat privacy report", "mimeType": "application/json"},
+            {"uri": "cleanwin://inventory/startup-services", "name": "CleanWin startup service inventory", "mimeType": "application/json"},
             {"uri": "cleanwin://plan/review-sample", "name": "CleanWin plan review sample", "mimeType": "application/json"},
         ]
         return {"jsonrpc": "2.0", "id": request_id, "result": {"resources": resources}}

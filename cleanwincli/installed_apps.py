@@ -8,7 +8,7 @@ import re
 import xml.etree.ElementTree as ET
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cleanwincli.collectors import APP_LEFTOVER_RULES, app_leftover_rule_roots
 
@@ -32,9 +32,11 @@ def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, 
     display_name = str(entry.get("DisplayName") or entry.get("display_name") or "").strip()
     if not display_name:
         return None
-    estimated_size_kb = entry.get("EstimatedSize") or entry.get("estimated_size_kb")
+    raw_estimated_size = entry.get("EstimatedSize") or entry.get("estimated_size_kb")
+    estimated_size_kb: int | None = None
     try:
-        estimated_size_kb = int(estimated_size_kb) if estimated_size_kb not in (None, "") else None
+        if raw_estimated_size not in (None, ""):
+            estimated_size_kb = int(cast(str, raw_estimated_size))
     except (TypeError, ValueError):
         estimated_size_kb = None
     return {
@@ -74,9 +76,10 @@ def _registry_uninstall_entries() -> tuple[list[dict[str, Any]], list[dict[str, 
             )
         ]
     try:
-        import winreg  # type: ignore[import-not-found]
+        import winreg as _winreg  # type: ignore[import-not-found]
     except ImportError:
         return [], [_source_status("registry-uninstall", available=False, reason="winreg-unavailable")]
+    winreg: Any = _winreg
 
     roots = [
         ("HKLM", winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"),

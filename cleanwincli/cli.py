@@ -16,6 +16,7 @@ from cleanwincli.core import (
     ai_tools_report,
     build_plan,
     capabilities,
+    debloat_privacy_report_command,
     doctor_report,
     execute_plan,
     host_policy_report,
@@ -26,6 +27,7 @@ from cleanwincli.core import (
     policy_simulate,
     recovery_readiness_command,
     review_plan,
+    startup_service_inventory_command,
     validate_plan_payload,
 )
 
@@ -93,6 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
             "recovery-readiness",
             "installed-app-inventory",
             "official-command-plan",
+            "debloat-privacy-report",
+            "startup-service-inventory",
             "review-sample",
         ],
         default="catalog",
@@ -103,6 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
     subparsers.add_parser("installed-app-inventory", help="show read-only installed app inventory")
     subparsers.add_parser("official-command-plan", help="show read-only official Windows cleanup command plan")
+    subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
+    subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
 
     host_policy_parser = subparsers.add_parser("host-policy", help="show AI host allow/deny policy")
     host_policy_parser.add_argument("--validate", action="store_true")
@@ -195,6 +201,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "official-command-plan":
             emit(official_command_plan_command(), as_json=args.json)
+            return 0
+        if args.command == "debloat-privacy-report":
+            emit(debloat_privacy_report_command(), as_json=args.json)
+            return 0
+        if args.command == "startup-service-inventory":
+            emit(startup_service_inventory_command(), as_json=args.json)
             return 0
         if args.command == "host-policy":
             emit(host_policy_report(validate=args.validate), as_json=args.json)

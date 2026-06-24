@@ -99,6 +99,7 @@ Icon?
 .Trashes
 
 # Project-local generated artifacts
+.harness/
 *.log
 *.json
 !cleanwincli/rules/
