@@ -23,6 +23,25 @@ CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
 
+MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
+    ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
+    ("cleanwin://ai/readiness", "cleanwin.ai-readiness.v1"),
+    ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
+    ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
+    ("cleanwin://ai/workflow-router", "cleanwin.workflow-router.v1"),
+    ("cleanwin://ai/environment-index", "cleanwin.environment-index.v1"),
+    ("cleanwin://ai/workflow-decision", "cleanwin.workflow-decision.v1"),
+    ("cleanwin://ai/workflow-trace", "cleanwin.workflow-trace.v1"),
+    ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
+    ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
+    ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
+    ("cleanwin://plan/official-command-plan", "cleanwin.official-command-plan.v1"),
+    ("cleanwin://inventory/debloat-privacy", "cleanwin.debloat-privacy-report.v1"),
+    ("cleanwin://inventory/startup-services", "cleanwin.startup-service-inventory.v1"),
+    ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
+)
+EXPECTED_MCP_RESOURCE_URIS = ("cleanwin://ai/schema-registry", *(uri for uri, _ in MCP_RESOURCE_SCHEMAS))
+
 
 def load_json_object(text: str) -> JSONPayload:
     payload = json.loads(text)
@@ -149,24 +168,7 @@ def call_mcp_tool(
 
 @pytest.mark.parametrize(
     "uri",
-    [
-        "cleanwin://ai/host-policy",
-        "cleanwin://ai/schema-registry",
-        "cleanwin://ai/readiness",
-        "cleanwin://ai/self-test",
-        "cleanwin://ai/runbook",
-        "cleanwin://ai/workflow-router",
-        "cleanwin://ai/environment-index",
-        "cleanwin://ai/workflow-decision",
-        "cleanwin://ai/workflow-trace",
-        "cleanwin://engineering/doctor",
-        "cleanwin://engineering/recovery-readiness",
-        "cleanwin://inventory/installed-apps",
-        "cleanwin://plan/official-command-plan",
-        "cleanwin://inventory/debloat-privacy",
-        "cleanwin://inventory/startup-services",
-        "cleanwin://plan/review-sample",
-    ],
+    EXPECTED_MCP_RESOURCE_URIS,
 )
 def test_resources_list_exposes_expected_uri(uri: str, cleanwin_test_env: CleanWinTestEnv) -> None:
     listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"}, cleanwin_test_env())
@@ -182,25 +184,7 @@ def test_host_policy_resource_exposes_execute_plan_denial(cleanwin_test_env: Cle
     assert "cleanwin_execute_plan" in payload["auto_call"]["deny"]
 
 
-@pytest.mark.parametrize(
-    ("uri", "schema"),
-    [
-        ("cleanwin://ai/readiness", "cleanwin.ai-readiness.v1"),
-        ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
-        ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
-        ("cleanwin://ai/workflow-router", "cleanwin.workflow-router.v1"),
-        ("cleanwin://ai/environment-index", "cleanwin.environment-index.v1"),
-        ("cleanwin://ai/workflow-decision", "cleanwin.workflow-decision.v1"),
-        ("cleanwin://ai/workflow-trace", "cleanwin.workflow-trace.v1"),
-        ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
-        ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
-        ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
-        ("cleanwin://plan/official-command-plan", "cleanwin.official-command-plan.v1"),
-        ("cleanwin://inventory/debloat-privacy", "cleanwin.debloat-privacy-report.v1"),
-        ("cleanwin://inventory/startup-services", "cleanwin.startup-service-inventory.v1"),
-        ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
-    ],
-)
+@pytest.mark.parametrize(("uri", "schema"), MCP_RESOURCE_SCHEMAS)
 def test_resources_readiness_self_test_and_runbook(
     uri: str, schema: str, cleanwin_test_env: CleanWinTestEnv
 ) -> None:
