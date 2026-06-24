@@ -166,6 +166,24 @@ def call_mcp_tool(
     return parse_mcp_stdout(stdout, stderr)
 
 
+def mcp_tool_result(response: MCPResponse) -> JSONPayload:
+    result = response["result"]
+    assert isinstance(result, dict)
+    return result
+
+
+def mcp_success_result(response: MCPResponse) -> JSONPayload:
+    result = mcp_tool_result(response)
+    assert not result["isError"], result
+    return result
+
+
+def mcp_error_result(response: MCPResponse) -> JSONPayload:
+    result = mcp_tool_result(response)
+    assert result["isError"]
+    return result
+
+
 @pytest.mark.parametrize(
     "uri",
     EXPECTED_MCP_RESOURCE_URIS,
@@ -242,8 +260,7 @@ def test_tools_call_readonly_capabilities(cleanwin_test_env: CleanWinTestEnv) ->
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert not result["isError"]
+    result = mcp_success_result(response)
     assert result["structuredContent"]["tool"] == "cleanwin"
     assert result["governanceDecision"]["schema"] == "cleanwin.ai-host-tool-call-decision.v1"
     assert result["governanceDecision"]["allowed"]
@@ -259,8 +276,7 @@ def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert not result["isError"], result
+    result = mcp_success_result(response)
     assert result["structuredContent"]["schema"] == "cleanwin.workflow-router.v1"
     routes = {route["id"]: route for route in result["structuredContent"]["routes"]}
     assert routes["recycle-execution"]["auto_call_allowed"] is False
@@ -290,8 +306,7 @@ def test_tools_call_workflow_context_tools(
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert not result["isError"], result
+    result = mcp_success_result(response)
     assert result["structuredContent"]["schema"] == schema
 
 
@@ -308,8 +323,7 @@ def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinT
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert not result["isError"], result
+    result = mcp_success_result(response)
     assert result["structuredContent"]["schema"] == "cleanwin.inspect.v1"
     assert result["structuredContent"]["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
 
@@ -330,9 +344,7 @@ def test_tools_call_review_plan(
         env=env,
         request_id=52,
     )
-    result = response["result"]
-
-    assert not result["isError"], result
+    result = mcp_success_result(response)
     assert result["structuredContent"]["schema"] == "cleanwin.review.v1"
     assert "execution_handoff" in result["structuredContent"]
 
@@ -348,9 +360,7 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
         tmp_path, cleanwin_plan_file, cleanwin_test_env, write_text_file, make_directory
     )
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
-    result = response["result"]
-
-    assert not result["isError"], result
+    result = mcp_success_result(response)
     structured = result["structuredContent"]
     assert structured["schema"] == "cleanwin.execute.v1"
     assert not structured["executed"]
@@ -371,8 +381,7 @@ def test_raw_command_argument_denied_for_readonly_tool(cleanwin_test_env: CleanW
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert result["isError"]
+    result = mcp_error_result(response)
     assert result["structuredContent"]["schema"] == "cleanwin.mcp-tool-error.v1"
     assert result["governanceDecision"]["blocking_reasons"][0]["code"] == "RAW_COMMAND_ARGUMENT_DENIED"
 
@@ -387,8 +396,7 @@ def test_tool_call_rejects_schema_invalid_arguments(cleanwin_test_env: CleanWinT
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert result["isError"]
+    result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
     assert validation["schema"] == "cleanwin.ai-tool-argument-validation.v1"
     assert "arguments.categories must be an array" in validation["violations"]
@@ -406,8 +414,7 @@ def test_tool_call_rejects_unknown_non_raw_arguments(cleanwin_test_env: CleanWin
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert result["isError"]
+    result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
     assert "arguments.unexpected is not allowed" in validation["violations"]
 
@@ -422,8 +429,7 @@ def test_tool_call_rejects_missing_required_arguments(cleanwin_test_env: CleanWi
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert result["isError"]
+    result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
     assert "arguments.plan_file is required" in validation["violations"]
 
@@ -438,8 +444,7 @@ def test_destructive_tool_missing_gates_denied(cleanwin_test_env: CleanWinTestEn
         },
         cleanwin_test_env(),
     )
-    result = response["result"]
-    assert result["isError"]
+    result = mcp_error_result(response)
     codes = {reason["code"] for reason in result["governanceDecision"]["blocking_reasons"]}
     assert "RECYCLE_MODE_REQUIRED" in codes
     assert "OPERATION_LOG_REQUIRED" in codes
