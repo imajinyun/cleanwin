@@ -42,6 +42,9 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.ai-readiness-validation.v1", 1, "cleanwincli.ai_readiness", "stable", "ai", "cleanwin", ("ai-host", "ci")),
     ("cleanwin.ai-self-test.v1", 1, "cleanwincli.ai_self_test", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.ai-runbook.v1", 1, "cleanwincli.ai_runbook", "stable", "ai", "cleanwin", ("ai-host", "mcp")),
+    ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.installed-app-inventory.v1", 1, "cleanwincli.installed_apps", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.official-command-plan.v1", 1, "cleanwincli.official_commands", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.mcp-tool-error.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
     ("cleanwin.mcp-text-output.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
 )
@@ -187,6 +190,139 @@ def _sample_finding() -> dict[str, Any]:
     }
 
 
+def _sample_recovery_readiness() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.recovery-readiness.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "ready_for_recovery_planning": True,
+        "ready_for_system_execution": False,
+        "capabilities": [
+            {
+                "id": "system_restore_point_supported",
+                "available": True,
+                "reason": "windows-host",
+                "evidence": {"os_name": "nt", "platform": "Windows-11"},
+            }
+        ],
+        "snapshot_specs": [
+            {
+                "id": "system-restore-point",
+                "purpose": "Create an OS rollback point before service, task, policy, AppX, or Windows cleanup changes.",
+                "command": ["powershell", "-NoProfile", "Checkpoint-Computer", "-Description", "CleanWin pre-change restore point"],
+                "output_schema": "cleanwin.snapshot.system-restore-point.v1",
+                "required_before": ["windows-cleanup", "debloat", "service-change"],
+                "rollback_use": "Use Windows System Restore if a system-level change breaks Windows behavior.",
+                "executed_by_report": False,
+            }
+        ],
+        "execution_gate": {
+            "requires_recovery_snapshot": True,
+            "requires_restore_point_for_system_changes": True,
+            "requires_registry_export_for_registry_changes": True,
+            "requires_snapshot_reference_in_plan": True,
+            "system_execution_enabled": False,
+        },
+        "non_goals": ["This report does not create restore points."],
+    }
+
+
+def _sample_installed_app_inventory() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.installed-app-inventory.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "sources": [
+            {
+                "id": "registry-uninstall-hklm",
+                "available": True,
+                "reason": "registry-key-read",
+                "evidence": {"key": r"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"},
+            },
+            {
+                "id": "winget",
+                "available": False,
+                "reason": "external-command-not-executed",
+                "evidence": {"command": "winget list"},
+            },
+        ],
+        "applications": [
+            {
+                "source": "registry-uninstall",
+                "key_path": r"HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Slack",
+                "display_name": "Slack",
+                "display_version": "4.40.0",
+                "publisher": "Slack Technologies LLC",
+                "install_location": r"C:\\Users\\tester\\AppData\\Local\\slack",
+                "uninstall_string_present": True,
+                "quiet_uninstall_string_present": False,
+                "estimated_size_kb": 250000,
+                "windows_installer": False,
+                "system_component": False,
+                "release_type": "",
+                "install_date": "20260620",
+            }
+        ],
+        "leftover_correlations": [
+            {
+                "rule_id": "app-leftovers.slack.cache",
+                "owner": "Slack",
+                "state": "installed-application-present",
+                "recommendation": "skip-leftover-cleanup-until-uninstalled",
+                "leftover_path": "",
+                "matched_applications": [{"display_name": "Slack", "publisher": "Slack Technologies LLC", "source": "registry-uninstall"}],
+            }
+        ],
+        "summary": {
+            "application_count": 1,
+            "registry_application_count": 1,
+            "leftover_correlation_count": 1,
+            "potential_uninstall_leftover_count": 0,
+            "installed_application_present_count": 1,
+        },
+        "non_goals": ["This report does not uninstall applications."],
+    }
+
+
+def _sample_official_command_plan() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.official-command-plan.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "commands": [
+            {
+                "id": "windows.component-cleanup.dism-startcomponentcleanup",
+                "category": "windows-component-cleanup",
+                "owner": "Windows servicing",
+                "title": "Component store cleanup through DISM",
+                "command": ["dism.exe", "/Online", "/Cleanup-Image", "/StartComponentCleanup"],
+                "risk": "high",
+                "cleanup_surface": [r"C:\\Windows\\WinSxS"],
+                "prerequisites": ["No pending reboot", "Run from elevated terminal"],
+                "required_snapshots": ["system-restore-point", "registry-export"],
+                "review_steps": ["Use DISM instead of deleting WinSxS files directly."],
+                "executes_by_report": False,
+                "auto_executable": False,
+            }
+        ],
+        "summary": {"command_count": 1, "auto_executable_count": 0, "requires_snapshot_count": 1, "high_risk_count": 1},
+        "execution_gate": {
+            "system_execution_enabled": False,
+            "requires_human_review": True,
+            "requires_recovery_snapshot_for_system_surfaces": True,
+            "requires_elevated_terminal_for_dism": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not execute DISM, Disk Cleanup, Settings URI handlers, or Defender commands."],
+    }
+
+
 def schema_sample(schema_name: str) -> dict[str, Any] | None:
     if schema_name == "cleanwin.inspect.v1":
         return {
@@ -325,6 +461,12 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 ["make", "sdist-install-smoke"],
             ],
         }
+    if schema_name == "cleanwin.recovery-readiness.v1":
+        return _sample_recovery_readiness()
+    if schema_name == "cleanwin.installed-app-inventory.v1":
+        return _sample_installed_app_inventory()
+    if schema_name == "cleanwin.official-command-plan.v1":
+        return _sample_official_command_plan()
     return None
 
 

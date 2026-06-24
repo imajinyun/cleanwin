@@ -1,0 +1,154 @@
+"""Read-only official cleanup command planning."""
+
+from __future__ import annotations
+
+import os
+import platform
+from typing import Any
+
+OFFICIAL_COMMAND_PLAN_SCHEMA = "cleanwin.official-command-plan.v1"
+
+
+def _command_spec(
+    command_id: str,
+    *,
+    category: str,
+    owner: str,
+    title: str,
+    command: list[str],
+    risk: str,
+    cleanup_surface: list[str],
+    prerequisites: list[str],
+    required_snapshots: list[str],
+    review_steps: list[str],
+) -> dict[str, Any]:
+    return {
+        "id": command_id,
+        "category": category,
+        "owner": owner,
+        "title": title,
+        "command": command,
+        "risk": risk,
+        "cleanup_surface": cleanup_surface,
+        "prerequisites": prerequisites,
+        "required_snapshots": required_snapshots,
+        "review_steps": review_steps,
+        "executes_by_report": False,
+        "auto_executable": False,
+    }
+
+
+def official_command_plan_report() -> dict[str, Any]:
+    is_windows = os.name == "nt"
+    commands = [
+        _command_spec(
+            "windows.component-cleanup.dism-startcomponentcleanup",
+            category="windows-component-cleanup",
+            owner="Windows servicing",
+            title="Component store cleanup through DISM",
+            command=["dism.exe", "/Online", "/Cleanup-Image", "/StartComponentCleanup"],
+            risk="high",
+            cleanup_surface=[r"C:\\Windows\\WinSxS"],
+            prerequisites=["No pending reboot", "Windows Update is not actively installing", "Run from elevated terminal"],
+            required_snapshots=["system-restore-point", "registry-export"],
+            review_steps=["Check pending reboot state.", "Prefer Windows Settings or Storage Sense first.", "Do not delete WinSxS files directly."],
+        ),
+        _command_spec(
+            "windows.update-cache.storage-sense",
+            category="windows-update-cache",
+            owner="Windows Update",
+            title="Windows Update temporary files through Storage Sense",
+            command=["ms-settings:storagesense"],
+            risk="medium",
+            cleanup_surface=[r"C:\\Windows\\SoftwareDistribution\\Download"],
+            prerequisites=["Use Windows Settings UI", "Review selected temporary file classes"],
+            required_snapshots=["system-restore-point"],
+            review_steps=["Open Storage Sense or Temporary files UI.", "Select Windows Update Cleanup only after updates are healthy."],
+        ),
+        _command_spec(
+            "windows.delivery-optimization.settings",
+            category="delivery-optimization",
+            owner="Windows Delivery Optimization",
+            title="Delivery Optimization cache through Settings",
+            command=["ms-settings:delivery-optimization"],
+            risk="medium",
+            cleanup_surface=[r"C:\\ProgramData\\Microsoft\\Windows\\DeliveryOptimization"],
+            prerequisites=["Use Windows Settings UI", "Review Delivery Optimization state"],
+            required_snapshots=["system-restore-point"],
+            review_steps=["Use Windows Settings controls.", "Avoid deleting DeliveryOptimization files directly."],
+        ),
+        _command_spec(
+            "windows.wer.disk-cleanup",
+            category="windows-error-reporting",
+            owner="Windows Error Reporting",
+            title="WER reports through Disk Cleanup",
+            command=["cleanmgr.exe"],
+            risk="low",
+            cleanup_surface=[r"%LOCALAPPDATA%\\Microsoft\\Windows\\WER", r"C:\\ProgramData\\Microsoft\\Windows\\WER"],
+            prerequisites=["Review dump/report retention needs"],
+            required_snapshots=[],
+            review_steps=["Use Disk Cleanup or Storage Settings.", "Keep crash dumps if they are needed for active debugging."],
+        ),
+        _command_spec(
+            "windows.thumbnail-cache.disk-cleanup",
+            category="thumbnail-cache",
+            owner="Windows Explorer",
+            title="Thumbnail cache through Disk Cleanup",
+            command=["cleanmgr.exe"],
+            risk="low",
+            cleanup_surface=[r"%LOCALAPPDATA%\\Microsoft\\Windows\\Explorer"],
+            prerequisites=["Close File Explorer windows if possible"],
+            required_snapshots=[],
+            review_steps=["Use Disk Cleanup thumbnail option.", "Expect thumbnails to be regenerated after cleanup."],
+        ),
+        _command_spec(
+            "windows.defender.cleanup-settings",
+            category="defender-cleanup",
+            owner="Microsoft Defender",
+            title="Defender cleanup through Windows Security",
+            command=["windowsdefender:"],
+            risk="high",
+            cleanup_surface=[r"C:\\ProgramData\\Microsoft\\Windows Defender"],
+            prerequisites=["Use Windows Security UI", "Do not delete Defender platform or signature files directly"],
+            required_snapshots=["system-restore-point"],
+            review_steps=["Use Windows Security or documented Defender controls.", "Avoid interfering with active protection state."],
+        ),
+        _command_spec(
+            "windows.memory-dumps.storage-settings",
+            category="memory-dumps",
+            owner="Windows diagnostics",
+            title="Memory dump cleanup through Storage Settings",
+            command=["ms-settings:storagesense"],
+            risk="medium",
+            cleanup_surface=[r"C:\\Windows\\MEMORY.DMP", r"%LOCALAPPDATA%\\CrashDumps"],
+            prerequisites=["Confirm dump files are not needed for debugging"],
+            required_snapshots=[],
+            review_steps=["Preserve dumps for unresolved crashes.", "Use Settings or Disk Cleanup rather than direct wildcard deletion."],
+        ),
+    ]
+    return {
+        "schema": OFFICIAL_COMMAND_PLAN_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": os.name, "platform": platform.platform(), "is_windows": is_windows},
+        "commands": commands,
+        "summary": {
+            "command_count": len(commands),
+            "auto_executable_count": sum(1 for command in commands if command["auto_executable"]),
+            "requires_snapshot_count": sum(1 for command in commands if command["required_snapshots"]),
+            "high_risk_count": sum(1 for command in commands if command["risk"] == "high"),
+        },
+        "execution_gate": {
+            "system_execution_enabled": False,
+            "requires_human_review": True,
+            "requires_recovery_snapshot_for_system_surfaces": True,
+            "requires_elevated_terminal_for_dism": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": [
+            "This report does not execute DISM, Disk Cleanup, Settings URI handlers, or Defender commands.",
+            "This report does not delete Windows component, update, Defender, dump, or cache files directly.",
+            "This report does not promote Windows-owned cleanup surfaces into executable CleanWin plans.",
+        ],
+    }

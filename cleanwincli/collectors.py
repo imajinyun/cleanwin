@@ -412,6 +412,7 @@ def browser_profile_cache_roots(env: dict[str, str]) -> list[tuple[dict[str, str
             [
                 (Path(local_app_data) / "Google" / "Chrome" / "User Data", "chrome"),
                 (Path(local_app_data) / "Microsoft" / "Edge" / "User Data", "edge"),
+                (Path(local_app_data) / "BraveSoftware" / "Brave-Browser" / "User Data", "brave"),
             ]
         )
     for user_data_root, browser_key in browser_roots:

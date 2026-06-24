@@ -98,6 +98,9 @@ class CleanWinMCPServerTests(unittest.TestCase):
         self.assertIn("cleanwin://ai/self-test", uris)
         self.assertIn("cleanwin://ai/runbook", uris)
         self.assertIn("cleanwin://engineering/doctor", uris)
+        self.assertIn("cleanwin://engineering/recovery-readiness", uris)
+        self.assertIn("cleanwin://inventory/installed-apps", uris)
+        self.assertIn("cleanwin://plan/official-command-plan", uris)
         self.assertIn("cleanwin://plan/review-sample", uris)
 
         read = mcp_request(
@@ -118,6 +121,9 @@ class CleanWinMCPServerTests(unittest.TestCase):
             ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
             ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
             ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
+            ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
+            ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
+            ("cleanwin://plan/official-command-plan", "cleanwin.official-command-plan.v1"),
             ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
         ]:
             with self.subTest(uri=uri):

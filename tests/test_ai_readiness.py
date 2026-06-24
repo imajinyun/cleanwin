@@ -13,6 +13,9 @@ from cleanwincli.ai_runbook import ai_runbook_report
 from cleanwincli.ai_self_test import ai_self_test_report
 from cleanwincli.ai_versioning import schema_registry
 from cleanwincli.core import doctor_report
+from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA
+from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA
+from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -44,6 +47,9 @@ class AIReadinessTests(unittest.TestCase):
             "cleanwin.ai-readiness-validation.v1",
             "cleanwin.ai-self-test.v1",
             "cleanwin.ai-runbook.v1",
+            RECOVERY_READINESS_SCHEMA,
+            INSTALLED_APP_INVENTORY_SCHEMA,
+            OFFICIAL_COMMAND_PLAN_SCHEMA,
         ]:
             self.assertIn(required, names)
 
@@ -90,6 +96,18 @@ class AIReadinessTests(unittest.TestCase):
         self.assertTrue(doctor_payload["ready"], doctor_payload)
         self.assertFalse(doctor_payload["destructive"])
 
+        recovery = self.run_cleanwin("recovery-readiness")
+        self.assertEqual(recovery.returncode, 0, recovery.stderr)
+        self.assertEqual(json.loads(recovery.stdout)["schema"], RECOVERY_READINESS_SCHEMA)
+
+        installed_apps = self.run_cleanwin("installed-app-inventory")
+        self.assertEqual(installed_apps.returncode, 0, installed_apps.stderr)
+        self.assertEqual(json.loads(installed_apps.stdout)["schema"], INSTALLED_APP_INVENTORY_SCHEMA)
+
+        official_commands = self.run_cleanwin("official-command-plan")
+        self.assertEqual(official_commands.returncode, 0, official_commands.stderr)
+        self.assertEqual(json.loads(official_commands.stdout)["schema"], OFFICIAL_COMMAND_PLAN_SCHEMA)
+
     def test_doctor_report_checks_static_safety_and_contracts(self) -> None:
         report = doctor_report()
         self.assertEqual(report["schema"], "cleanwin.doctor.v1")
@@ -126,6 +144,9 @@ class AIReadinessTests(unittest.TestCase):
             ("self-test", "cleanwin.ai-self-test.v1"),
             ("runbook", "cleanwin.ai-runbook.v1"),
             ("doctor", "cleanwin.doctor.v1"),
+            ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
+            ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
+            ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
         ]:
             with self.subTest(provider=provider):
                 result = self.run_cleanwin("ai-tools", "--provider", provider)

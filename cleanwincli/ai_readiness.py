@@ -24,6 +24,9 @@ REQUIRED_AI_SCHEMAS = frozenset(
         "cleanwin.ai-self-test.v1",
         "cleanwin.ai-runbook.v1",
         "cleanwin.doctor.v1",
+        "cleanwin.recovery-readiness.v1",
+        "cleanwin.installed-app-inventory.v1",
+        "cleanwin.official-command-plan.v1",
         "cleanwin.filesystem-identity.v1",
     }
 )

@@ -20,8 +20,11 @@ from cleanwincli.core import (
     execute_plan,
     host_policy_report,
     inspect,
+    installed_app_inventory_command,
     load_plan,
+    official_command_plan_command,
     policy_simulate,
+    recovery_readiness_command,
     review_plan,
     validate_plan_payload,
 )
@@ -87,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
             "self-test",
             "runbook",
             "doctor",
+            "recovery-readiness",
+            "installed-app-inventory",
+            "official-command-plan",
             "review-sample",
         ],
         default="catalog",
@@ -94,6 +100,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("schema-registry", help="show machine-readable schema registry")
     subparsers.add_parser("doctor", help="run non-destructive engineering health checks")
+    subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
+    subparsers.add_parser("installed-app-inventory", help="show read-only installed app inventory")
+    subparsers.add_parser("official-command-plan", help="show read-only official Windows cleanup command plan")
 
     host_policy_parser = subparsers.add_parser("host-policy", help="show AI host allow/deny policy")
     host_policy_parser.add_argument("--validate", action="store_true")
@@ -178,6 +187,15 @@ def main(argv: list[str] | None = None) -> int:
             payload = doctor_report()
             emit(payload, as_json=args.json)
             return 0 if payload["ready"] else 2
+        if args.command == "recovery-readiness":
+            emit(recovery_readiness_command(), as_json=args.json)
+            return 0
+        if args.command == "installed-app-inventory":
+            emit(installed_app_inventory_command(), as_json=args.json)
+            return 0
+        if args.command == "official-command-plan":
+            emit(official_command_plan_command(), as_json=args.json)
+            return 0
         if args.command == "host-policy":
             emit(host_policy_report(validate=args.validate), as_json=args.json)
             return 0

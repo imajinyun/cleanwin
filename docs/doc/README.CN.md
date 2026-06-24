@@ -237,6 +237,9 @@ python3 cleanwin.py --json ai-readiness --validate
 python3 cleanwin.py --json ai-self-test
 python3 cleanwin.py --json ai-runbook
 python3 cleanwin.py --json doctor
+python3 cleanwin.py --json recovery-readiness
+python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json official-command-plan
 ```
 
 ---
@@ -297,7 +300,7 @@ cleanwin-mcp
 - 拒绝未知工具和非法参数。
 - 拒绝 raw command 参数。
 - 调用 CLI 前应用 cleanwin host-policy 检查。
-- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor` 等资源。
+- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor`、`cleanwin://engineering/recovery-readiness`、`cleanwin://inventory/installed-apps`、`cleanwin://plan/official-command-plan` 等资源。
 
 指定 MCP server 使用的 CLI 脚本或二进制：
 
@@ -338,6 +341,9 @@ python3 cleanwin.py --json capabilities
 python3 cleanwin.py --json ai-tools --provider parity
 python3 cleanwin.py --json host-policy --validate
 python3 cleanwin.py --json ai-readiness --validate
+python3 cleanwin.py --json recovery-readiness
+python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json official-command-plan
 ```
 
 安装开发依赖后：
@@ -370,6 +376,9 @@ CI 入口：
 | `cleanwincli/collectors.py` | 保守候选项和只读 finding 收集器 |
 | `cleanwincli/rule_catalog.py` | versioned 清理规则 catalog 加载与校验 |
 | `cleanwincli/rules/cleanup_rules.v1.json` | 治理化清理规则 catalog 数据 |
+| `cleanwincli/recovery.py` | 恢复 readiness 门禁与 snapshot 格式声明 |
+| `cleanwincli/installed_apps.py` | 只读已安装应用 inventory 与 leftover 关联 |
+| `cleanwincli/official_commands.py` | 只读 Windows 官方清理命令计划 |
 | `cleanwincli/protection_data.py` | Windows 安全策略数据 |
 | `cleanwincli/protection.py` | 路径和文件系统候选项校验 |
 | `cleanwincli/delete_ops.py` | 唯一破坏性出口和 recycle/permanent 路由 primitive |

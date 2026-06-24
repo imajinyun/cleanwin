@@ -378,6 +378,80 @@ class CliTests(unittest.TestCase):
             self.assertEqual(by_rule["app-leftovers.obs-studio.logs"]["path"], str(obs_logs))
             self.assertEqual(by_rule["app-leftovers.spotify.browser-cache"]["path"], str(spotify_cache))
 
+    def test_app_leftovers_scans_additional_vendor_cache_and_logs(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "LocalAppData"
+            adobe_logs = local / "Adobe" / "Creative Cloud" / "Logs"
+            adobe_logs.mkdir(parents=True)
+            (adobe_logs / "acc.log").write_text("adobe", encoding="utf-8")
+            office_telemetry = local / "Microsoft" / "Office" / "16.0" / "Telemetry"
+            office_telemetry.mkdir(parents=True)
+            (office_telemetry / "telemetry.log").write_text("office", encoding="utf-8")
+            steam_cache = local / "Steam" / "htmlcache"
+            steam_cache.mkdir(parents=True)
+            (steam_cache / "entry").write_text("steam", encoding="utf-8")
+            epic_cache = local / "EpicGamesLauncher" / "Saved" / "webcache"
+            epic_cache.mkdir(parents=True)
+            (epic_cache / "entry").write_text("epic", encoding="utf-8")
+            battlenet_cache = local / "Battle.net" / "Cache"
+            battlenet_cache.mkdir(parents=True)
+            (battlenet_cache / "entry").write_text("battle", encoding="utf-8")
+            nvidia_cache = local / "NVIDIA" / "DXCache"
+            nvidia_cache.mkdir(parents=True)
+            (nvidia_cache / "shader.bin").write_text("nvidia", encoding="utf-8")
+            amd_cache = local / "AMD" / "DxCache"
+            amd_cache.mkdir(parents=True)
+            (amd_cache / "shader.bin").write_text("amd", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={"APPDATA": str(root / "Roaming"), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+            self.assertEqual(by_rule["app-leftovers.adobe.creative-cloud.logs"]["path"], str(adobe_logs))
+            self.assertEqual(by_rule["app-leftovers.office.telemetry-logs"]["path"], str(office_telemetry))
+            self.assertEqual(by_rule["app-leftovers.steam.htmlcache"]["path"], str(steam_cache))
+            self.assertEqual(by_rule["app-leftovers.epic.webcache"]["path"], str(epic_cache))
+            self.assertEqual(by_rule["app-leftovers.battlenet.cache"]["path"], str(battlenet_cache))
+            self.assertEqual(by_rule["app-leftovers.nvidia.dxcache"]["path"], str(nvidia_cache))
+            self.assertEqual(by_rule["app-leftovers.amd.dxcache"]["path"], str(amd_cache))
+
+    def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "LocalAppData"
+            program_files = root / "ProgramFiles"
+            steam_cache = local / "Steam" / "htmlcache"
+            steam_cache.mkdir(parents=True)
+            (steam_cache / "entry").write_text("steam", encoding="utf-8")
+            steam_marker = program_files / "Steam" / "steam.exe"
+            steam_marker.parent.mkdir(parents=True)
+            steam_marker.write_text("exe", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "app-leftovers",
+                "--older-than-days",
+                "0",
+                env={
+                    "APPDATA": str(root / "Roaming"),
+                    "LOCALAPPDATA": str(local),
+                    "PROGRAMFILES": str(program_files),
+                    "USERPROFILE": str(root / "User"),
+                },
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertNotIn("app-leftovers.steam.htmlcache", {candidate["rule_id"] for candidate in payload["candidates"]})
+
     def test_app_leftovers_rule_filter_review_and_dry_run(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -484,6 +558,34 @@ class CliTests(unittest.TestCase):
             self.assertIn(str(edge_default_cache), paths)
             self.assertIn(str(firefox_cache), paths)
 
+    def test_browser_cache_discovers_brave_profile_caches(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "LocalAppData"
+            brave_cache = local / "BraveSoftware" / "Brave-Browser" / "User Data" / "Default" / "Cache"
+            brave_cache.mkdir(parents=True)
+            (brave_cache / "entry").write_text("brave", encoding="utf-8")
+            brave_code_cache = local / "BraveSoftware" / "Brave-Browser" / "User Data" / "Profile 1" / "Code Cache"
+            brave_code_cache.mkdir(parents=True)
+            (brave_code_cache / "js").write_text("brave", encoding="utf-8")
+            cookies = brave_cache.parent / "Cookies"
+            cookies.write_text("do-not-touch", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "browser-cache",
+                "--older-than-days",
+                "0",
+                env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+            self.assertEqual(by_rule["browser-cache.brave.cache"]["path"], str(brave_cache))
+            self.assertEqual(by_rule["browser-cache.brave.code-cache"]["path"], str(brave_code_cache))
+            self.assertNotIn(str(cookies), {candidate["path"] for candidate in payload["candidates"]})
+
     def test_review_plan_for_browser_cache_reports_sensitive_exclusions(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -555,6 +657,31 @@ class CliTests(unittest.TestCase):
             self.assertEqual(dry_run_payload["results"], [{"status": "dry-run", "path": str(uv_cache), "mode": "recycle"}])
             self.assertTrue(uv_cache.exists())
             self.assertTrue(winget_cache.exists())
+
+    def test_package_cache_scans_additional_developer_package_caches(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            local = root / "LocalAppData"
+            vcpkg_downloads = local / "vcpkg" / "downloads"
+            vcpkg_downloads.mkdir(parents=True)
+            (vcpkg_downloads / "archive.zip").write_text("vcpkg", encoding="utf-8")
+            pipx_cache = local / "pipx" / ".cache"
+            pipx_cache.mkdir(parents=True)
+            (pipx_cache / "wheel.whl").write_text("pipx", encoding="utf-8")
+
+            result = self.run_cleanwin(
+                "inspect",
+                "--categories",
+                "package-cache",
+                "--older-than-days",
+                "0",
+                env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "PROGRAMDATA": str(root / "ProgramData")},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+            self.assertEqual(by_rule["package-cache.vcpkg.downloads"]["path"], str(vcpkg_downloads))
+            self.assertEqual(by_rule["package-cache.pipx.cache"]["path"], str(pipx_cache))
 
     def test_inspect_rule_id_filters_dev_cache_candidates(self) -> None:
         with TemporaryDirectory() as tmp:

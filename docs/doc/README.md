@@ -237,6 +237,9 @@ python3 cleanwin.py --json ai-readiness --validate
 python3 cleanwin.py --json ai-self-test
 python3 cleanwin.py --json ai-runbook
 python3 cleanwin.py --json doctor
+python3 cleanwin.py --json recovery-readiness
+python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json official-command-plan
 ```
 
 ---
@@ -297,7 +300,7 @@ The server:
 - Rejects unknown tools and invalid arguments.
 - Denies raw command arguments.
 - Applies cleanwin host-policy checks before calling the CLI.
-- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, and `cleanwin://engineering/doctor`.
+- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, and `cleanwin://plan/official-command-plan`.
 
 To point the MCP server at a specific CLI script or binary:
 
@@ -338,6 +341,9 @@ python3 cleanwin.py --json capabilities
 python3 cleanwin.py --json ai-tools --provider parity
 python3 cleanwin.py --json host-policy --validate
 python3 cleanwin.py --json ai-readiness --validate
+python3 cleanwin.py --json recovery-readiness
+python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json official-command-plan
 ```
 
 With dev dependencies:
@@ -370,6 +376,9 @@ Governance roadmap:
 | `cleanwincli/collectors.py` | Conservative candidate and read-only finding collectors |
 | `cleanwincli/rule_catalog.py` | Versioned cleanup rule catalog loader and validation |
 | `cleanwincli/rules/cleanup_rules.v1.json` | Governed cleanup rule catalog data |
+| `cleanwincli/recovery.py` | Recovery readiness gates and snapshot format declarations |
+| `cleanwincli/installed_apps.py` | Read-only installed app inventory and leftover correlation |
+| `cleanwincli/official_commands.py` | Read-only official Windows cleanup command plans |
 | `cleanwincli/protection_data.py` | Windows safety policy data |
 | `cleanwincli/protection.py` | Path and filesystem candidate validation |
 | `cleanwincli/delete_ops.py` | Single destructive exit and recycle/permanent routing primitives |

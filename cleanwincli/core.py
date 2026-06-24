@@ -27,8 +27,11 @@ from cleanwincli.ai_versioning import negotiate_plan_schema, schema_registry
 from cleanwincli.collectors import collect_candidates, collect_findings
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
+from cleanwincli.installed_apps import installed_app_inventory_report
 from cleanwincli.models import PLAN_SCHEMA, HostContext, Plan, plan_from_dict
+from cleanwincli.official_commands import official_command_plan_report
 from cleanwincli.protection import validate_filesystem_candidate
+from cleanwincli.recovery import recovery_readiness_report
 
 
 def capabilities() -> dict[str, Any]:
@@ -547,6 +550,12 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return ai_runbook_report()
     if provider == "doctor":
         return doctor_report()
+    if provider == "recovery-readiness":
+        return recovery_readiness_report()
+    if provider == "installed-app-inventory":
+        return installed_app_inventory_report()
+    if provider == "official-command-plan":
+        return official_command_plan_report()
     if provider == "review-sample":
         sample = schema_registry().get("samples", {}).get("cleanwin.review.v1")
         if isinstance(sample, dict):
@@ -575,6 +584,18 @@ def ai_self_test_command() -> dict[str, Any]:
 
 def ai_runbook_command() -> dict[str, Any]:
     return ai_runbook_report()
+
+
+def recovery_readiness_command() -> dict[str, Any]:
+    return recovery_readiness_report()
+
+
+def installed_app_inventory_command() -> dict[str, Any]:
+    return installed_app_inventory_report()
+
+
+def official_command_plan_command() -> dict[str, Any]:
+    return official_command_plan_report()
 
 
 def policy_simulate(
