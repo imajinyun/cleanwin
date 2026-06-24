@@ -43,6 +43,9 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.ai-self-test.v1", 1, "cleanwincli.ai_self_test", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.ai-runbook.v1", 1, "cleanwincli.ai_runbook", "stable", "ai", "cleanwin", ("ai-host", "mcp")),
     ("cleanwin.workflow-router.v1", 1, "cleanwincli.workflow_router", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
+    ("cleanwin.environment-index.v1", 1, "cleanwincli.environment_index", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
+    ("cleanwin.workflow-decision.v1", 1, "cleanwincli.workflow_artifacts", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
+    ("cleanwin.workflow-trace.v1", 1, "cleanwincli.workflow_artifacts", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.backup-delete-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -862,6 +865,70 @@ def _sample_workflow_router() -> dict[str, Any]:
     }
 
 
+def _sample_environment_index() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.environment-index.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "system": "Windows", "is_windows": True, "python_version": "3.12.0"},
+        "cleanwin": {
+            "version": "0.1.0",
+            "test_mode": False,
+            "entrypoints": [
+                {"name": "cleanwin", "available": True, "path": r"C:\Tools\cleanwin.exe", "executes_by_report": False},
+                {"name": "cleanwin-mcp", "available": True, "path": r"C:\Tools\cleanwin-mcp.exe", "executes_by_report": False},
+            ],
+        },
+        "capabilities": [
+            {"id": "read-only-inventory", "available": True, "reason": "pure-python-readonly-reports", "routes": ["discover-capabilities", "read-only-inventory"]},
+            {"id": "windows-recycle-execution", "available": True, "reason": "windows-host", "routes": ["recycle-execution"]},
+        ],
+        "operation_log": {"default_path": r"C:\Users\tester\.cleanwin\operations.jsonl", "parent_exists": True, "write_checked": False, "required_for_execution": True},
+        "fail_closed": ["non-windows recycle execution without CLEANWIN_TEST_MODE", "permanent delete route is not exposed"],
+        "non_goals": ["This report does not install tools.", "This report does not execute cleanup."],
+    }
+
+
+def _sample_workflow_decision() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.workflow-decision.v1",
+        "allowed": False,
+        "route_id": "recycle-execution",
+        "requested_tool": "cleanwin_execute_plan",
+        "risk": "destructive",
+        "destructive": True,
+        "auto_call_allowed": False,
+        "allowed_tools": ["cleanwin_execute_plan"],
+        "provided_artifacts": [],
+        "required_artifacts": ["validated plan", "human review", "policy simulation allow decision", "matching dry-run confirmation token", "operation log path"],
+        "missing_artifacts": ["validated plan", "human review", "policy simulation allow decision", "matching dry-run confirmation token", "operation log path"],
+        "blocking_reasons": [
+            {"code": "MISSING_REQUIRED_ARTIFACTS", "detail": "validated plan, human review, policy simulation allow decision, matching dry-run confirmation token, operation log path"},
+            {"code": "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES", "detail": "Destructive routes are not auto-callable and require explicit execution gates."},
+        ],
+    }
+
+
+def _sample_workflow_trace() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.workflow-trace.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "purpose": "Describe the auditable artifact chain expected for a CleanWin AI/MCP workflow.",
+        "artifact_chain": [
+            {"step": 1, "route": "discover-capabilities", "artifact_schema": "cleanwin.workflow-router.v1", "required": True},
+            {"step": 2, "route": "read-only-inventory", "artifact_schema": "cleanwin.inspect.v1", "required": True},
+            {"step": 3, "route": "plan-cleanup", "artifact_schema": "cleanwin.plan.v1", "required": True},
+            {"step": 4, "route": "validate-and-review", "artifact_schema": "cleanwin.review.v1", "required": True},
+            {"step": 5, "route": "dry-run-execution", "artifact_schema": "cleanwin.ai-confirmation-summary.v1", "required": True},
+        ],
+        "execution_gate": {"requires_all_prior_artifacts": True, "requires_matching_dry_run_token": True, "requires_operation_log": True, "ai_auto_call_allowed": False},
+        "non_goals": ["This report does not read local artifact files.", "This report does not execute cleanup."],
+    }
+
+
 def schema_sample(schema_name: str) -> dict[str, Any] | None:
     if schema_name == "cleanwin.inspect.v1":
         return {
@@ -1042,6 +1109,12 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_windows_smoke_matrix()
     if schema_name == "cleanwin.workflow-router.v1":
         return _sample_workflow_router()
+    if schema_name == "cleanwin.environment-index.v1":
+        return _sample_environment_index()
+    if schema_name == "cleanwin.workflow-decision.v1":
+        return _sample_workflow_decision()
+    if schema_name == "cleanwin.workflow-trace.v1":
+        return _sample_workflow_trace()
     return None
 
 

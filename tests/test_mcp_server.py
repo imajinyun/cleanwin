@@ -30,15 +30,20 @@ def mcp_env() -> dict[str, str]:
     return env
 
 
+def load_json_object(text: str) -> JSONPayload:
+    payload = json.loads(text)
+    assert isinstance(payload, dict)
+    return payload
+
+
 def parse_mcp_stdout(stdout: str, stderr: str) -> MCPResponse:
     lines = [line for line in stdout.splitlines() if line.strip()]
     if not lines:
         raise RuntimeError(f"empty MCP stdout; stderr={stderr}")
     try:
-        response = json.loads(lines[0])
+        response = load_json_object(lines[0])
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"invalid MCP JSON response: {lines[0]!r}; stderr={stderr}") from exc
-    assert isinstance(response, dict)
     return response
 
 
@@ -84,10 +89,14 @@ def persistent_mcp_request(request: MCPRequest) -> MCPResponse:
         proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": 999, "method": "shutdown"}) + "\n")
         proc.stdin.flush()
         proc.communicate(timeout=5)
-        return json.loads(line)
+        return load_json_object(line)
     proc.kill()
     stdout, stderr = proc.communicate(timeout=5)
     raise RuntimeError(f"empty persistent MCP response; stdout={stdout}; stderr={stderr}")
+
+
+def mcp_content_json(response: MCPResponse) -> JSONPayload:
+    return load_json_object(response["result"]["contents"][0]["text"])
 
 
 def read_mcp_resource(uri: str) -> JSONPayload:
@@ -99,7 +108,7 @@ def read_mcp_resource(uri: str) -> JSONPayload:
             "params": {"uri": uri},
         }
     )
-    return json.loads(read["result"]["contents"][0]["text"])
+    return mcp_content_json(read)
 
 
 def generate_temp_plan(
@@ -151,6 +160,9 @@ def call_mcp_tool(
         "cleanwin://ai/self-test",
         "cleanwin://ai/runbook",
         "cleanwin://ai/workflow-router",
+        "cleanwin://ai/environment-index",
+        "cleanwin://ai/workflow-decision",
+        "cleanwin://ai/workflow-trace",
         "cleanwin://engineering/doctor",
         "cleanwin://engineering/recovery-readiness",
         "cleanwin://inventory/installed-apps",
@@ -181,6 +193,9 @@ def test_host_policy_resource_exposes_execute_plan_denial() -> None:
         ("cleanwin://ai/self-test", "cleanwin.ai-self-test.v1"),
         ("cleanwin://ai/runbook", "cleanwin.ai-runbook.v1"),
         ("cleanwin://ai/workflow-router", "cleanwin.workflow-router.v1"),
+        ("cleanwin://ai/environment-index", "cleanwin.environment-index.v1"),
+        ("cleanwin://ai/workflow-decision", "cleanwin.workflow-decision.v1"),
+        ("cleanwin://ai/workflow-trace", "cleanwin.workflow-trace.v1"),
         ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
         ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
         ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
@@ -206,11 +221,17 @@ def test_initialize_and_tools_list() -> None:
     names = {tool["name"] for tool in tools}
     assert "cleanwin_capabilities" in names
     assert "cleanwin_workflow_router" in names
+    assert "cleanwin_environment_index" in names
+    assert "cleanwin_workflow_decision" in names
+    assert "cleanwin_workflow_trace" in names
     assert "cleanwin_execute_plan" in names
     assert "cleanwin_review_plan" in names
     tool_by_name = {tool["name"]: tool for tool in tools}
     assert tool_by_name["cleanwin_capabilities"]["annotations"]["readOnlyHint"]
     assert tool_by_name["cleanwin_workflow_router"]["annotations"]["readOnlyHint"]
+    assert tool_by_name["cleanwin_environment_index"]["annotations"]["readOnlyHint"]
+    assert tool_by_name["cleanwin_workflow_decision"]["annotations"]["readOnlyHint"]
+    assert tool_by_name["cleanwin_workflow_trace"]["annotations"]["readOnlyHint"]
     assert tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"]
 
 
@@ -223,7 +244,7 @@ def test_resources_read_responds_before_persistent_stdin_eof() -> None:
             "params": {"uri": "cleanwin://ai/runbook"},
         }
     )
-    payload = json.loads(read["result"]["contents"][0]["text"])
+    payload = mcp_content_json(read)
     assert payload["schema"] == "cleanwin.ai-runbook.v1"
 
 
@@ -257,6 +278,32 @@ def test_tools_call_workflow_router() -> None:
     assert result["structuredContent"]["schema"] == "cleanwin.workflow-router.v1"
     routes = {route["id"]: route for route in result["structuredContent"]["routes"]}
     assert routes["recycle-execution"]["auto_call_allowed"] is False
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments", "schema"),
+    [
+        ("cleanwin_environment_index", {}, "cleanwin.environment-index.v1"),
+        (
+            "cleanwin_workflow_decision",
+            {"route_id": "recycle-execution", "requested_tool": "cleanwin_execute_plan"},
+            "cleanwin.workflow-decision.v1",
+        ),
+        ("cleanwin_workflow_trace", {}, "cleanwin.workflow-trace.v1"),
+    ],
+)
+def test_tools_call_workflow_context_tools(tool: str, arguments: JSONPayload, schema: str) -> None:
+    response = mcp_request(
+        {
+            "jsonrpc": "2.0",
+            "id": 54,
+            "method": "tools/call",
+            "params": {"name": tool, "arguments": arguments},
+        }
+    )
+    result = response["result"]
+    assert not result["isError"], result
+    assert result["structuredContent"]["schema"] == schema
 
 
 def test_tools_call_inspect_supports_rule_id_filter() -> None:

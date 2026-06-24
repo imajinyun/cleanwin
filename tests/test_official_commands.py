@@ -7,6 +7,7 @@ from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA, official
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution() -> None:
@@ -64,9 +65,7 @@ def test_official_commands_include_structured_non_executable_action_contracts() 
     assert "recovery-readiness" in dism_contract["blocked_without"]
 
 
-def test_cli_and_ai_provider_expose_official_command_plan(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("official-command-plan")
-    assert cli["schema"] == OFFICIAL_COMMAND_PLAN_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "official-command-plan")
-    assert provider["schema"] == OFFICIAL_COMMAND_PLAN_SCHEMA
+def test_cli_and_ai_provider_expose_official_command_plan(
+    assert_cli_provider_schema: AssertCliProviderSchema,
+) -> None:
+    assert_cli_provider_schema("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA)

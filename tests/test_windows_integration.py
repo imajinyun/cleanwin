@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,11 +10,11 @@ from cleanwincli.delete_ops import safe_delete
 from cleanwincli.identity import capture_filesystem_identity
 
 pytestmark = pytest.mark.skipif(os.name != "nt", reason="Windows integration tests require Windows")
+WriteTextFile = Callable[[Path, str], Path]
 
 
-def test_native_identity_reports_windows_fields(tmp_path: Path) -> None:
-    target = tmp_path / "candidate.tmp"
-    target.write_text("x", encoding="utf-8")
+def test_native_identity_reports_windows_fields(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
     assert identity["windows_native_available"], identity
@@ -26,9 +27,8 @@ def test_native_identity_reports_windows_fields(tmp_path: Path) -> None:
     os.environ.get("CLEANWIN_RUN_WINDOWS_RECYCLE_INTEGRATION") != "1",
     reason="real Windows recycle integration is opt-in",
 )
-def test_real_windows_recycle_bin_smoke(tmp_path: Path) -> None:
-    target = tmp_path / "candidate.tmp"
-    target.write_text("x", encoding="utf-8")
+def test_real_windows_recycle_bin_smoke(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
     result = safe_delete(str(target), dry_run=False, mode="recycle", expected_identity=identity)

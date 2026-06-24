@@ -26,7 +26,7 @@ python3 cleanwin.py --json plan --categories temp,dev-cache,app-leftovers --olde
 python3 cleanwin.py --json validate-plan --plan-file /tmp/cleanwin-plan.json
 python3 cleanwin.py --json review-plan --plan-file /tmp/cleanwin-plan.json
 
-# 🤖 AI tool definitions (9 tools)
+# 🤖 AI tool definitions (12 tools)
 python3 cleanwin.py --json ai-tools --provider anthropic
 
 # 🏗️ MCP stdio server
@@ -46,7 +46,7 @@ python3 -m cleanwincli.mcp_server
 | 🗑️ **Uninstall leftover cleanup** | Expands safe cleanup for reviewed common app cache/log leftovers after uninstall |
 | ♻️ **Recycle by default** | Real cleanup routes to Windows Recycle Bin; non-Windows execution fails closed outside test mode |
 | 🧾 **Plan contract** | `cleanwin.plan.v1` captures source fingerprint, host/user context, rule metadata, and filesystem identity |
-| 🤖 **AI-native · 9 tools** | Provider exports for Anthropic / OpenAI plus workflow routing, host-policy simulation, and readiness reports |
+| 🤖 **AI-native · 12 tools** | Provider exports for Anthropic / OpenAI plus workflow routing, environment indexing, host-policy simulation, and readiness reports |
 | 🏗️ **MCP Server** | Built-in Model Context Protocol stdio server with structured tool arguments only |
 | 🔐 **Multi-layer gates** | Confirmation phrase, dry-run token, operation log, context validation, and single deletion exit |
 | 📦 **Zero deps** | Pure Python 3.10+, no runtime dependencies |

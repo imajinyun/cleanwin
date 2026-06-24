@@ -1,12 +1,29 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_rule_catalog
 
 
-def test_cleanup_rule_catalog_loads_versioned_rules() -> None:
-    catalog = cleanup_rule_catalog()
+@pytest.fixture
+def rule_catalog() -> dict[str, Any]:
+    return cleanup_rule_catalog()
+
+
+def catalog_rules(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        *catalog["dev_cache_rules"],
+        *catalog["package_cache_rules"],
+        *catalog["browser_cache_rules"],
+        *catalog["app_leftover_rules"],
+        *catalog["browser_profile_cache_rules"].values(),
+    ]
+
+
+def test_cleanup_rule_catalog_loads_versioned_rules(rule_catalog: dict[str, Any]) -> None:
+    catalog = rule_catalog
 
     assert catalog["schema"] == CATALOG_SCHEMA
     assert catalog["version"] == "1"
@@ -16,18 +33,9 @@ def test_cleanup_rule_catalog_loads_versioned_rules() -> None:
     assert any(rule["rule_id"] == "app-leftovers.vscode.cached-data" for rule in catalog["app_leftover_rules"])
 
 
-def test_cleanup_rule_catalog_expanded_rules_stay_low_risk_and_reviewable() -> None:
-    catalog = cleanup_rule_catalog()
-    rules = [
-        *catalog["dev_cache_rules"],
-        *catalog["package_cache_rules"],
-        *catalog["browser_cache_rules"],
-        *catalog["app_leftover_rules"],
-        *catalog["browser_profile_cache_rules"].values(),
-    ]
-    by_rule = {rule["rule_id"]: rule for rule in rules}
-
-    for rule_id in (
+@pytest.mark.parametrize(
+    "rule_id",
+    [
         "dev-cache.poetry.cache",
         "dev-cache.pipenv.cache",
         "dev-cache.pre-commit.cache",
@@ -35,19 +43,27 @@ def test_cleanup_rule_catalog_expanded_rules_stay_low_risk_and_reviewable() -> N
         "app-leftovers.teams-classic.gpu-cache",
         "app-leftovers.discord.gpu-cache",
         "app-leftovers.vscode.gpu-cache",
-    ):
-        rule = by_rule[rule_id]
-        assert rule["official_cleanup_command"]
-        assert "regenerated" in rule["rationale"].lower() or "recreated" in rule["rationale"].lower()
+    ],
+)
+def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
+    rule_id: str,
+    rule_catalog: dict[str, Any],
+) -> None:
+    rule = {rule["rule_id"]: rule for rule in catalog_rules(rule_catalog)}[rule_id]
+    assert rule["official_cleanup_command"]
+    assert "regenerated" in rule["rationale"].lower() or "recreated" in rule["rationale"].lower()
 
+
+def test_cleanup_rule_catalog_expanded_rules_avoid_unsafe_default_segments(rule_catalog: dict[str, Any]) -> None:
+    rules = catalog_rules(rule_catalog)
     unsafe_segments = {"documents", "desktop", "cookies", "login data", "sessions", "extensions", "history"}
     for rule in rules:
         default_segments = {segment.strip().lower() for segment in str(rule.get("default", "")).replace("\\", "/").split("/")}
         assert not (default_segments & unsafe_segments), rule["rule_id"]
 
 
-def test_cleanup_rule_catalog_rule_ids_are_unique() -> None:
-    catalog = cleanup_rule_catalog()
+def test_cleanup_rule_catalog_rule_ids_are_unique(rule_catalog: dict[str, Any]) -> None:
+    catalog = rule_catalog
     rule_ids: list[str] = []
     for section in ("dev_cache_rules", "package_cache_rules", "browser_cache_rules", "app_leftover_rules"):
         rule_ids.extend(rule["rule_id"] for rule in catalog[section])

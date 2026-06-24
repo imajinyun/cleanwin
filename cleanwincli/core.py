@@ -28,6 +28,7 @@ from cleanwincli.browser_inventory import browser_profile_inventory_report
 from cleanwincli.collectors import collect_candidates, collect_findings
 from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
+from cleanwincli.environment_index import environment_index_report
 from cleanwincli.execution_contracts import (
     backup_delete_contract_report,
     disable_revert_contract_report,
@@ -46,6 +47,7 @@ from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
+from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
 
 
@@ -578,6 +580,12 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return ai_runbook_report()
     if provider == "workflow-router":
         return workflow_router_report()
+    if provider == "environment-index":
+        return environment_index_report()
+    if provider == "workflow-decision":
+        return workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan")
+    if provider == "workflow-trace":
+        return workflow_trace_report()
     if provider == "doctor":
         return doctor_report()
     if provider == "file-report":
@@ -642,6 +650,23 @@ def ai_runbook_command() -> dict[str, Any]:
 
 def workflow_router_command() -> dict[str, Any]:
     return workflow_router_report()
+
+
+def environment_index_command() -> dict[str, Any]:
+    return environment_index_report()
+
+
+def workflow_decision_command(
+    *,
+    route_id: str,
+    requested_tool: str | None = None,
+    artifacts: list[str] | None = None,
+) -> dict[str, Any]:
+    return workflow_decision_report(route_id=route_id, requested_tool=requested_tool, artifacts=artifacts or [])
+
+
+def workflow_trace_command() -> dict[str, Any]:
+    return workflow_trace_report()
 
 
 def recovery_readiness_command() -> dict[str, Any]:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,8 @@ from cleanwincli.protection import (
     validate_filesystem_candidate,
     validate_path_text,
 )
+
+WriteTextFile = Callable[[Path, str], Path]
 
 
 def dangerous_windows_paths() -> list[str]:
@@ -35,9 +38,8 @@ def test_registry_protected_prefixes_are_report_only() -> None:
     assert is_protected_registry_key(r"HKCU\Software\ExampleVendor\Cache") is False
 
 
-def test_symlink_candidate_is_rejected(tmp_path: Path) -> None:
-    target = tmp_path / "target"
-    target.mkdir()
+def test_symlink_candidate_is_rejected(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+    target = write_text_file(tmp_path / "target" / "entry", "x").parent
     link = tmp_path / "link"
     try:
         link.symlink_to(target, target_is_directory=True)

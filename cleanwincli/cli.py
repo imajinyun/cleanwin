@@ -21,6 +21,7 @@ from cleanwincli.core import (
     debloat_privacy_report_command,
     disable_revert_contract_command,
     doctor_report,
+    environment_index_command,
     execute_plan,
     file_report_command,
     host_policy_report,
@@ -39,7 +40,9 @@ from cleanwincli.core import (
     system_health_report_command,
     validate_plan_payload,
     windows_smoke_matrix_command,
+    workflow_decision_command,
     workflow_router_command,
+    workflow_trace_command,
 )
 
 
@@ -103,6 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
             "self-test",
             "runbook",
             "workflow-router",
+            "environment-index",
+            "workflow-decision",
+            "workflow-trace",
             "doctor",
             "backup-delete-contract",
             "file-report",
@@ -151,6 +157,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("ai-self-test", help="run deterministic AI host self-test checks")
     subparsers.add_parser("ai-runbook", help="show safe AI/MCP host runbook")
     subparsers.add_parser("workflow-router", help="show AI-safe workflow routing contract")
+    subparsers.add_parser("environment-index", help="show read-only host capability index")
+    subparsers.add_parser("workflow-trace", help="show expected AI workflow artifact chain")
+
+    workflow_decision_parser = subparsers.add_parser("workflow-decision", help="validate a requested workflow route/tool decision")
+    workflow_decision_parser.add_argument("--route-id", required=True)
+    workflow_decision_parser.add_argument("--requested-tool")
+    workflow_decision_parser.add_argument("--artifact", action="append", default=[], help="artifact already produced by earlier workflow steps; may be repeated")
 
     simulate_parser = subparsers.add_parser("policy-simulate", help="simulate AI host execution policy")
     simulate_parser.add_argument("--plan-file", required=True)
@@ -285,6 +298,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "workflow-router":
             emit(workflow_router_command(), as_json=args.json)
+            return 0
+        if args.command == "environment-index":
+            emit(environment_index_command(), as_json=args.json)
+            return 0
+        if args.command == "workflow-decision":
+            emit(
+                workflow_decision_command(route_id=args.route_id, requested_tool=args.requested_tool, artifacts=args.artifact),
+                as_json=args.json,
+            )
+            return 0
+        if args.command == "workflow-trace":
+            emit(workflow_trace_command(), as_json=args.json)
             return 0
         if args.command == "policy-simulate":
             plan, raw = load_plan(Path(args.plan_file))

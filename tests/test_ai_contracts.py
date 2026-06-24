@@ -5,6 +5,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import (
     AI_TOOL_DEFINITIONS,
@@ -13,7 +15,6 @@ from cleanwincli.ai_schema import (
     validate_ai_schema,
     validate_tool_arguments,
 )
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
@@ -21,13 +22,17 @@ CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
+AssertSchemasRegistered = Callable[[list[str]], None]
+AssertSchemaSample = Callable[[str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertReadonlySchemaSample = Callable[[str], JSONPayload]
+AssertNoUnittestCommands = Callable[[list[list[str]]], None]
 
-
-def require_schema_sample(name: str) -> dict[str, Any]:
-    sample = schema_sample(name)
-    if sample is None:
-        raise AssertionError(f"missing schema sample: {name}")
-    return sample
+READONLY_WORKFLOW_CONTEXT_TOOLS = [
+    "cleanwin_environment_index",
+    "cleanwin_workflow_decision",
+    "cleanwin_workflow_trace",
+]
 
 
 def test_ai_schema_validation_and_provider_parity() -> None:
@@ -39,54 +44,61 @@ def test_ai_schema_validation_and_provider_parity() -> None:
     assert destructive[0]["requires_confirmation"] is True
 
 
-def test_schema_registry_includes_ai_host_critical_schemas() -> None:
-    names = {entry["name"] for entry in schema_registry()["entries"]}
-    for required in [
-        "cleanwin.plan.v1",
-        "cleanwin.ai-tools.v1",
-        "cleanwin.ai-host-policy.v1",
-        "cleanwin.ai-host-tool-call-decision.v1",
-        "cleanwin.ai-tool-argument-validation.v1",
-        "cleanwin.ai-policy-simulation.v1",
-        "cleanwin.workflow-router.v1",
-        "cleanwin.review.v1",
-        "cleanwin.doctor.v1",
-    ]:
-        assert required in names
+def test_schema_registry_includes_ai_host_critical_schemas(
+    assert_schemas_registered: AssertSchemasRegistered,
+) -> None:
+    assert_schemas_registered(
+        [
+            "cleanwin.plan.v1",
+            "cleanwin.ai-tools.v1",
+            "cleanwin.ai-host-policy.v1",
+            "cleanwin.ai-host-tool-call-decision.v1",
+            "cleanwin.ai-tool-argument-validation.v1",
+            "cleanwin.ai-policy-simulation.v1",
+            "cleanwin.workflow-router.v1",
+            "cleanwin.environment-index.v1",
+            "cleanwin.workflow-decision.v1",
+            "cleanwin.workflow-trace.v1",
+            "cleanwin.review.v1",
+            "cleanwin.doctor.v1",
+        ]
+    )
 
 
-def test_schema_samples_include_rule_metadata_and_review_details() -> None:
-    inspect_sample = require_schema_sample("cleanwin.inspect.v1")
+def test_schema_samples_include_rule_metadata_and_review_details(
+    assert_schema_sample: AssertSchemaSample,
+    assert_readonly_schema_sample: AssertReadonlySchemaSample,
+    assert_no_unittest_commands: AssertNoUnittestCommands,
+) -> None:
+    inspect_sample = assert_schema_sample("cleanwin.inspect.v1")
     assert inspect_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
     assert inspect_sample["candidates"][0]["cache_owner"] == "npm"
     assert "official_cleanup_command" in inspect_sample["candidates"][0]
     assert "review_details" in inspect_sample["findings"][0]
 
-    plan_sample = require_schema_sample("cleanwin.plan.v1")
+    plan_sample = assert_schema_sample("cleanwin.plan.v1")
     assert plan_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
     assert plan_sample["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
-    execute_sample = require_schema_sample("cleanwin.execute.v1")
+    execute_sample = assert_schema_sample("cleanwin.execute.v1")
     assert execute_sample["schema"] == "cleanwin.execute.v1"
     assert execute_sample["dry_run"] is True
     assert execute_sample["results"][0]["status"] == "dry-run"
     assert "confirmation_token" in execute_sample["confirmation"]
 
-    doctor_sample = require_schema_sample("cleanwin.doctor.v1")
+    doctor_sample = assert_readonly_schema_sample("cleanwin.doctor.v1")
     assert doctor_sample["schema"] == "cleanwin.doctor.v1"
-    assert doctor_sample["destructive"] is False
     assert "recommended_commands" in doctor_sample
     assert ["make", "pytest"] in doctor_sample["recommended_commands"]
     assert ["make", "quality"] in doctor_sample["recommended_commands"]
-    assert not any(command[:3] == ["python3", "-m", "unittest"] for command in doctor_sample["recommended_commands"])
+    assert_no_unittest_commands(doctor_sample["recommended_commands"])
 
-    review_sample = require_schema_sample("cleanwin.review.v1")
+    review_sample = assert_readonly_schema_sample("cleanwin.review.v1")
     assert review_sample["schema"] == "cleanwin.review.v1"
-    assert review_sample["destructive"] is False
     assert "execution_handoff" in review_sample
     assert "sensitive_exclusions" in review_sample
 
-    argument_validation_sample = require_schema_sample("cleanwin.ai-tool-argument-validation.v1")
+    argument_validation_sample = assert_schema_sample("cleanwin.ai-tool-argument-validation.v1")
     assert argument_validation_sample["schema"] == "cleanwin.ai-tool-argument-validation.v1"
     assert argument_validation_sample["valid"] is False
 
@@ -106,8 +118,22 @@ def test_ai_tools_expose_readonly_workflow_router() -> None:
     assert router["parameters"]["additionalProperties"] is False
 
 
-def test_workflow_router_sample_keeps_execution_non_auto_callable() -> None:
-    sample = require_schema_sample("cleanwin.workflow-router.v1")
+@pytest.mark.parametrize("tool_name", READONLY_WORKFLOW_CONTEXT_TOOLS)
+def test_ai_tools_expose_readonly_workflow_context_tools(tool_name: str) -> None:
+    by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
+    tool = by_name[tool_name]
+    assert tool["risk"] == "readonly"
+    assert tool["auto_call_allowed"] is True
+    assert tool["requires_confirmation"] is False
+
+
+def test_workflow_decision_tool_requires_route_id() -> None:
+    by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
+    assert "route_id" in by_name["cleanwin_workflow_decision"]["parameters"]["required"]
+
+
+def test_workflow_router_sample_keeps_execution_non_auto_callable(assert_schema_sample: AssertSchemaSample) -> None:
+    sample = assert_schema_sample("cleanwin.workflow-router.v1")
     assert sample["schema"] == "cleanwin.workflow-router.v1"
     assert sample["destructive"] is False
     execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
@@ -117,8 +143,26 @@ def test_workflow_router_sample_keeps_execution_non_auto_callable() -> None:
     assert "raw shell command" in execution_route["blocked_actions"]
 
 
-def test_schema_samples_cover_package_and_browser_cache_categories() -> None:
-    inspect_sample = require_schema_sample("cleanwin.inspect.v1")
+def test_workflow_context_schema_samples_are_registered(
+    assert_readonly_schema_sample: AssertReadonlySchemaSample,
+    assert_schema_samples: AssertSchemaSamples,
+) -> None:
+    environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
+    assert environment["schema"] == "cleanwin.environment-index.v1"
+    assert environment["operation_log"]["required_for_execution"] is True
+
+    samples = assert_schema_samples(["cleanwin.workflow-decision.v1", "cleanwin.workflow-trace.v1"])
+    decision = samples["cleanwin.workflow-decision.v1"]
+    assert decision["schema"] == "cleanwin.workflow-decision.v1"
+    assert decision["allowed"] is False
+
+    trace = samples["cleanwin.workflow-trace.v1"]
+    assert trace["schema"] == "cleanwin.workflow-trace.v1"
+    assert trace["execution_gate"]["ai_auto_call_allowed"] is False
+
+
+def test_schema_samples_cover_package_and_browser_cache_categories(assert_schema_sample: AssertSchemaSample) -> None:
+    inspect_sample = assert_schema_sample("cleanwin.inspect.v1")
     assert "browser-cache" in inspect_sample["categories"]
     assert "package-cache" in inspect_sample["categories"]
     candidate_categories = {candidate["category"] for candidate in inspect_sample["candidates"]}

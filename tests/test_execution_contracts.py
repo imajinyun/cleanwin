@@ -3,9 +3,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
+import pytest
+
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import tool_catalog
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 from cleanwincli.execution_contracts import (
     BACKUP_DELETE_CONTRACT_SCHEMA,
     DISABLE_REVERT_CONTRACT_SCHEMA,
@@ -17,6 +18,8 @@ from cleanwincli.execution_contracts import (
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSample = Callable[[str], JSONPayload]
 
 
 def test_disable_revert_contract_is_non_executable() -> None:
@@ -48,20 +51,6 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata() -> Non
     assert all(contract["auto_executable"] is False for contract in report["action_contracts"])
 
 
-def test_cli_provider_and_schema_registry_expose_disable_revert_contract(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("disable-revert-contract")
-    assert cli["schema"] == DISABLE_REVERT_CONTRACT_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "disable-revert-contract")
-    assert provider["schema"] == DISABLE_REVERT_CONTRACT_SCHEMA
-
-    registry = schema_registry()
-    assert DISABLE_REVERT_CONTRACT_SCHEMA in {entry["name"] for entry in registry["entries"]}
-    sample = schema_sample(DISABLE_REVERT_CONTRACT_SCHEMA)
-    assert sample is not None
-    assert sample["schema"] == DISABLE_REVERT_CONTRACT_SCHEMA
-
-
 def test_backup_delete_contract_requires_backup_identity_and_audit_refs() -> None:
     report = backup_delete_contract_report()
 
@@ -82,20 +71,6 @@ def test_backup_delete_contract_requires_backup_identity_and_audit_refs() -> Non
     assert "operation_log_ref" in by_id["backup-delete.registry-key"]["required_audit_refs"]
     assert all(scope["execution_enabled"] is False for scope in report["backup_scopes"])
     assert all(scope["auto_executable"] is False for scope in report["backup_scopes"])
-
-
-def test_cli_provider_and_schema_registry_expose_backup_delete_contract(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("backup-delete-contract")
-    assert cli["schema"] == BACKUP_DELETE_CONTRACT_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "backup-delete-contract")
-    assert provider["schema"] == BACKUP_DELETE_CONTRACT_SCHEMA
-
-    registry = schema_registry()
-    assert BACKUP_DELETE_CONTRACT_SCHEMA in {entry["name"] for entry in registry["entries"]}
-    sample = schema_sample(BACKUP_DELETE_CONTRACT_SCHEMA)
-    assert sample is not None
-    assert sample["schema"] == BACKUP_DELETE_CONTRACT_SCHEMA
 
 
 def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled() -> None:
@@ -120,19 +95,24 @@ def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled() -
     assert report["current_enforcement"]["delete_ops_requires_allow_permanent_true"] is True
 
 
-def test_cli_provider_and_schema_registry_expose_permanent_delete_denial(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("permanent-delete-denial")
-    assert cli["schema"] == PERMANENT_DELETE_DENIAL_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "permanent-delete-denial")
-    assert provider["schema"] == PERMANENT_DELETE_DENIAL_SCHEMA
-
-    registry = schema_registry()
-    assert PERMANENT_DELETE_DENIAL_SCHEMA in {entry["name"] for entry in registry["entries"]}
-    sample = schema_sample(PERMANENT_DELETE_DENIAL_SCHEMA)
-    assert sample is not None
-    assert sample["schema"] == PERMANENT_DELETE_DENIAL_SCHEMA
-    assert sample["capability"]["execution_enabled"] is False
+@pytest.mark.parametrize(
+    ("command", "schema"),
+    [
+        ("disable-revert-contract", DISABLE_REVERT_CONTRACT_SCHEMA),
+        ("backup-delete-contract", BACKUP_DELETE_CONTRACT_SCHEMA),
+        ("permanent-delete-denial", PERMANENT_DELETE_DENIAL_SCHEMA),
+    ],
+)
+def test_cli_provider_and_schema_registry_expose_execution_contracts(
+    command: str,
+    schema: str,
+    assert_cli_provider_schema: AssertCliProviderSchema,
+    assert_schema_sample: AssertSchemaSample,
+) -> None:
+    assert_cli_provider_schema(command, schema)
+    sample = assert_schema_sample(schema)
+    if schema == PERMANENT_DELETE_DENIAL_SCHEMA:
+        assert sample["capability"]["execution_enabled"] is False
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete() -> None:

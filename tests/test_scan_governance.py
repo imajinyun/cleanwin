@@ -3,11 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 from cleanwincli.scan_governance import SCAN_GOVERNANCE_SCHEMA, scan_governance_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 
 
 def test_scan_governance_is_read_only_and_release_gated() -> None:
@@ -41,20 +42,9 @@ def test_scan_budgets_and_external_rule_contract_block_unsafe_imports() -> None:
     assert "promotion-gate approval" in contract["promotion_requirements"]
 
 
-def test_cli_provider_and_schema_registry_expose_scan_governance(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("scan-governance")
-    assert cli["schema"] == SCAN_GOVERNANCE_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "scan-governance")
-    assert provider["schema"] == SCAN_GOVERNANCE_SCHEMA
-
-    registry = schema_registry()
-    names = {entry["name"] for entry in registry["entries"]}
-    assert SCAN_GOVERNANCE_SCHEMA in names
-    assert "cleanwin.external-rule-review.v1" in names
-    governance_sample = schema_sample(SCAN_GOVERNANCE_SCHEMA)
-    contract_sample = schema_sample("cleanwin.external-rule-review.v1")
-    assert governance_sample is not None
-    assert contract_sample is not None
-    assert governance_sample["schema"] == SCAN_GOVERNANCE_SCHEMA
-    assert contract_sample["schema"] == "cleanwin.external-rule-review.v1"
+def test_cli_provider_and_schema_registry_expose_scan_governance(
+    assert_cli_provider_schema: AssertCliProviderSchema,
+    assert_schema_samples: AssertSchemaSamples,
+) -> None:
+    assert_cli_provider_schema("scan-governance", SCAN_GOVERNANCE_SCHEMA)
+    assert_schema_samples([SCAN_GOVERNANCE_SCHEMA, "cleanwin.external-rule-review.v1"])

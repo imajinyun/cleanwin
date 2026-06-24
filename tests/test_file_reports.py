@@ -7,19 +7,12 @@ from typing import Any
 
 import pytest
 
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 from cleanwincli.file_reports import FILE_REPORT_SCHEMA, file_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteBytesFile = Callable[[Path, bytes], Path]
-
-
-def require_schema_sample(name: str) -> JSONPayload:
-    sample = schema_sample(name)
-    if sample is None:
-        raise AssertionError(f"missing schema sample: {name}")
-    return sample
+AssertSchemaSample = Callable[[str], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -89,7 +82,5 @@ def test_cli_provider_exposes_file_report(
     assert cleanwin_json(*args, env=env)["schema"] == FILE_REPORT_SCHEMA
 
 
-def test_schema_registry_exposes_file_report() -> None:
-    registry = schema_registry()
-    assert FILE_REPORT_SCHEMA in {entry["name"] for entry in registry["entries"]}
-    assert require_schema_sample(FILE_REPORT_SCHEMA)["schema"] == FILE_REPORT_SCHEMA
+def test_schema_registry_exposes_file_report(assert_schema_sample: AssertSchemaSample) -> None:
+    assert_schema_sample(FILE_REPORT_SCHEMA)

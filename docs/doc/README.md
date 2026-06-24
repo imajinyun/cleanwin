@@ -61,7 +61,7 @@ Project metadata lives in `pyproject.toml`; the console scripts are `cleanwin` a
 | 🪟 Windows-aware policy | Rejects Windows roots, profile roots, credentials, browser profile data, WSL/Docker data, and servicing stores |
 | ♻️ Recycle-first deletion | Real execution uses Windows Recycle Bin; non-Windows real recycle execution fails closed outside test mode |
 | 🧾 Plan integrity | Plans include `cleanwin.plan.v1`, source fingerprint, host context, filesystem identity, category, rule, and rationale metadata |
-| 🤖 AI-native contracts | Exports 9 structured tools, provider formats, workflow routing, host policy, readiness, runbook, and self-test reports |
+| 🤖 AI-native contracts | Exports 12 structured tools, provider formats, workflow routing, environment indexing, host policy, readiness, runbook, and self-test reports |
 | 🏗️ MCP stdio server | Serves structured MCP tools and resources without accepting raw shell commands |
 | 🔐 Single deletion exit | Destructive cleanup goes through `cleanwincli.delete_ops.safe_delete` |
 

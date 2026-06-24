@@ -7,6 +7,8 @@ from cleanwincli.windows_smoke import WINDOWS_SMOKE_MATRIX_SCHEMA, windows_smoke
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSample = Callable[[str], JSONPayload]
 
 
 def test_windows_smoke_matrix_is_non_destructive_release_gate() -> None:
@@ -43,14 +45,8 @@ def test_windows_smoke_matrix_covers_expected_edge_scenarios() -> None:
     assert "sensitive_exclusions" in browser["required_evidence"]
 
 
-def test_cli_ai_provider_and_schema_registry_expose_windows_smoke_matrix(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("windows-smoke-matrix")
-    assert cli["schema"] == WINDOWS_SMOKE_MATRIX_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "windows-smoke-matrix")
-    assert provider["schema"] == WINDOWS_SMOKE_MATRIX_SCHEMA
-
-    registry = cleanwin_json("schema-registry")
-    names = {entry["name"] for entry in registry["entries"]}
-    assert WINDOWS_SMOKE_MATRIX_SCHEMA in names
-    assert registry["samples"][WINDOWS_SMOKE_MATRIX_SCHEMA]["schema"] == WINDOWS_SMOKE_MATRIX_SCHEMA
+def test_cli_ai_provider_and_schema_registry_expose_windows_smoke_matrix(
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+) -> None:
+    assert_cli_provider_schema("windows-smoke-matrix", WINDOWS_SMOKE_MATRIX_SCHEMA)
+    assert_schema_sample(WINDOWS_SMOKE_MATRIX_SCHEMA)

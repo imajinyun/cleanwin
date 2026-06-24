@@ -7,6 +7,8 @@ from cleanwincli.promotion_gates import PROMOTION_GATES_SCHEMA, promotion_gates_
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSample = Callable[[str], JSONPayload]
 
 
 def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled() -> None:
@@ -42,14 +44,8 @@ def test_promotion_gates_cover_high_risk_report_surfaces() -> None:
     assert "sensitive_exclusions" in browser_gate["required_evidence"]
 
 
-def test_cli_ai_provider_and_schema_registry_expose_promotion_gates(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("promotion-gates")
-    assert cli["schema"] == PROMOTION_GATES_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "promotion-gates")
-    assert provider["schema"] == PROMOTION_GATES_SCHEMA
-
-    registry = cleanwin_json("schema-registry")
-    names = {entry["name"] for entry in registry["entries"]}
-    assert PROMOTION_GATES_SCHEMA in names
-    assert registry["samples"][PROMOTION_GATES_SCHEMA]["schema"] == PROMOTION_GATES_SCHEMA
+def test_cli_ai_provider_and_schema_registry_expose_promotion_gates(
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+) -> None:
+    assert_cli_provider_schema("promotion-gates", PROMOTION_GATES_SCHEMA)
+    assert_schema_sample(PROMOTION_GATES_SCHEMA)

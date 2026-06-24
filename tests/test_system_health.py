@@ -3,11 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 from cleanwincli.system_health import SYSTEM_HEALTH_REPORT_SCHEMA, system_health_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSample = Callable[[str], JSONPayload]
 
 
 def test_system_health_report_is_read_only_and_gated() -> None:
@@ -38,19 +39,9 @@ def test_system_health_recommendations_use_official_tools_without_execution() ->
     assert all(item["evidence_required"] for item in report["recommendations"])
 
 
-def test_cli_provider_and_schema_registry_expose_system_health(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("system-health-report")
-    assert cli["schema"] == SYSTEM_HEALTH_REPORT_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "system-health-report")
-    assert provider["schema"] == SYSTEM_HEALTH_REPORT_SCHEMA
-
-    registry = schema_registry()
-    assert SYSTEM_HEALTH_REPORT_SCHEMA in {entry["name"] for entry in registry["entries"]}
-    assert "cleanwin.registry-privacy-evidence.v1" in {entry["name"] for entry in registry["entries"]}
-    health_sample = schema_sample(SYSTEM_HEALTH_REPORT_SCHEMA)
-    evidence_sample = schema_sample("cleanwin.registry-privacy-evidence.v1")
-    assert health_sample is not None
-    assert evidence_sample is not None
-    assert health_sample["schema"] == SYSTEM_HEALTH_REPORT_SCHEMA
-    assert evidence_sample["schema"] == "cleanwin.registry-privacy-evidence.v1"
+def test_cli_provider_and_schema_registry_expose_system_health(
+    assert_cli_provider_schema: AssertCliProviderSchema, assert_schema_sample: AssertSchemaSample
+) -> None:
+    assert_cli_provider_schema("system-health-report", SYSTEM_HEALTH_REPORT_SCHEMA)
+    assert_schema_sample(SYSTEM_HEALTH_REPORT_SCHEMA)
+    assert_schema_sample("cleanwin.registry-privacy-evidence.v1")

@@ -3,18 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from cleanwincli.ai_versioning import schema_registry, schema_sample
 from cleanwincli.presets import PRESET_CATALOG_SCHEMA, preset_catalog_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
-
-
-def require_schema_sample(name: str) -> JSONPayload:
-    sample = schema_sample(name)
-    if sample is None:
-        raise AssertionError(f"missing schema sample: {name}")
-    return sample
+AssertCliProviderSchema = Callable[[str, str], None]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 
 
 def test_preset_catalog_is_read_only_and_non_executable() -> None:
@@ -47,16 +41,9 @@ def test_preset_catalog_contains_safe_templates_and_review_gates() -> None:
     assert any("cookies" in step.lower() for step in browser["review_steps"])
 
 
-def test_cli_provider_and_schema_registry_expose_preset_catalog(cleanwin_json: CleanWinJSON) -> None:
-    cli = cleanwin_json("preset-catalog")
-    assert cli["schema"] == PRESET_CATALOG_SCHEMA
-
-    provider = cleanwin_json("ai-tools", "--provider", "preset-catalog")
-    assert provider["schema"] == PRESET_CATALOG_SCHEMA
-
-    registry = schema_registry()
-    names = {entry["name"] for entry in registry["entries"]}
-    assert PRESET_CATALOG_SCHEMA in names
-    assert "cleanwin.preset-plan-template.v1" in names
-    assert require_schema_sample(PRESET_CATALOG_SCHEMA)["schema"] == PRESET_CATALOG_SCHEMA
-    assert require_schema_sample("cleanwin.preset-plan-template.v1")["schema"] == "cleanwin.preset-plan-template.v1"
+def test_cli_provider_and_schema_registry_expose_preset_catalog(
+    assert_cli_provider_schema: AssertCliProviderSchema,
+    assert_schema_samples: AssertSchemaSamples,
+) -> None:
+    assert_cli_provider_schema("preset-catalog", PRESET_CATALOG_SCHEMA)
+    assert_schema_samples([PRESET_CATALOG_SCHEMA, "cleanwin.preset-plan-template.v1"])
