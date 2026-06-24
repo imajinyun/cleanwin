@@ -2,8 +2,13 @@
 
 > **Windows 清理规划工具 · Dry-run 优先 · AI 原生 MCP 集成**
 
+AI 友好的 Windows 清理 CLI，提供安全 dry-run、可复用清理计划、只读
+inventory/report、治理化执行门禁，以及面向 agent 和自动化的机器可读契约。
+
 - [📗 English Docs](/docs/doc/README.md)
 - [📕 中文文档](/docs/doc/README.CN.md)
+- [🤖 Agent 工作流](AGENTS.md)
+- [📄 License](LICENSE)
 
 ---
 
@@ -50,7 +55,7 @@ python3 cleanwin.py --json ai-tools --provider anthropic
 |---|---|
 | 📕 **中文指南** — 完整命令参考、安全模型、AI/MCP 调用姿势、开发验证 | [docs/doc/README.CN.md](docs/doc/README.CN.md) |
 | 📗 **English Guide** — full CLI reference, safety model, AI/MCP patterns, development | [docs/doc/README.md](docs/doc/README.md) |
-| 🗺️ **治理路线图** — Windows 清理项目差距与优先级 TODO | [docs/governance/windows-cleaner-gap-roadmap.md](docs/governance/windows-cleaner-gap-roadmap.md) |
+| 🤖 **Agent 工作流** — AI 编码 agent 和维护者的仓库工作流与安全边界 | [AGENTS.md](AGENTS.md) |
 
 ---
 
@@ -62,7 +67,7 @@ python3 cleanwin.py --json ai-tools --provider anthropic
 - [🤖 AI 调用姿势](docs/doc/README.CN.md#-ai-调用姿势)
 - [🏗️ MCP 服务器](docs/doc/README.CN.md#️-mcp-服务器)
 - [✅ 开发与 CI](docs/doc/README.CN.md#-开发与-ci)
-- [🗺️ 治理路线图](docs/governance/windows-cleaner-gap-roadmap.md)
+- [🤖 Agent 工作流](AGENTS.md)
 
 ---
 
@@ -82,10 +87,32 @@ cleanwin-mcp
 
 ---
 
+## ✅ 开发工作流
+
+使用仓库 Makefile，让工具安装和执行都发生在 `.venv` 中：
+
+```bash
+make lint
+make pytest
+make type
+make compile
+```
+
+`make quality` 会运行完整本地质量门，包括打包和 smoke checks。Docker 已安装且允许拉取镜像时，可使用 `make docker-quality` 做沙箱验证。完整 agent 工作流见 [AGENTS.md](AGENTS.md)。
+
+---
+
+## 📄 License
+
+cleanwin 使用 [MIT License](LICENSE) 发布。
+
+---
+
 ## 🔗 链接
 
 - [📕 详细中文文档](docs/doc/README.CN.md)
 - [📗 English Documentation](docs/doc/README.md)
-- [🗺️ 治理路线图](docs/governance/windows-cleaner-gap-roadmap.md)
+- [🤖 Agent 工作流](AGENTS.md)
+- [📄 MIT License](LICENSE)
 - [🧪 Windows smoke workflow](.github/workflows/windows-smoke.yml)
 - [📦 项目元数据](pyproject.toml)
