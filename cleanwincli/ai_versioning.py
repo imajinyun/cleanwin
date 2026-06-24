@@ -43,6 +43,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.ai-self-test.v1", 1, "cleanwincli.ai_self_test", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.ai-runbook.v1", 1, "cleanwincli.ai_runbook", "stable", "ai", "cleanwin", ("ai-host", "mcp")),
     ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.backup-delete-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.scan-governance.v1", 1, "cleanwincli.scan_governance", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-review.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -603,6 +604,38 @@ def _sample_disable_revert_contract() -> dict[str, Any]:
     }
 
 
+def _sample_backup_delete_contract() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.backup-delete-contract.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "backup_scopes": [
+            {
+                "id": "backup-delete.file-tree",
+                "target_surface": "reviewed file or directory tree",
+                "allowed_categories": ["app-leftovers", "future-backup-delete-only"],
+                "required_identity": ["cleanwin.filesystem-identity.v1", "canonical_path", "file_id_or_stat_tuple", "size_bytes", "modified_ns"],
+                "required_backup_metadata": ["backup_path", "backup_identity", "source_identity", "created_at", "verification_digest"],
+                "required_audit_refs": ["plan_source_fingerprint", "dry_run_confirmation_token", "operation_log_ref"],
+                "execution_enabled": False,
+                "auto_executable": False,
+            }
+        ],
+        "summary": {"scope_count": 1, "execution_enabled_count": 0, "requires_backup_verification_count": 1},
+        "execution_gate": {
+            "backup_delete_execution_enabled": False,
+            "requires_pre_delete_backup": True,
+            "requires_backup_verification": True,
+            "requires_identity_match_before_delete": True,
+            "requires_operation_log": True,
+            "requires_restore_drill_evidence": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not copy backup data."],
+    }
+
+
 def _sample_promotion_gates() -> dict[str, Any]:
     return {
         "schema": "cleanwin.promotion-gates.v1",
@@ -892,6 +925,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         }
     if schema_name == "cleanwin.recovery-readiness.v1":
         return _sample_recovery_readiness()
+    if schema_name == "cleanwin.backup-delete-contract.v1":
+        return _sample_backup_delete_contract()
     if schema_name == "cleanwin.file-report.v1":
         return _sample_file_report()
     if schema_name == "cleanwin.scan-governance.v1":

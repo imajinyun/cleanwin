@@ -14,6 +14,7 @@ from cleanwincli.core import (
     ai_runbook_command,
     ai_self_test_command,
     ai_tools_report,
+    backup_delete_contract_command,
     browser_profile_inventory_command,
     build_plan,
     capabilities,
@@ -100,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
             "self-test",
             "runbook",
             "doctor",
+            "backup-delete-contract",
             "file-report",
             "recovery-readiness",
             "scan-governance",
@@ -120,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("schema-registry", help="show machine-readable schema registry")
     subparsers.add_parser("doctor", help="run non-destructive engineering health checks")
+    subparsers.add_parser("backup-delete-contract", help="show non-executable backup-then-delete contracts")
     subparsers.add_parser("file-report", help="show read-only large-file and duplicate-file report")
     subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
     subparsers.add_parser("scan-governance", help="show scan performance and external rule review governance")
@@ -217,6 +220,9 @@ def main(argv: list[str] | None = None) -> int:
             payload = doctor_report()
             emit(payload, as_json=args.json)
             return 0 if payload["ready"] else 2
+        if args.command == "backup-delete-contract":
+            emit(backup_delete_contract_command(), as_json=args.json)
+            return 0
         if args.command == "file-report":
             emit(file_report_command(), as_json=args.json)
             return 0

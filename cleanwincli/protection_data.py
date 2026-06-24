@@ -9,6 +9,7 @@ from __future__ import annotations
 
 READ_ONLY_CATEGORIES = frozenset(
     {
+        "backup-delete-contract",
         "registry-report",
         "scan-governance",
         "startup-report",

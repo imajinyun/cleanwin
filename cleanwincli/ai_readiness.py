@@ -25,6 +25,7 @@ REQUIRED_AI_SCHEMAS = frozenset(
         "cleanwin.ai-runbook.v1",
         "cleanwin.doctor.v1",
         "cleanwin.recovery-readiness.v1",
+        "cleanwin.backup-delete-contract.v1",
         "cleanwin.scan-governance.v1",
         "cleanwin.external-rule-review.v1",
         "cleanwin.installed-app-inventory.v1",

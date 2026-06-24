@@ -28,7 +28,7 @@ from cleanwincli.browser_inventory import browser_profile_inventory_report
 from cleanwincli.collectors import collect_candidates, collect_findings
 from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
-from cleanwincli.execution_contracts import disable_revert_contract_report
+from cleanwincli.execution_contracts import backup_delete_contract_report, disable_revert_contract_report
 from cleanwincli.file_reports import file_report
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
@@ -63,6 +63,7 @@ def capabilities() -> dict[str, Any]:
         "safe_categories": ["app-leftovers", "browser-cache", "dev-cache", "package-cache", "temp"],
         "read_only_categories": [
             "browser-cache-report",
+            "backup-delete-contract",
             "browser-profile-inventory",
             "docker-report",
             "file-report",
@@ -588,6 +589,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return browser_profile_inventory_report()
     if provider == "debloat-privacy-report":
         return debloat_privacy_report()
+    if provider == "backup-delete-contract":
+        return backup_delete_contract_report()
     if provider == "disable-revert-contract":
         return disable_revert_contract_report()
     if provider == "startup-service-inventory":
@@ -660,6 +663,10 @@ def browser_profile_inventory_command() -> dict[str, Any]:
 
 def debloat_privacy_report_command() -> dict[str, Any]:
     return debloat_privacy_report()
+
+
+def backup_delete_contract_command() -> dict[str, Any]:
+    return backup_delete_contract_report()
 
 
 def disable_revert_contract_command() -> dict[str, Any]:
