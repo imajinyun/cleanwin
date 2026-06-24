@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
-import sys
-import unittest
-from pathlib import Path
+from collections.abc import Callable
+
+import pytest
 
 from cleanwincli import __version__
 from cleanwincli.ai_readiness import ai_readiness_report, validate_ai_readiness
@@ -19,154 +18,133 @@ from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA
 
-ROOT = Path(__file__).resolve().parents[1]
+JSONPayload = dict[str, object]
+RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
-class AIReadinessTests(unittest.TestCase):
-    def run_cleanwin(self, *args: str) -> subprocess.CompletedProcess[str]:
-        env = dict(os.environ)
-        env["PYTHONPATH"] = str(ROOT)
-        return subprocess.run(
-            [sys.executable, str(ROOT / "cleanwin.py"), "--json", *args],
-            cwd=ROOT,
-            env=env,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+def test_ai_readiness_is_valid_and_registers_critical_schemas() -> None:
+    report = ai_readiness_report()
+    assert report["schema"] == "cleanwin.ai-readiness.v1"
+    assert report["ready_for_ai_host"], report
+    assert report["ready_for_mcp"], report
+    validation = validate_ai_readiness(report)
+    assert validation["valid"], validation
 
-    def test_ai_readiness_is_valid_and_registers_critical_schemas(self) -> None:
-        report = ai_readiness_report()
-        self.assertEqual(report["schema"], "cleanwin.ai-readiness.v1")
-        self.assertTrue(report["ready_for_ai_host"], report)
-        self.assertTrue(report["ready_for_mcp"], report)
-        validation = validate_ai_readiness(report)
-        self.assertTrue(validation["valid"], validation)
-
-        names = {entry["name"] for entry in schema_registry()["entries"]}
-        for required in [
-            "cleanwin.ai-readiness.v1",
-            "cleanwin.ai-readiness-validation.v1",
-            "cleanwin.ai-self-test.v1",
-            "cleanwin.ai-runbook.v1",
-            RECOVERY_READINESS_SCHEMA,
-            INSTALLED_APP_INVENTORY_SCHEMA,
-            OFFICIAL_COMMAND_PLAN_SCHEMA,
-            DEBLOAT_PRIVACY_REPORT_SCHEMA,
-            STARTUP_SERVICE_INVENTORY_SCHEMA,
-        ]:
-            self.assertIn(required, names)
-
-    def test_ai_self_test_passes_expected_policy_checks(self) -> None:
-        report = ai_self_test_report()
-        self.assertEqual(report["schema"], "cleanwin.ai-self-test.v1")
-        self.assertTrue(report["passed"], report)
-        test_names = {test["name"] for test in report["tests"]}
-        self.assertIn("raw_command_denied", test_names)
-        self.assertIn("destructive_missing_gates_denied", test_names)
-        self.assertIn("destructive_all_gates_allowed_by_policy", test_names)
-
-    def test_ai_runbook_documents_safe_execution_gates(self) -> None:
-        report = ai_runbook_report()
-        self.assertEqual(report["schema"], "cleanwin.ai-runbook.v1")
-        tools = [step["tool"] for step in report["workflow"]]
-        self.assertEqual(tools[-1], "cleanwin_execute_plan")
-        self.assertTrue(report["workflow"][-1]["destructive"])
-        required_args = report["required_execution_arguments"]
-        self.assertEqual(required_args["delete_mode"], "recycle")
-        self.assertTrue(required_args["require_plan_context"])
-
-    def test_cli_exposes_readiness_self_test_and_runbook(self) -> None:
-        readiness = self.run_cleanwin("ai-readiness")
-        self.assertEqual(readiness.returncode, 0, readiness.stderr)
-        self.assertTrue(json.loads(readiness.stdout)["ready_for_ai_host"])
-
-        readiness_validation = self.run_cleanwin("ai-readiness", "--validate")
-        self.assertEqual(readiness_validation.returncode, 0, readiness_validation.stderr)
-        self.assertTrue(json.loads(readiness_validation.stdout)["valid"])
-
-        self_test = self.run_cleanwin("ai-self-test")
-        self.assertEqual(self_test.returncode, 0, self_test.stderr)
-        self.assertTrue(json.loads(self_test.stdout)["passed"])
-
-        runbook = self.run_cleanwin("ai-runbook")
-        self.assertEqual(runbook.returncode, 0, runbook.stderr)
-        self.assertEqual(json.loads(runbook.stdout)["schema"], "cleanwin.ai-runbook.v1")
-
-        doctor = self.run_cleanwin("doctor")
-        self.assertEqual(doctor.returncode, 0, doctor.stderr)
-        doctor_payload = json.loads(doctor.stdout)
-        self.assertEqual(doctor_payload["schema"], "cleanwin.doctor.v1")
-        self.assertTrue(doctor_payload["ready"], doctor_payload)
-        self.assertFalse(doctor_payload["destructive"])
-
-        recovery = self.run_cleanwin("recovery-readiness")
-        self.assertEqual(recovery.returncode, 0, recovery.stderr)
-        self.assertEqual(json.loads(recovery.stdout)["schema"], RECOVERY_READINESS_SCHEMA)
-
-        installed_apps = self.run_cleanwin("installed-app-inventory")
-        self.assertEqual(installed_apps.returncode, 0, installed_apps.stderr)
-        self.assertEqual(json.loads(installed_apps.stdout)["schema"], INSTALLED_APP_INVENTORY_SCHEMA)
-
-        official_commands = self.run_cleanwin("official-command-plan")
-        self.assertEqual(official_commands.returncode, 0, official_commands.stderr)
-        self.assertEqual(json.loads(official_commands.stdout)["schema"], OFFICIAL_COMMAND_PLAN_SCHEMA)
-
-        debloat_privacy = self.run_cleanwin("debloat-privacy-report")
-        self.assertEqual(debloat_privacy.returncode, 0, debloat_privacy.stderr)
-        self.assertEqual(json.loads(debloat_privacy.stdout)["schema"], DEBLOAT_PRIVACY_REPORT_SCHEMA)
-
-        startup_services = self.run_cleanwin("startup-service-inventory")
-        self.assertEqual(startup_services.returncode, 0, startup_services.stderr)
-        self.assertEqual(json.loads(startup_services.stdout)["schema"], STARTUP_SERVICE_INVENTORY_SCHEMA)
-
-    def test_doctor_report_checks_static_safety_and_contracts(self) -> None:
-        report = doctor_report()
-        self.assertEqual(report["schema"], "cleanwin.doctor.v1")
-        self.assertTrue(report["ready"], report)
-        self.assertFalse(report["destructive"])
-        check_ids = {check["id"] for check in report["checks"]}
-        self.assertIn("single_destructive_exit", check_ids)
-        self.assertIn("delete_primitives_owned_by_delete_ops", check_ids)
-        self.assertIn("ai_contracts_valid", check_ids)
-        self.assertIn("version_consistency", check_ids)
-        version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
-        self.assertTrue(version_check["passed"], version_check)
-        self.assertEqual(version_check["evidence"]["package_version"], __version__)
-        self.assertEqual(version_check["evidence"]["pyproject_version"], __version__)
-        self.assertIn(version_check["evidence"]["distribution_version"], {None, __version__})
-        self.assertEqual(version_check["evidence"]["capabilities_version"], __version__)
-        self.assertIn(["python3", "-m", "unittest", "discover", "-s", "tests", "-v"], report["recommended_commands"])
-        self.assertIn(["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"], report["recommended_commands"])
-        self.assertIn(["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"], report["recommended_commands"])
-        self.assertIn(["python3", "-m", "build", "--sdist", "--wheel"], report["recommended_commands"])
-        self.assertIn(["make", "package-install-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "sdist-install-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "mcp-install-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "docs-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "ai-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "mcp-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "version-smoke"], report["recommended_commands"])
-        self.assertIn(["make", "clean"], report["recommended_commands"])
-        self.assertIn(["make", "quality"], report["recommended_commands"])
-
-    def test_ai_tools_provider_aliases_readiness_reports(self) -> None:
-        for provider, schema in [
-            ("readiness", "cleanwin.ai-readiness.v1"),
-            ("self-test", "cleanwin.ai-self-test.v1"),
-            ("runbook", "cleanwin.ai-runbook.v1"),
-            ("doctor", "cleanwin.doctor.v1"),
-            ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
-            ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
-            ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
-            ("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA),
-            ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
-        ]:
-            with self.subTest(provider=provider):
-                result = self.run_cleanwin("ai-tools", "--provider", provider)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(json.loads(result.stdout)["schema"], schema)
+    names = {entry["name"] for entry in schema_registry()["entries"]}
+    for required in [
+        "cleanwin.ai-readiness.v1",
+        "cleanwin.ai-readiness-validation.v1",
+        "cleanwin.ai-self-test.v1",
+        "cleanwin.ai-runbook.v1",
+        RECOVERY_READINESS_SCHEMA,
+        INSTALLED_APP_INVENTORY_SCHEMA,
+        OFFICIAL_COMMAND_PLAN_SCHEMA,
+        DEBLOAT_PRIVACY_REPORT_SCHEMA,
+        STARTUP_SERVICE_INVENTORY_SCHEMA,
+    ]:
+        assert required in names
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_ai_self_test_passes_expected_policy_checks() -> None:
+    report = ai_self_test_report()
+    assert report["schema"] == "cleanwin.ai-self-test.v1"
+    assert report["passed"], report
+    test_names = {test["name"] for test in report["tests"]}
+    assert "raw_command_denied" in test_names
+    assert "destructive_missing_gates_denied" in test_names
+    assert "destructive_all_gates_allowed_by_policy" in test_names
+
+
+def test_ai_runbook_documents_safe_execution_gates() -> None:
+    report = ai_runbook_report()
+    assert report["schema"] == "cleanwin.ai-runbook.v1"
+    tools = [step["tool"] for step in report["workflow"]]
+    assert tools[-1] == "cleanwin_execute_plan"
+    assert report["workflow"][-1]["destructive"]
+    required_args = report["required_execution_arguments"]
+    assert required_args["delete_mode"] == "recycle"
+    assert required_args["require_plan_context"]
+
+
+def test_cli_exposes_readiness_self_test_and_runbook(
+    run_cleanwin: RunCleanWin,
+    cleanwin_json: CleanWinJSON,
+) -> None:
+    assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
+    assert cleanwin_json("ai-readiness", "--validate")["valid"]
+    assert cleanwin_json("ai-self-test")["passed"]
+    assert cleanwin_json("ai-runbook")["schema"] == "cleanwin.ai-runbook.v1"
+
+    doctor_payload = cleanwin_json("doctor")
+    assert doctor_payload["schema"] == "cleanwin.doctor.v1"
+    assert doctor_payload["ready"], doctor_payload
+    assert not doctor_payload["destructive"]
+
+    expected_schemas = [
+        ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
+        ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
+        ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
+        ("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA),
+        ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
+    ]
+    for command, schema in expected_schemas:
+        result = run_cleanwin(command)
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["schema"] == schema
+
+
+def test_doctor_report_checks_static_safety_and_contracts() -> None:
+    report = doctor_report()
+    assert report["schema"] == "cleanwin.doctor.v1"
+    assert report["ready"], report
+    assert not report["destructive"]
+    check_ids = {check["id"] for check in report["checks"]}
+    assert "single_destructive_exit" in check_ids
+    assert "delete_primitives_owned_by_delete_ops" in check_ids
+    assert "ai_contracts_valid" in check_ids
+    assert "version_consistency" in check_ids
+    version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
+    assert version_check["passed"], version_check
+    assert version_check["evidence"]["package_version"] == __version__
+    assert version_check["evidence"]["pyproject_version"] == __version__
+    assert version_check["evidence"]["distribution_version"] in {None, __version__}
+    assert version_check["evidence"]["capabilities_version"] == __version__
+    assert ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"] in report["recommended_commands"]
+    assert ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
+    assert ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
+    assert ["python3", "-m", "build", "--sdist", "--wheel"] in report["recommended_commands"]
+    assert ["make", "package-install-smoke"] in report["recommended_commands"]
+    assert ["make", "sdist-install-smoke"] in report["recommended_commands"]
+    assert ["make", "mcp-install-smoke"] in report["recommended_commands"]
+    assert ["make", "docs-smoke"] in report["recommended_commands"]
+    assert ["make", "ai-smoke"] in report["recommended_commands"]
+    assert ["make", "mcp-smoke"] in report["recommended_commands"]
+    assert ["make", "version-smoke"] in report["recommended_commands"]
+    assert ["make", "clean"] in report["recommended_commands"]
+    assert ["make", "quality"] in report["recommended_commands"]
+
+
+@pytest.mark.parametrize(
+    ("provider", "schema"),
+    [
+        ("readiness", "cleanwin.ai-readiness.v1"),
+        ("self-test", "cleanwin.ai-self-test.v1"),
+        ("runbook", "cleanwin.ai-runbook.v1"),
+        ("doctor", "cleanwin.doctor.v1"),
+        ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
+        ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
+        ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
+        ("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA),
+        ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
+    ],
+)
+def test_ai_tools_provider_aliases_readiness_reports(
+    provider: str,
+    schema: str,
+    run_cleanwin: RunCleanWin,
+) -> None:
+    result = run_cleanwin("ai-tools", "--provider", provider)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["schema"] == schema

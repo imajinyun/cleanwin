@@ -23,13 +23,15 @@ def repo_root() -> Path:
 
 @pytest.fixture
 def run_cleanwin(repo_root: Path) -> RunCleanWin:
-    def _run_cleanwin(*args: str) -> subprocess.CompletedProcess[str]:
-        env = dict(os.environ)
-        env["PYTHONPATH"] = str(repo_root)
+    def _run_cleanwin(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        merged_env = dict(os.environ)
+        if env:
+            merged_env.update(env)
+        merged_env["PYTHONPATH"] = str(repo_root)
         return subprocess.run(
             [sys.executable, str(repo_root / "cleanwin.py"), "--json", *args],
             cwd=repo_root,
-            env=env,
+            env=merged_env,
             text=True,
             capture_output=True,
             check=False,
@@ -47,7 +49,7 @@ def load_json_stdout(result: subprocess.CompletedProcess[str]) -> JSONPayload:
 
 @pytest.fixture
 def cleanwin_json(run_cleanwin: RunCleanWin) -> CleanWinJSON:
-    def _cleanwin_json(*args: str) -> JSONPayload:
-        return load_json_stdout(run_cleanwin(*args))
+    def _cleanwin_json(*args: str, env: dict[str, str] | None = None) -> JSONPayload:
+        return load_json_stdout(run_cleanwin(*args, env=env))
 
     return _cleanwin_json
