@@ -408,7 +408,7 @@ def doctor_report() -> dict[str, Any]:
         "passed_count": sum(1 for check in checks if check["passed"]),
         "checks": checks,
         "recommended_commands": [
-            ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
+            ["python3", "-m", "pytest", "-q"],
             ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "compileall", "cleanwin.py", "cleanwincli", "tests"],

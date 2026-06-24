@@ -341,10 +341,9 @@ make dev-install
 make quality
 ```
 
-`dev-install` target 会创建 `.venv`，安装 `.[dev]`，并用该环境运行 unittest、pytest、Ruff、mypy、compile、package、AI 和 MCP 检查。等价手动命令：
+`dev-install` target 会创建 `.venv`，安装 `.[dev]`，并用该环境运行 pytest、Ruff、mypy、compile、package、AI 和 MCP 检查。等价手动命令：
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check cleanwin.py cleanwincli tests
 .venv/bin/python -m mypy cleanwin.py cleanwincli tests
@@ -363,7 +362,7 @@ make docker-quality
 
 CI 入口：
 
-- `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 unittest、pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
+- `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
 
 治理路线图：
 

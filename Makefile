@@ -19,7 +19,7 @@ dev-install: venv
 	$(DEV_PYTHON) -m pip install -e ".[dev]"
 
 test: dev-install
-	$(DEV_PYTHON) -m unittest discover -s tests -v
+	$(DEV_PYTHON) -m pytest -q
 
 pytest: dev-install
 	$(DEV_PYTHON) -m pytest -q
@@ -70,4 +70,4 @@ docker-quality:
 clean:
 	$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['build', 'dist', 'cleanwin.egg-info', '.mypy_cache', '.ruff_cache']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"
 
-quality: lint type test pytest compile docs-smoke ai-smoke mcp-smoke version-smoke mcp-install-smoke clean
+quality: lint type test compile docs-smoke ai-smoke mcp-smoke version-smoke mcp-install-smoke clean

@@ -341,10 +341,9 @@ make dev-install
 make quality
 ```
 
-The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for unittest, pytest, Ruff, mypy, compile, package, AI, and MCP checks. Equivalent manual commands:
+The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for pytest, Ruff, mypy, compile, package, AI, and MCP checks. Equivalent manual commands:
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
 .venv/bin/python -m pytest -q
 .venv/bin/python -m ruff check cleanwin.py cleanwincli tests
 .venv/bin/python -m mypy cleanwin.py cleanwincli tests
@@ -363,7 +362,7 @@ make docker-quality
 
 CI entrypoint:
 
-- `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs unittest, pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
+- `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 
 Governance roadmap:
 

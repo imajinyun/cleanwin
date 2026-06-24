@@ -110,7 +110,7 @@ def test_doctor_report_checks_static_safety_and_contracts() -> None:
     assert version_check["evidence"]["pyproject_version"] == __version__
     assert version_check["evidence"]["distribution_version"] in {None, __version__}
     assert version_check["evidence"]["capabilities_version"] == __version__
-    assert ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"] in report["recommended_commands"]
+    assert ["python3", "-m", "pytest", "-q"] in report["recommended_commands"]
     assert ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
     assert ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
     assert ["python3", "-m", "build", "--sdist", "--wheel"] in report["recommended_commands"]
