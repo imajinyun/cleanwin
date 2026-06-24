@@ -29,6 +29,7 @@ TempPlanFixture = tuple[Path, Path, dict[str, str]]
 MakeTempPlan = Callable[[Path, bool], TempPlanFixture]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[SchemaPairs], None]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
@@ -197,6 +198,18 @@ def assert_cli_provider_schemas(assert_cli_provider_schema: AssertCliProviderSch
             assert_cli_provider_schema(command, schema)
 
     return _assert_cli_provider_schemas
+
+
+@pytest.fixture
+def assert_cli_provider_schema_sample(
+    assert_cli_provider_schema: AssertCliProviderSchema,
+    assert_schema_sample: AssertSchemaSample,
+) -> AssertCliProviderSchemaSample:
+    def _assert_cli_provider_schema_sample(command: str, schema: str) -> JSONPayload:
+        assert_cli_provider_schema(command, schema)
+        return assert_schema_sample(schema)
+
+    return _assert_cli_provider_schema_sample
 
 
 @pytest.fixture
