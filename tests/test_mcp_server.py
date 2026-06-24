@@ -6,7 +6,9 @@ import queue
 import subprocess
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,6 +16,7 @@ from cleanwincli import __version__
 
 ROOT = Path(__file__).resolve().parents[1]
 MCP_MODULE = "cleanwincli.mcp_server"
+CleanWinPlanFile = Callable[..., dict[str, Any]]
 
 
 def mcp_env() -> dict[str, str]:
@@ -85,7 +88,7 @@ def read_mcp_resource(uri: str) -> dict:
     return json.loads(read["result"]["contents"][0]["text"])
 
 
-def generate_temp_plan(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
+def generate_temp_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile) -> tuple[Path, Path, dict[str, str]]:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
     stale_file = temp_root / "stale.tmp"
@@ -94,25 +97,7 @@ def generate_temp_plan(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     env = mcp_env()
     env["TEMP"] = str(temp_root)
     env["TMP"] = str(temp_root)
-    subprocess.run(
-        [
-            sys.executable,
-            str(ROOT / "cleanwin.py"),
-            "--json",
-            "plan",
-            "--categories",
-            "temp",
-            "--older-than-days",
-            "0",
-            "--output",
-            str(plan_file),
-        ],
-        cwd=ROOT,
-        env=env,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
+    cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
     return plan_file, stale_file, env
 
 
@@ -256,8 +241,8 @@ def test_tools_call_inspect_supports_rule_id_filter() -> None:
     assert result["structuredContent"]["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
 
 
-def test_tools_call_review_plan(tmp_path: Path) -> None:
-    plan_file, _, env = generate_temp_plan(tmp_path)
+def test_tools_call_review_plan(tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile) -> None:
+    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file)
     response = call_mcp_tool(
         "cleanwin_review_plan",
         {"plan_file": str(plan_file), "require_plan_context": False},
@@ -271,8 +256,10 @@ def test_tools_call_review_plan(tmp_path: Path) -> None:
     assert "execution_handoff" in result["structuredContent"]
 
 
-def test_tools_call_dry_run_plan_returns_candidate_results_and_token(tmp_path: Path) -> None:
-    plan_file, stale_file, env = generate_temp_plan(tmp_path)
+def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
+    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile
+) -> None:
+    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     result = response["result"]
 

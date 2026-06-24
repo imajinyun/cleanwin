@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import os
-import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,7 +13,8 @@ from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.models import plan_from_dict
 from cleanwincli.windows_identity import capture_windows_native_identity
 
-RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+JSONPayload = dict[str, Any]
+CleanWinPlanFile = Callable[..., JSONPayload]
 
 
 def test_capture_identity_contains_replay_fields(tmp_path: Path) -> None:
@@ -57,7 +57,7 @@ def test_compare_identity_detects_content_replacement(tmp_path: Path) -> None:
 
 def test_generated_plan_contains_identity_and_validate_rejects_drift(
     tmp_path: Path,
-    run_cleanwin: RunCleanWin,
+    cleanwin_plan_file: CleanWinPlanFile,
 ) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
@@ -66,19 +66,15 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     plan_file = tmp_path / "plan.json"
     env = {"TEMP": str(temp_root), "TMP": str(temp_root)}
 
-    plan_result = run_cleanwin(
-        "plan",
+    raw = cleanwin_plan_file(
+        plan_file,
         "--categories",
         "temp",
         "--older-than-days",
         "0",
-        "--output",
-        str(plan_file),
         env=env,
     )
 
-    assert plan_result.returncode == 0, plan_result.stderr
-    raw = json.loads(plan_file.read_text(encoding="utf-8"))
     assert raw["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
     plan = plan_from_dict(raw)
     assert validate_plan_payload(plan, raw, require_context=False)["valid"] is True

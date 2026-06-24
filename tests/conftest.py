@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinJSON = Callable[..., JSONPayload]
+CleanWinPlanFile = Callable[..., JSONPayload]
 
 
 @pytest.fixture
@@ -53,3 +54,15 @@ def cleanwin_json(run_cleanwin: RunCleanWin) -> CleanWinJSON:
         return load_json_stdout(run_cleanwin(*args, env=env))
 
     return _cleanwin_json
+
+
+@pytest.fixture
+def cleanwin_plan_file(run_cleanwin: RunCleanWin) -> CleanWinPlanFile:
+    def _cleanwin_plan_file(plan_file: Path, *args: str, env: dict[str, str] | None = None) -> JSONPayload:
+        result = run_cleanwin("plan", *args, "--output", str(plan_file), env=env)
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(plan_file.read_text(encoding="utf-8"))
+        assert isinstance(payload, dict)
+        return payload
+
+    return _cleanwin_plan_file

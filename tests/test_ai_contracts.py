@@ -19,6 +19,7 @@ from cleanwincli.ai_versioning import schema_registry, schema_sample
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinJSON = Callable[..., JSONPayload]
+CleanWinPlanFile = Callable[..., JSONPayload]
 
 
 def require_schema_sample(name: str) -> dict[str, Any]:
@@ -155,7 +156,7 @@ def test_cli_ai_tools_and_host_policy_are_valid(cleanwin_json: CleanWinJSON) -> 
 
 
 def test_execute_requires_dry_run_confirmation_token(
-    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_plan_file: CleanWinPlanFile, cleanwin_json: CleanWinJSON
 ) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
@@ -163,8 +164,7 @@ def test_execute_requires_dry_run_confirmation_token(
     target.write_text("x", encoding="utf-8")
     env = {"TEMP": str(temp_root), "TMP": str(temp_root), "CLEANWIN_TEST_MODE": "1"}
     plan_file = tmp_path / "plan.json"
-    plan = run_cleanwin("plan", "--categories", "temp", "--older-than-days", "0", "--output", str(plan_file), env=env)
-    assert plan.returncode == 0, plan.stderr
+    cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
 
     confirmation = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)[
         "confirmation"
