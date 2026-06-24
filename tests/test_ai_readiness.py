@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import subprocess
 from collections.abc import Callable
 
 import pytest
@@ -19,7 +17,6 @@ from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA
 
 JSONPayload = dict[str, object]
-RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinJSON = Callable[..., JSONPayload]
 
 
@@ -68,7 +65,6 @@ def test_ai_runbook_documents_safe_execution_gates() -> None:
 
 
 def test_cli_exposes_readiness_self_test_and_runbook(
-    run_cleanwin: RunCleanWin,
     cleanwin_json: CleanWinJSON,
 ) -> None:
     assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
@@ -89,9 +85,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
         ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
     ]
     for command, schema in expected_schemas:
-        result = run_cleanwin(command)
-        assert result.returncode == 0, result.stderr
-        assert json.loads(result.stdout)["schema"] == schema
+        assert cleanwin_json(command)["schema"] == schema
 
 
 def test_doctor_report_checks_static_safety_and_contracts() -> None:
@@ -142,9 +136,6 @@ def test_doctor_report_checks_static_safety_and_contracts() -> None:
 def test_ai_tools_provider_aliases_readiness_reports(
     provider: str,
     schema: str,
-    run_cleanwin: RunCleanWin,
+    cleanwin_json: CleanWinJSON,
 ) -> None:
-    result = run_cleanwin("ai-tools", "--provider", provider)
-
-    assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["schema"] == schema
+    assert cleanwin_json("ai-tools", "--provider", provider)["schema"] == schema

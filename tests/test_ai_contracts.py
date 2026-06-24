@@ -16,7 +16,9 @@ from cleanwincli.ai_schema import (
 )
 from cleanwincli.ai_versioning import schema_registry, schema_sample
 
+JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
+CleanWinJSON = Callable[..., JSONPayload]
 
 
 def require_schema_sample(name: str) -> dict[str, Any]:
@@ -144,21 +146,17 @@ def test_host_policy_blocks_raw_command_and_missing_destructive_gates() -> None:
     assert allowed["allowed"], allowed
 
 
-def test_cli_ai_tools_and_host_policy_are_valid(run_cleanwin: RunCleanWin) -> None:
-    tools = run_cleanwin("ai-tools")
-    assert tools.returncode == 0, tools.stderr
-    assert json.loads(tools.stdout)["schema"] == "cleanwin.ai-tools.v1"
+def test_cli_ai_tools_and_host_policy_are_valid(cleanwin_json: CleanWinJSON) -> None:
+    assert cleanwin_json("ai-tools")["schema"] == "cleanwin.ai-tools.v1"
 
-    parity = run_cleanwin("ai-tools", "--provider", "parity")
-    assert parity.returncode == 0, parity.stderr
-    assert json.loads(parity.stdout)["valid"]
+    assert cleanwin_json("ai-tools", "--provider", "parity")["valid"]
 
-    host_policy = run_cleanwin("host-policy", "--validate")
-    assert host_policy.returncode == 0, host_policy.stderr
-    assert json.loads(host_policy.stdout)["valid"]
+    assert cleanwin_json("host-policy", "--validate")["valid"]
 
 
-def test_execute_requires_dry_run_confirmation_token(tmp_path: Path, run_cleanwin: RunCleanWin) -> None:
+def test_execute_requires_dry_run_confirmation_token(
+    tmp_path: Path, run_cleanwin: RunCleanWin, cleanwin_json: CleanWinJSON
+) -> None:
     temp_root = tmp_path / "Temp"
     temp_root.mkdir()
     target = temp_root / "stale.tmp"
@@ -168,9 +166,9 @@ def test_execute_requires_dry_run_confirmation_token(tmp_path: Path, run_cleanwi
     plan = run_cleanwin("plan", "--categories", "temp", "--older-than-days", "0", "--output", str(plan_file), env=env)
     assert plan.returncode == 0, plan.stderr
 
-    dry_run = run_cleanwin("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert dry_run.returncode == 0, dry_run.stderr
-    confirmation = json.loads(dry_run.stdout)["confirmation"]
+    confirmation = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)[
+        "confirmation"
+    ]
 
     denied = run_cleanwin(
         "execute-plan",
