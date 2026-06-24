@@ -18,8 +18,7 @@ from cleanwincli.execution_contracts import (
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
-AssertCliProviderSchema = Callable[[str, str], None]
-AssertSchemaSample = Callable[[str], JSONPayload]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertNoExecutableItems = Callable[[list[JSONPayload]], None]
 
@@ -114,11 +113,9 @@ def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
 def test_cli_provider_and_schema_registry_expose_execution_contracts(
     command: str,
     schema: str,
-    assert_cli_provider_schema: AssertCliProviderSchema,
-    assert_schema_sample: AssertSchemaSample,
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
 ) -> None:
-    assert_cli_provider_schema(command, schema)
-    sample = assert_schema_sample(schema)
+    sample = assert_cli_provider_schema_sample(command, schema)
     if schema == PERMANENT_DELETE_DENIAL_SCHEMA:
         assert sample["capability"]["execution_enabled"] is False
 
