@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import queue
 import subprocess
 import sys
@@ -20,15 +19,9 @@ JSONPayload = dict[str, Any]
 MCPRequest = dict[str, Any]
 MCPResponse = dict[str, Any]
 CleanWinPlanFile = Callable[..., JSONPayload]
+CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
-
-
-def mcp_env() -> dict[str, str]:
-    env = dict(os.environ)
-    env["PYTHONPATH"] = str(ROOT)
-    env["CLEANWIN_TEST_MODE"] = "1"
-    return env
 
 
 def load_json_object(text: str) -> JSONPayload:
@@ -48,7 +41,7 @@ def parse_mcp_stdout(stdout: str, stderr: str) -> MCPResponse:
     return response
 
 
-def mcp_request(request: MCPRequest) -> MCPResponse:
+def mcp_request(request: MCPRequest, env: dict[str, str]) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
         cwd=ROOT,
@@ -56,13 +49,13 @@ def mcp_request(request: MCPRequest) -> MCPResponse:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env=mcp_env(),
+        env=env,
     )
     stdout, stderr = proc.communicate(input=json.dumps(request), timeout=15)
     return parse_mcp_stdout(stdout, stderr)
 
 
-def persistent_mcp_request(request: MCPRequest) -> MCPResponse:
+def persistent_mcp_request(request: MCPRequest, env: dict[str, str]) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
         cwd=ROOT,
@@ -70,7 +63,7 @@ def persistent_mcp_request(request: MCPRequest) -> MCPResponse:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env=mcp_env(),
+        env=env,
     )
     assert proc.stdin is not None
     assert proc.stdout is not None
@@ -100,14 +93,15 @@ def mcp_content_json(response: MCPResponse) -> JSONPayload:
     return load_json_object(response["result"]["contents"][0]["text"])
 
 
-def read_mcp_resource(uri: str) -> JSONPayload:
+def read_mcp_resource(uri: str, env: dict[str, str]) -> JSONPayload:
     read = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 40,
             "method": "resources/read",
             "params": {"uri": uri},
-        }
+        },
+        env,
     )
     return mcp_content_json(read)
 
@@ -115,21 +109,20 @@ def read_mcp_resource(uri: str) -> JSONPayload:
 def generate_temp_plan(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_test_env: CleanWinTestEnv,
     write_text_file: WriteTextFile,
     make_directory: MakeDirectory,
 ) -> tuple[Path, Path, dict[str, str]]:
     temp_root = make_directory(tmp_path / "Temp")
     stale_file = write_text_file(temp_root / "stale.tmp", "x")
     plan_file = tmp_path / "plan.json"
-    env = mcp_env()
-    env["TEMP"] = str(temp_root)
-    env["TMP"] = str(temp_root)
+    env = cleanwin_test_env(extra={"TEMP": str(temp_root), "TMP": str(temp_root)})
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
     return plan_file, stale_file, env
 
 
 def call_mcp_tool(
-    name: str, arguments: JSONPayload, env: dict[str, str] | None = None, request_id: int = 52
+    name: str, arguments: JSONPayload, env: dict[str, str], request_id: int = 52
 ) -> MCPResponse:
     proc = subprocess.Popen(
         [sys.executable, "-m", MCP_MODULE],
@@ -138,7 +131,7 @@ def call_mcp_tool(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        env=env or mcp_env(),
+        env=env,
     )
     stdout, stderr = proc.communicate(
         input=json.dumps(
@@ -175,15 +168,15 @@ def call_mcp_tool(
         "cleanwin://plan/review-sample",
     ],
 )
-def test_resources_list_exposes_expected_uri(uri: str) -> None:
-    listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"})
+def test_resources_list_exposes_expected_uri(uri: str, cleanwin_test_env: CleanWinTestEnv) -> None:
+    listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"}, cleanwin_test_env())
     uris = {resource["uri"] for resource in listed["result"]["resources"]}
 
     assert uri in uris
 
 
-def test_host_policy_resource_exposes_execute_plan_denial() -> None:
-    payload = read_mcp_resource("cleanwin://ai/host-policy")
+def test_host_policy_resource_exposes_execute_plan_denial(cleanwin_test_env: CleanWinTestEnv) -> None:
+    payload = read_mcp_resource("cleanwin://ai/host-policy", cleanwin_test_env())
 
     assert payload["schema"] == "cleanwin.ai-host-policy.v1"
     assert "cleanwin_execute_plan" in payload["auto_call"]["deny"]
@@ -208,18 +201,21 @@ def test_host_policy_resource_exposes_execute_plan_denial() -> None:
         ("cleanwin://plan/review-sample", "cleanwin.review.v1"),
     ],
 )
-def test_resources_readiness_self_test_and_runbook(uri: str, schema: str) -> None:
-    payload = read_mcp_resource(uri)
+def test_resources_readiness_self_test_and_runbook(
+    uri: str, schema: str, cleanwin_test_env: CleanWinTestEnv
+) -> None:
+    payload = read_mcp_resource(uri, cleanwin_test_env())
 
     assert payload["schema"] == schema
 
 
-def test_initialize_and_tools_list() -> None:
-    initialized = mcp_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+def test_initialize_and_tools_list(cleanwin_test_env: CleanWinTestEnv) -> None:
+    env = cleanwin_test_env()
+    initialized = mcp_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"}, env)
     assert initialized["result"]["serverInfo"]["name"] == "cleanwin-mcp"
     assert initialized["result"]["serverInfo"]["version"] == __version__
 
-    response = mcp_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    response = mcp_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, env)
     tools = response["result"]["tools"]
     names = {tool["name"] for tool in tools}
     assert "cleanwin_capabilities" in names
@@ -238,27 +234,29 @@ def test_initialize_and_tools_list() -> None:
     assert tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"]
 
 
-def test_resources_read_responds_before_persistent_stdin_eof() -> None:
+def test_resources_read_responds_before_persistent_stdin_eof(cleanwin_test_env: CleanWinTestEnv) -> None:
     read = persistent_mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 41,
             "method": "resources/read",
             "params": {"uri": "cleanwin://ai/runbook"},
-        }
+        },
+        cleanwin_test_env(),
     )
     payload = mcp_content_json(read)
     assert payload["schema"] == "cleanwin.ai-runbook.v1"
 
 
-def test_tools_call_readonly_capabilities() -> None:
+def test_tools_call_readonly_capabilities(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 5,
             "method": "tools/call",
             "params": {"name": "cleanwin_capabilities", "arguments": {}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert not result["isError"]
@@ -267,14 +265,15 @@ def test_tools_call_readonly_capabilities() -> None:
     assert result["governanceDecision"]["allowed"]
 
 
-def test_tools_call_workflow_router() -> None:
+def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 50,
             "method": "tools/call",
             "params": {"name": "cleanwin_workflow_router", "arguments": {}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert not result["isError"], result
@@ -295,21 +294,24 @@ def test_tools_call_workflow_router() -> None:
         ("cleanwin_workflow_trace", {}, "cleanwin.workflow-trace.v1"),
     ],
 )
-def test_tools_call_workflow_context_tools(tool: str, arguments: JSONPayload, schema: str) -> None:
+def test_tools_call_workflow_context_tools(
+    tool: str, arguments: JSONPayload, schema: str, cleanwin_test_env: CleanWinTestEnv
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 54,
             "method": "tools/call",
             "params": {"name": tool, "arguments": arguments},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert not result["isError"], result
     assert result["structuredContent"]["schema"] == schema
 
 
-def test_tools_call_inspect_supports_rule_id_filter() -> None:
+def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -319,7 +321,8 @@ def test_tools_call_inspect_supports_rule_id_filter() -> None:
                 "name": "cleanwin_inspect",
                 "arguments": {"categories": ["dev-cache"], "rule_ids": ["dev-cache.npm.cache"], "older_than_days": 0, "max_items": 5},
             },
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert not result["isError"], result
@@ -330,10 +333,13 @@ def test_tools_call_inspect_supports_rule_id_filter() -> None:
 def test_tools_call_review_plan(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_test_env: CleanWinTestEnv,
     write_text_file: WriteTextFile,
     make_directory: MakeDirectory,
 ) -> None:
-    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file, make_directory)
+    plan_file, _, env = generate_temp_plan(
+        tmp_path, cleanwin_plan_file, cleanwin_test_env, write_text_file, make_directory
+    )
     response = call_mcp_tool(
         "cleanwin_review_plan",
         {"plan_file": str(plan_file), "require_plan_context": False},
@@ -350,10 +356,13 @@ def test_tools_call_review_plan(
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_test_env: CleanWinTestEnv,
     write_text_file: WriteTextFile,
     make_directory: MakeDirectory,
 ) -> None:
-    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file, make_directory)
+    plan_file, stale_file, env = generate_temp_plan(
+        tmp_path, cleanwin_plan_file, cleanwin_test_env, write_text_file, make_directory
+    )
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     result = response["result"]
 
@@ -368,14 +377,15 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     assert stale_file.exists()
 
 
-def test_raw_command_argument_denied_for_readonly_tool() -> None:
+def test_raw_command_argument_denied_for_readonly_tool(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 6,
             "method": "tools/call",
             "params": {"name": "cleanwin_capabilities", "arguments": {"raw_command": "del C:\\Windows"}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert result["isError"]
@@ -383,14 +393,15 @@ def test_raw_command_argument_denied_for_readonly_tool() -> None:
     assert result["governanceDecision"]["blocking_reasons"][0]["code"] == "RAW_COMMAND_ARGUMENT_DENIED"
 
 
-def test_tool_call_rejects_schema_invalid_arguments() -> None:
+def test_tool_call_rejects_schema_invalid_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 61,
             "method": "tools/call",
             "params": {"name": "cleanwin_inspect", "arguments": {"categories": "dev-cache", "older_than_days": "0"}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert result["isError"]
@@ -401,14 +412,15 @@ def test_tool_call_rejects_schema_invalid_arguments() -> None:
     assert result["governanceDecision"]["allowed"]
 
 
-def test_tool_call_rejects_unknown_non_raw_arguments() -> None:
+def test_tool_call_rejects_unknown_non_raw_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 62,
             "method": "tools/call",
             "params": {"name": "cleanwin_capabilities", "arguments": {"unexpected": "ignored-before"}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert result["isError"]
@@ -416,14 +428,15 @@ def test_tool_call_rejects_unknown_non_raw_arguments() -> None:
     assert "arguments.unexpected is not allowed" in validation["violations"]
 
 
-def test_tool_call_rejects_missing_required_arguments() -> None:
+def test_tool_call_rejects_missing_required_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 63,
             "method": "tools/call",
             "params": {"name": "cleanwin_review_plan", "arguments": {}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert result["isError"]
@@ -431,14 +444,15 @@ def test_tool_call_rejects_missing_required_arguments() -> None:
     assert "arguments.plan_file is required" in validation["violations"]
 
 
-def test_destructive_tool_missing_gates_denied() -> None:
+def test_destructive_tool_missing_gates_denied(cleanwin_test_env: CleanWinTestEnv) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
             "id": 7,
             "method": "tools/call",
             "params": {"name": "cleanwin_execute_plan", "arguments": {"plan_file": "plan.json"}},
-        }
+        },
+        cleanwin_test_env(),
     )
     result = response["result"]
     assert result["isError"]
@@ -449,6 +463,6 @@ def test_destructive_tool_missing_gates_denied() -> None:
     assert "CONFIRMATION_TOKEN_REQUIRED" in codes
 
 
-def test_unknown_method_returns_jsonrpc_error() -> None:
-    response = mcp_request({"jsonrpc": "2.0", "id": 8, "method": "unknown/method"})
+def test_unknown_method_returns_jsonrpc_error(cleanwin_test_env: CleanWinTestEnv) -> None:
+    response = mcp_request({"jsonrpc": "2.0", "id": 8, "method": "unknown/method"}, cleanwin_test_env())
     assert response["error"]["code"] == -32601

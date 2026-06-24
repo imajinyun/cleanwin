@@ -18,6 +18,7 @@ RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
+CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
 WriteBytesFile = Callable[[Path, bytes], Path]
 MakeDirectory = Callable[[Path], Path]
@@ -39,6 +40,20 @@ AssertNoUnittestCommands = Callable[[CommandSequence], None]
 @pytest.fixture
 def repo_root() -> Path:
     return ROOT
+
+
+@pytest.fixture
+def cleanwin_test_env(repo_root: Path) -> CleanWinTestEnv:
+    def _cleanwin_test_env(*, test_mode: bool = True, extra: dict[str, str] | None = None) -> dict[str, str]:
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(repo_root)
+        if test_mode:
+            env["CLEANWIN_TEST_MODE"] = "1"
+        if extra:
+            env.update(extra)
+        return env
+
+    return _cleanwin_test_env
 
 
 @pytest.fixture
