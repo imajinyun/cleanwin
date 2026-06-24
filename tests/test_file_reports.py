@@ -13,10 +13,11 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteBytesFile = Callable[[Path, bytes], Path]
 AssertSchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
-    tmp_path: Path, write_bytes_file: WriteBytesFile
+    tmp_path: Path, write_bytes_file: WriteBytesFile, assert_readonly_report: AssertReadonlyReport
 ) -> None:
     downloads = tmp_path / "Downloads"
     onedrive = tmp_path / "OneDrive"
@@ -38,9 +39,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
         hash_bytes=1024,
     )
 
-    assert report["schema"] == FILE_REPORT_SCHEMA
-    assert report["destructive"] is False
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, FILE_REPORT_SCHEMA)
     assert report["summary"]["file_count"] == 3
     assert report["summary"]["large_file_count"] == 1
     assert report["large_files"][0]["path"] == str(large)

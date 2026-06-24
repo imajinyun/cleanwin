@@ -20,15 +20,13 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_disable_revert_contract_is_non_executable() -> None:
+def test_disable_revert_contract_is_non_executable(assert_readonly_report: AssertReadonlyReport) -> None:
     report = disable_revert_contract_report()
 
-    assert report["schema"] == DISABLE_REVERT_CONTRACT_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, DISABLE_REVERT_CONTRACT_SCHEMA)
     assert report["summary"]["execution_enabled_count"] == 0
     assert report["execution_gate"]["disable_revert_execution_enabled"] is False
     assert report["execution_gate"]["ai_auto_call_allowed"] is False
@@ -51,12 +49,12 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata() -> Non
     assert all(contract["auto_executable"] is False for contract in report["action_contracts"])
 
 
-def test_backup_delete_contract_requires_backup_identity_and_audit_refs() -> None:
+def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = backup_delete_contract_report()
 
-    assert report["schema"] == BACKUP_DELETE_CONTRACT_SCHEMA
-    assert report["destructive"] is False
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, BACKUP_DELETE_CONTRACT_SCHEMA)
     assert report["summary"]["execution_enabled_count"] == 0
     assert report["execution_gate"]["backup_delete_execution_enabled"] is False
     assert report["execution_gate"]["requires_pre_delete_backup"] is True
@@ -73,13 +71,12 @@ def test_backup_delete_contract_requires_backup_identity_and_audit_refs() -> Non
     assert all(scope["auto_executable"] is False for scope in report["backup_scopes"])
 
 
-def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled() -> None:
+def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = permanent_delete_denial_report()
 
-    assert report["schema"] == PERMANENT_DELETE_DENIAL_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, PERMANENT_DELETE_DENIAL_SCHEMA)
     assert report["capability"]["risk"] == "critical"
     assert report["capability"]["default_state"] == "denied"
     assert report["capability"]["execution_enabled"] is False

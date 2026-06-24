@@ -9,14 +9,13 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_windows_smoke_matrix_is_non_destructive_release_gate() -> None:
+def test_windows_smoke_matrix_is_non_destructive_release_gate(assert_readonly_report: AssertReadonlyReport) -> None:
     report = windows_smoke_matrix_report()
 
-    assert report["schema"] == WINDOWS_SMOKE_MATRIX_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
+    assert_readonly_report(report, WINDOWS_SMOKE_MATRIX_SCHEMA)
     assert report["summary"]["destructive_scenario_count"] == 0
     assert report["release_gate"]["required_before_execution_expansion"] is True
     assert report["release_gate"]["requires_windows_10_evidence"] is True

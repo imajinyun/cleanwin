@@ -31,6 +31,7 @@ AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertNoUnittestCommands = Callable[[CommandSequence], None]
 
 
@@ -215,6 +216,20 @@ def assert_readonly_schema_sample(assert_schema_sample: AssertSchemaSample) -> A
         return sample
 
     return _assert_readonly_schema_sample
+
+
+@pytest.fixture
+def assert_readonly_report() -> AssertReadonlyReport:
+    def _assert_readonly_report(report: JSONPayload, schema: str) -> JSONPayload:
+        assert report["schema"] == schema
+        assert report["destructive"] is False
+        if "dry_run" in report:
+            assert report["dry_run"] is True
+        if "executes_system_commands" in report:
+            assert report["executes_system_commands"] is False
+        return report
+
+    return _assert_readonly_report
 
 
 @pytest.fixture

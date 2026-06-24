@@ -9,15 +9,13 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_system_health_report_is_read_only_and_gated() -> None:
+def test_system_health_report_is_read_only_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
     report = system_health_report()
 
-    assert report["schema"] == SYSTEM_HEALTH_REPORT_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, SYSTEM_HEALTH_REPORT_SCHEMA)
     assert report["execution_gate"]["system_repair_execution_enabled"] is False
     assert report["execution_gate"]["ai_auto_call_allowed"] is False
     assert report["summary"]["auto_executable_count"] == 0

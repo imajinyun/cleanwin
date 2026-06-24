@@ -9,14 +9,15 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled() -> None:
+def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = promotion_gates_report()
 
-    assert report["schema"] == PROMOTION_GATES_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
+    assert_readonly_report(report, PROMOTION_GATES_SCHEMA)
     assert report["execution_enabled"] is False
     assert report["summary"]["report_only_gate_count"] >= 4
     assert any("does not enable registry" in item for item in report["non_goals"])

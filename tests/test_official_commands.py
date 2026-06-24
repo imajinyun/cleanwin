@@ -8,15 +8,13 @@ from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA, official
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchema = Callable[[str, str], None]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_report_is_non_destructive_and_blocks_auto_execution() -> None:
+def test_report_is_non_destructive_and_blocks_auto_execution(assert_readonly_report: AssertReadonlyReport) -> None:
     report = official_command_plan_report()
 
-    assert report["schema"] == OFFICIAL_COMMAND_PLAN_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, OFFICIAL_COMMAND_PLAN_SCHEMA)
     assert report["execution_gate"]["system_execution_enabled"] is False
     assert report["execution_gate"]["ai_auto_call_allowed"] is False
     assert any("does not execute DISM" in item for item in report["non_goals"])
