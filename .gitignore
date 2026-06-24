@@ -78,11 +78,6 @@ ipython_config.py
 
 # IDE / editor metadata
 docs/*
-!docs/doc/
-!docs/doc/**
-!docs/governance/
-!docs/governance/**
-docs/superpowers/
 .idea/
 .vscode/
 *.swp

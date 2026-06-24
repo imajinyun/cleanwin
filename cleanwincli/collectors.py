@@ -727,7 +727,8 @@ def collect_findings(categories: list[str], *, env: dict[str, str] | None = None
             )
         if _matches_rule_filter(finding.rule_id, allowed_rule_ids):
             findings.append(finding)
-    unknown = sorted(set(categories) - DEFAULT_SAFE_CATEGORIES - READ_ONLY_CATEGORIES)
+    virtual_report_categories = {"browser-profile-inventory"}
+    unknown = sorted(set(categories) - DEFAULT_SAFE_CATEGORIES - READ_ONLY_CATEGORIES - virtual_report_categories)
     for category in unknown:
         findings.append(
             Finding(

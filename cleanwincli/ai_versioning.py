@@ -43,10 +43,21 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.ai-self-test.v1", 1, "cleanwincli.ai_self_test", "stable", "ai", "cleanwin", ("ai-host", "mcp", "ci")),
     ("cleanwin.ai-runbook.v1", 1, "cleanwincli.ai_runbook", "stable", "ai", "cleanwin", ("ai-host", "mcp")),
     ("cleanwin.recovery-readiness.v1", 1, "cleanwincli.recovery", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.scan-governance.v1", 1, "cleanwincli.scan_governance", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.external-rule-review.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.installed-app-inventory.v1", 1, "cleanwincli.installed_apps", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.browser-profile-inventory.v1", 1, "cleanwincli.browser_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-command-plan.v1", 1, "cleanwincli.official_commands", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.official-action-contract.v1", 1, "cleanwincli.official_commands", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.preset-catalog.v1", 1, "cleanwincli.presets", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.preset-plan-template.v1", 1, "cleanwincli.presets", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.promotion-gates.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.registry-privacy-evidence.v1", 1, "cleanwincli.debloat_privacy", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-smoke-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.mcp-tool-error.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
     ("cleanwin.mcp-text-output.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
 )
@@ -267,6 +278,20 @@ def _sample_installed_app_inventory() -> dict[str, Any]:
                 "system_component": False,
                 "release_type": "",
                 "install_date": "20260620",
+                "uninstall_strategy": {
+                    "schema": "cleanwin.uninstall-strategy.v1",
+                    "strategy_id": "registry-uninstall-string",
+                    "preferred": "Settings > Apps or vendor uninstall entry",
+                    "confidence": "high",
+                    "risk": "medium",
+                    "uninstall_string_present": True,
+                    "quiet_uninstall_string_present": False,
+                    "windows_installer": False,
+                    "system_component": False,
+                    "executes_by_report": False,
+                    "auto_executable": False,
+                    "review_steps": ["Review application identity, publisher, install location, and source before uninstall."],
+                },
             }
         ],
         "leftover_correlations": [
@@ -285,8 +310,95 @@ def _sample_installed_app_inventory() -> dict[str, Any]:
             "leftover_correlation_count": 1,
             "potential_uninstall_leftover_count": 0,
             "installed_application_present_count": 1,
+            "uninstall_strategy_counts": {"registry-uninstall-string": 1},
+            "manual_review_strategy_count": 0,
         },
         "non_goals": ["This report does not uninstall applications."],
+    }
+
+
+def _sample_file_report() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.file-report.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "scan_roots": [r"C:\\Users\\tester\\Downloads", r"C:\\Users\\tester\\OneDrive"],
+        "traversal_budget": {"max_files": 2000, "limit_reached": False, "skipped_roots": [], "skipped_dirs": []},
+        "large_files": [
+            {
+                "path": r"C:\\Users\\tester\\Downloads\\installer.iso",
+                "name": "installer.iso",
+                "extension": ".iso",
+                "size_bytes": 734003200,
+                "modified_ns": 1710000000000000000,
+                "onedrive_or_cloud_path": False,
+                "safe_to_execute": False,
+                "review_required": True,
+            }
+        ],
+        "duplicate_groups": [
+            {
+                "digest": "0" * 64,
+                "hash_scope": "first-1048576-bytes",
+                "size_bytes": 104857600,
+                "file_count": 2,
+                "potential_reclaimable_bytes": 104857600,
+                "files": [],
+                "safe_to_execute": False,
+                "review_required": True,
+            }
+        ],
+        "extension_groups": [{"extension": ".iso", "file_count": 1, "total_bytes": 734003200}],
+        "summary": {
+            "file_count": 2,
+            "bytes_scanned": 838860800,
+            "large_file_count": 1,
+            "duplicate_group_count": 1,
+            "potential_duplicate_reclaimable_bytes": 104857600,
+            "onedrive_or_cloud_file_count": 0,
+        },
+        "execution_gate": {
+            "file_execution_enabled": False,
+            "requires_human_review": True,
+            "requires_backup_or_cloud_sync_review": True,
+            "requires_exact_file_identity": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not delete large files."],
+    }
+
+
+def _sample_scan_governance() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.scan-governance.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "scan_budgets": [
+            {
+                "id": "file-report",
+                "surface": "large-file and duplicate-file reporting",
+                "max_files_scanned": 2000,
+                "max_hash_bytes_per_file": 1048576,
+                "protected_directory_policy": "skip-system-app-dependency-roots",
+                "permission_error_policy": "aggregate-and-continue",
+                "locked_file_policy": "report-and-skip",
+            }
+        ],
+        "external_rule_contract": {
+            "schema": "cleanwin.external-rule-review.v1",
+            "default_state": "report-only",
+            "execution_enabled": False,
+            "required_source_evidence": ["upstream_project", "upstream_rule_id_or_commit", "license", "original_pattern", "translated_cleanwin_rule"],
+            "required_safety_evidence": ["owner", "category", "default_path", "sensitive_exclusions", "official_cleanup_command", "rationale", "test_fixture"],
+            "blocked_patterns": ["raw shell command strings", "browser profile root deletion", "user document directory deletion"],
+            "promotion_requirements": ["schema validation", "fixture coverage", "review-plan evidence", "dry-run evidence", "promotion-gate approval"],
+        },
+        "summary": {"budget_count": 1, "external_rule_execution_enabled": False, "blocked_pattern_count": 3},
+        "release_gate": {"requires_budget_tests": True, "requires_external_rule_review_tests": True, "requires_quality": True, "required_commands": ["make quality"], "blocks_execution_expansion": True},
+        "non_goals": ["This report does not import external cleaner rules automatically."],
     }
 
 
@@ -309,11 +421,25 @@ def _sample_official_command_plan() -> dict[str, Any]:
                 "prerequisites": ["No pending reboot", "Run from elevated terminal"],
                 "required_snapshots": ["system-restore-point", "registry-export"],
                 "review_steps": ["Use DISM instead of deleting WinSxS files directly."],
+                "action_contract": {
+                    "schema": "cleanwin.official-action-contract.v1",
+                    "action_id": "windows.component-cleanup.dism-startcomponentcleanup",
+                    "allowlisted_command": ["dism.exe", "/Online", "/Cleanup-Image", "/StartComponentCleanup"],
+                    "argument_policy": "exact-argv-only",
+                    "execution_enabled": False,
+                    "requires_human_review": True,
+                    "requires_matching_dry_run_token": True,
+                    "rollback_required": True,
+                    "required_privileges": ["administrator"],
+                    "blocked_without": ["windows-smoke-evidence", "recovery-readiness"],
+                    "expected_effects": ["Reduce superseded Windows component store payloads."],
+                    "forbidden_effects": ["Direct WinSxS file deletion"],
+                },
                 "executes_by_report": False,
                 "auto_executable": False,
             }
         ],
-        "summary": {"command_count": 1, "auto_executable_count": 0, "requires_snapshot_count": 1, "high_risk_count": 1},
+        "summary": {"command_count": 1, "auto_executable_count": 0, "requires_snapshot_count": 1, "high_risk_count": 1, "action_contract_count": 1, "execution_enabled_action_count": 0},
         "execution_gate": {
             "system_execution_enabled": False,
             "requires_human_review": True,
@@ -322,6 +448,45 @@ def _sample_official_command_plan() -> dict[str, Any]:
             "ai_auto_call_allowed": False,
         },
         "non_goals": ["This report does not execute DISM, Disk Cleanup, Settings URI handlers, or Defender commands."],
+    }
+
+
+def _sample_preset_catalog() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.preset-catalog.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "presets": [
+            {
+                "id": "preset.daily-safe-cache",
+                "title": "Daily safe cache review",
+                "categories": ["temp", "dev-cache", "package-cache"],
+                "rule_ids": ["dev-cache.npm.cache", "dev-cache.pip.cache", "package-cache.winget.packages"],
+                "risk": "low",
+                "target_user": "general-developer",
+                "plan_template": {
+                    "schema": "cleanwin.preset-plan-template.v1",
+                    "argv": ["cleanwin", "--json", "plan", "--categories", "temp,dev-cache,package-cache"],
+                    "destructive": False,
+                    "execution_enabled": False,
+                    "requires_plan_review": True,
+                    "requires_validate_plan": True,
+                    "requires_matching_dry_run_token": True,
+                },
+                "review_steps": ["Review candidate paths before execution."],
+            }
+        ],
+        "summary": {"preset_count": 1, "execution_enabled_count": 0, "rule_id_count": 3},
+        "execution_gate": {
+            "preset_execution_enabled": False,
+            "requires_explicit_plan_generation": True,
+            "requires_validate_plan": True,
+            "requires_human_review": True,
+            "requires_matching_dry_run_token": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not execute presets."],
     }
 
 
@@ -343,6 +508,17 @@ def _sample_debloat_privacy_report() -> dict[str, Any]:
                 "registry_value": r"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\AllowTelemetry",
                 "observed_value": "3",
                 "expected_private_values": ["0"],
+                "change_evidence": {
+                    "schema": "cleanwin.registry-privacy-evidence.v1",
+                    "hive": "HKLM",
+                    "subkey_path": r"SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+                    "value_name": "AllowTelemetry",
+                    "observed_value": "3",
+                    "expected_private_values": ["0"],
+                    "exact_registry_value": r"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\AllowTelemetry",
+                    "required_export_command": ["reg.exe", "export", r"HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection", "<export-file.reg>", "/y"],
+                    "rollback_metadata_required": ["hive", "subkey_path", "value_name", "previous_value", "registry_export_ref"],
+                },
                 "safe_to_execute": False,
                 "review_steps": ["Export the policy key before any future registry mutation."],
             }
@@ -356,6 +532,120 @@ def _sample_debloat_privacy_report() -> dict[str, Any]:
             "ai_auto_call_allowed": False,
         },
         "non_goals": ["This report does not remove AppX packages."],
+    }
+
+
+def _sample_system_health_report() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.system-health-report.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "recommendations": [
+            {
+                "id": "health.component-store.dism-scanhealth",
+                "title": "Check Windows component store health",
+                "symptom": "Windows updates, optional features, or servicing operations fail.",
+                "commands": [["dism.exe", "/Online", "/Cleanup-Image", "/ScanHealth"]],
+                "risk": "medium",
+                "prerequisites": ["Run from elevated terminal"],
+                "evidence_required": ["DISM log excerpt", "Windows version", "pending reboot state"],
+                "review_steps": ["Run scan commands before any repair command."],
+                "executes_by_report": False,
+                "auto_executable": False,
+                "safe_to_execute": False,
+            }
+        ],
+        "summary": {"recommendation_count": 1, "auto_executable_count": 0, "elevated_recommendation_count": 1},
+        "execution_gate": {
+            "system_repair_execution_enabled": False,
+            "requires_human_review": True,
+            "requires_admin_for_repair_tools": True,
+            "requires_log_capture": True,
+            "requires_backup_before_repair_flags": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": ["This report does not execute DISM, SFC, CHKDSK, troubleshooters, or Settings URI handlers."],
+    }
+
+
+def _sample_promotion_gates() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.promotion-gates.v1",
+        "destructive": False,
+        "dry_run": True,
+        "execution_enabled": False,
+        "gate_count": 2,
+        "gates": [
+            {
+                "id": "registry-privacy-to-registry-change",
+                "source_reports": ["cleanwin.debloat-privacy-report.v1"],
+                "target_action": "registry-change",
+                "default_state": "report-only",
+                "required_evidence": ["exact_registry_key", "value_name", "observed_value", "expected_value"],
+                "required_snapshots": ["system-restore-point", "registry-export"],
+                "rollback_metadata": ["registry_key", "registry_export_ref", "previous_value", "restore_command"],
+                "required_tests": ["fixture-registry-value-present", "rollback-metadata-validation"],
+                "human_confirmations": ["explicit-registry-change-review", "matching-dry-run-token"],
+                "ai_auto_call_allowed": False,
+                "rationale": "Registry privacy changes must remain report-only until exact rollback evidence exists.",
+            },
+            {
+                "id": "browser-profile-to-cache-plan",
+                "source_reports": ["cleanwin.browser-profile-inventory.v1"],
+                "target_action": "browser-cache-delete",
+                "default_state": "low-risk-cache-only",
+                "required_evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "sensitive_exclusions"],
+                "required_snapshots": [],
+                "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
+                "required_tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+                "human_confirmations": ["matching-dry-run-token"],
+                "ai_auto_call_allowed": True,
+                "rationale": "Only regenerated browser cache layers may be promoted.",
+            },
+        ],
+        "summary": {"report_only_gate_count": 1, "ai_auto_call_allowed_count": 1, "requires_snapshot_count": 1},
+        "global_requirements": ["No raw shell command strings in executable plans."],
+        "non_goals": ["This report does not enable registry, startup, service, scheduled task, debloat, or official-command execution."],
+    }
+
+
+def _sample_browser_profile_inventory() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.browser-profile-inventory.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "sources": [{"id": "chrome", "available": True, "reason": "profile-root-scan", "evidence": {"root": r"C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data"}}],
+        "profiles": [
+            {
+                "browser": "chrome",
+                "owner": "Google Chrome",
+                "engine": "chromium",
+                "profile_name": "Default",
+                "profile_path": r"C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+                "profile_exists": True,
+                "locked_profile": {"locked": True, "state": "locked-or-running", "evidence": [{"path": r"C:\\...\\SingletonLock", "exists": True}], "method": "lock-file-presence"},
+                "cache_layers": [
+                    {
+                        "name": "Cache",
+                        "type": "http-cache",
+                        "path": r"C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cache",
+                        "exists": True,
+                        "size_bytes": 1024,
+                        "promotable": True,
+                        "safe_to_execute": False,
+                    }
+                ],
+                "sensitive_exclusions": ["Cookies", "Login Data", "Sessions", "Extensions", "History"],
+                "safe_to_execute": False,
+            }
+        ],
+        "summary": {"profile_count": 1, "locked_profile_count": 1, "cache_layer_count": 1, "existing_cache_layer_count": 1, "promotable_cache_layer_count": 1, "bytes_reported": 1024},
+        "execution_gate": {"system_execution_enabled": False, "cache_execution_enabled": False, "requires_locked_profile_check": True, "requires_sensitive_exclusions": True, "ai_auto_call_allowed": False},
+        "non_goals": ["This report does not delete browser cache files."],
     }
 
 
@@ -392,6 +682,38 @@ def _sample_startup_service_inventory() -> dict[str, Any]:
             "ai_auto_call_allowed": False,
         },
         "non_goals": ["This report does not disable startup entries."],
+    }
+
+
+def _sample_windows_smoke_matrix() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.windows-smoke-matrix.v1",
+        "destructive": False,
+        "dry_run": True,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "scenario_count": 1,
+        "scenarios": [
+            {
+                "id": "browser-profile-lock-and-sensitive-exclusion",
+                "title": "Browser profile locks and privacy exclusions",
+                "windows_versions": ["Windows 10 22H2", "Windows 11 23H2", "Windows 11 24H2"],
+                "user_contexts": ["standard-user"],
+                "commands": [["python", "cleanwin.py", "--json", "browser-profile-inventory"]],
+                "required_evidence": ["profile_count", "locked_profile_state", "cache_layers", "sensitive_exclusions"],
+                "acceptance": ["Cookies, passwords, sessions, extensions, history, bookmarks, and profile DBs are excluded."],
+                "risk": "medium",
+                "destructive": False,
+            }
+        ],
+        "summary": {"windows_version_count": 3, "admin_scenario_count": 0, "high_risk_scenario_count": 0, "destructive_scenario_count": 0},
+        "release_gate": {
+            "required_before_execution_expansion": True,
+            "requires_windows_10_evidence": True,
+            "requires_windows_11_evidence": True,
+            "requires_json_artifacts": True,
+            "allows_synthetic_fixture_only": False,
+        },
+        "non_goals": ["This matrix does not execute Windows smoke scenarios by itself."],
     }
 
 
@@ -526,8 +848,10 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 },
             ],
             "recommended_commands": [
-                ["python3", "-m", "unittest", "discover", "-s", "tests", "-v"],
-                ["python3", "cleanwin.py", "--json", "doctor"],
+                ["make", "pytest"],
+                ["make", "lint"],
+                ["make", "type"],
+                ["make", "quality"],
                 ["make", "version-smoke"],
                 ["make", "package-install-smoke"],
                 ["make", "sdist-install-smoke"],
@@ -535,14 +859,36 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         }
     if schema_name == "cleanwin.recovery-readiness.v1":
         return _sample_recovery_readiness()
+    if schema_name == "cleanwin.file-report.v1":
+        return _sample_file_report()
+    if schema_name == "cleanwin.scan-governance.v1":
+        return _sample_scan_governance()
+    if schema_name == "cleanwin.external-rule-review.v1":
+        return _sample_scan_governance()["external_rule_contract"]
     if schema_name == "cleanwin.installed-app-inventory.v1":
         return _sample_installed_app_inventory()
+    if schema_name == "cleanwin.browser-profile-inventory.v1":
+        return _sample_browser_profile_inventory()
     if schema_name == "cleanwin.official-command-plan.v1":
         return _sample_official_command_plan()
+    if schema_name == "cleanwin.official-action-contract.v1":
+        return _sample_official_command_plan()["commands"][0]["action_contract"]
+    if schema_name == "cleanwin.preset-catalog.v1":
+        return _sample_preset_catalog()
+    if schema_name == "cleanwin.preset-plan-template.v1":
+        return _sample_preset_catalog()["presets"][0]["plan_template"]
+    if schema_name == "cleanwin.promotion-gates.v1":
+        return _sample_promotion_gates()
     if schema_name == "cleanwin.debloat-privacy-report.v1":
         return _sample_debloat_privacy_report()
+    if schema_name == "cleanwin.registry-privacy-evidence.v1":
+        return _sample_debloat_privacy_report()["findings"][0]["change_evidence"]
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
+    if schema_name == "cleanwin.system-health-report.v1":
+        return _sample_system_health_report()
+    if schema_name == "cleanwin.windows-smoke-matrix.v1":
+        return _sample_windows_smoke_matrix()
     return None
 
 

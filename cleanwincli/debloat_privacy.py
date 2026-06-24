@@ -67,6 +67,17 @@ def _policy_finding(
         "registry_value": rf"{root_name}\{subkey_path}\{value_name}",
         "observed_value": observed,
         "expected_private_values": sorted(private_values),
+        "change_evidence": {
+            "schema": "cleanwin.registry-privacy-evidence.v1",
+            "hive": root_name,
+            "subkey_path": subkey_path,
+            "value_name": value_name,
+            "observed_value": observed,
+            "expected_private_values": sorted(private_values),
+            "exact_registry_value": rf"{root_name}\{subkey_path}\{value_name}",
+            "required_export_command": ["reg.exe", "export", rf"{root_name}\{subkey_path}", "<export-file.reg>", "/y"],
+            "rollback_metadata_required": ["hive", "subkey_path", "value_name", "previous_value", "registry_export_ref"],
+        },
         "safe_to_execute": False,
         "review_steps": review_steps,
     }

@@ -10,13 +10,16 @@ from __future__ import annotations
 READ_ONLY_CATEGORIES = frozenset(
     {
         "registry-report",
+        "scan-governance",
         "startup-report",
+        "system-health-report",
         "windows-report",
         "large-files",
         "docker-report",
         "wsl-report",
         "visual-studio-report",
         "browser-cache-report",
+        "file-report",
     }
 )
 

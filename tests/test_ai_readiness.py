@@ -104,6 +104,7 @@ def test_doctor_report_checks_static_safety_and_contracts() -> None:
     assert version_check["evidence"]["pyproject_version"] == __version__
     assert version_check["evidence"]["distribution_version"] in {None, __version__}
     assert version_check["evidence"]["capabilities_version"] == __version__
+    assert ["make", "pytest"] in report["recommended_commands"]
     assert ["python3", "-m", "pytest", "-q"] in report["recommended_commands"]
     assert ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
     assert ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"] in report["recommended_commands"]
@@ -117,6 +118,17 @@ def test_doctor_report_checks_static_safety_and_contracts() -> None:
     assert ["make", "version-smoke"] in report["recommended_commands"]
     assert ["make", "clean"] in report["recommended_commands"]
     assert ["make", "quality"] in report["recommended_commands"]
+    assert not any(command[:3] == ["python3", "-m", "unittest"] for command in report["recommended_commands"])
+
+
+def test_ai_readiness_release_gates_use_pytest_workflow() -> None:
+    report = ai_readiness_report()
+
+    assert "make pytest" in report["release_gate_commands"]
+    assert "make lint" in report["release_gate_commands"]
+    assert "make type" in report["release_gate_commands"]
+    assert "make quality" in report["release_gate_commands"]
+    assert not any("unittest" in command for command in report["release_gate_commands"])
 
 
 @pytest.mark.parametrize(

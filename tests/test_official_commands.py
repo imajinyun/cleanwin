@@ -20,6 +20,8 @@ def test_report_is_non_destructive_and_blocks_auto_execution() -> None:
     assert report["execution_gate"]["ai_auto_call_allowed"] is False
     assert any("does not execute DISM" in item for item in report["non_goals"])
     assert report["summary"]["auto_executable_count"] == 0
+    assert report["summary"]["action_contract_count"] == report["summary"]["command_count"]
+    assert report["summary"]["execution_enabled_action_count"] == 0
 
 
 def test_report_covers_windows_owned_cleanup_surfaces() -> None:
@@ -37,6 +39,29 @@ def test_report_covers_windows_owned_cleanup_surfaces() -> None:
     assert "system-restore-point" in by_id["windows.component-cleanup.dism-startcomponentcleanup"]["required_snapshots"]
     assert all(not command["executes_by_report"] for command in report["commands"])
     assert all(not command["auto_executable"] for command in report["commands"])
+
+
+def test_official_commands_include_structured_non_executable_action_contracts() -> None:
+    report = official_command_plan_report()
+
+    for command in report["commands"]:
+        contract = command["action_contract"]
+        assert contract["schema"] == "cleanwin.official-action-contract.v1"
+        assert contract["action_id"] == command["id"]
+        assert contract["allowlisted_command"] == command["command"]
+        assert contract["argument_policy"] == "exact-argv-only"
+        assert contract["execution_enabled"] is False
+        assert contract["requires_human_review"] is True
+        assert contract["requires_matching_dry_run_token"] is True
+        assert contract["expected_effects"]
+        assert contract["forbidden_effects"]
+
+    dism_contract = {
+        command["id"]: command["action_contract"]
+        for command in report["commands"]
+    }["windows.component-cleanup.dism-startcomponentcleanup"]
+    assert "administrator" in dism_contract["required_privileges"]
+    assert "recovery-readiness" in dism_contract["blocked_without"]
 
 
 def test_cli_and_ai_provider_expose_official_command_plan(cleanwin_json: CleanWinJSON) -> None:

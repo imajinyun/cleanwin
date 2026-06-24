@@ -163,6 +163,40 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     assert "regenerated" in candidate["safe_to_delete_rationale"].lower()
     assert candidate["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
+def test_dev_cache_scans_expanded_python_and_node_tool_caches(
+    tmp_path: Path, cleanwin_json: CleanWinJSON
+) -> None:
+    root = tmp_path
+    local = root / "LocalAppData"
+    user = root / "User"
+    poetry_cache = local / "pypoetry" / "Cache"
+    poetry_cache.mkdir(parents=True)
+    (poetry_cache / "artifact.whl").write_text("poetry", encoding="utf-8")
+    pipenv_cache = local / "pipenv" / "Cache"
+    pipenv_cache.mkdir(parents=True)
+    (pipenv_cache / "resolver.json").write_text("pipenv", encoding="utf-8")
+    pre_commit_cache = user / ".cache" / "pre-commit"
+    pre_commit_cache.mkdir(parents=True)
+    (pre_commit_cache / "repo.db").write_text("precommit", encoding="utf-8")
+    node_gyp_cache = local / "node-gyp" / "Cache"
+    node_gyp_cache.mkdir(parents=True)
+    (node_gyp_cache / "headers.tar.gz").write_text("node-gyp", encoding="utf-8")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "dev-cache",
+        "--older-than-days",
+        "0",
+        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(user)},
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert by_rule["dev-cache.poetry.cache"]["cache_owner"] == "Poetry"
+    assert by_rule["dev-cache.pipenv.cache"]["cache_owner"] == "Pipenv"
+    assert by_rule["dev-cache.pre-commit.cache"]["cache_owner"] == "pre-commit"
+    assert by_rule["dev-cache.node-gyp.cache"]["cache_owner"] == "node-gyp"
+    assert "poetry cache clear" in by_rule["dev-cache.poetry.cache"]["official_cleanup_command"]
+
 def test_package_cache_scans_common_windows_package_manager_caches(
     tmp_path: Path, cleanwin_json: CleanWinJSON
 ) -> None:
@@ -239,6 +273,37 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     assert str(jetbrains_logs) in paths
     assert all(candidate["category"] == "app-leftovers" for candidate in payload["candidates"])
     assert all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"])
+
+def test_app_leftovers_scans_expanded_electron_gpu_caches(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    teams_gpu_cache = roaming / "Microsoft" / "Teams" / "GPUCache"
+    teams_gpu_cache.mkdir(parents=True)
+    (teams_gpu_cache / "shader.bin").write_text("teams", encoding="utf-8")
+    discord_gpu_cache = roaming / "discord" / "GPUCache"
+    discord_gpu_cache.mkdir(parents=True)
+    (discord_gpu_cache / "shader.bin").write_text("discord", encoding="utf-8")
+    vscode_gpu_cache = roaming / "Code" / "GPUCache"
+    vscode_gpu_cache.mkdir(parents=True)
+    (vscode_gpu_cache / "shader.bin").write_text("code", encoding="utf-8")
+    vscode_user_data = roaming / "Code" / "User"
+    vscode_user_data.mkdir(parents=True)
+    (vscode_user_data / "settings.json").write_text("{}", encoding="utf-8")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert by_rule["app-leftovers.teams-classic.gpu-cache"]["path"] == str(teams_gpu_cache)
+    assert by_rule["app-leftovers.discord.gpu-cache"]["path"] == str(discord_gpu_cache)
+    assert by_rule["app-leftovers.vscode.gpu-cache"]["path"] == str(vscode_gpu_cache)
+    assert str(vscode_user_data) not in {candidate["path"] for candidate in payload["candidates"]}
 
 def test_app_leftovers_skips_when_active_install_marker_exists(tmp_path: Path, cleanwin_json: CleanWinJSON) -> None:
     root = tmp_path

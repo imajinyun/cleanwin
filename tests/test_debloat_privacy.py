@@ -36,6 +36,12 @@ def test_registry_policy_values_are_classified() -> None:
     assert by_id["privacy.telemetry.allow-telemetry"]["state"] == "review-recommended"
     assert by_id["privacy.ad-id.disabled"]["state"] == "privacy-hardened"
     assert by_id["privacy.telemetry.allow-telemetry"]["safe_to_execute"] is False
+    evidence = by_id["privacy.telemetry.allow-telemetry"]["change_evidence"]
+    assert evidence["schema"] == "cleanwin.registry-privacy-evidence.v1"
+    assert evidence["hive"] == "HKLM"
+    assert evidence["value_name"] == "AllowTelemetry"
+    assert evidence["required_export_command"][:2] == ["reg.exe", "export"]
+    assert "previous_value" in evidence["rollback_metadata_required"]
     assert report["summary"]["review_recommended_count"] == 1
     assert report["summary"]["privacy_hardened_count"] == 1
 

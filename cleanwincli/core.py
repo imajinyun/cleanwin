@@ -24,16 +24,23 @@ from cleanwincli.ai_schema import (
 )
 from cleanwincli.ai_self_test import ai_self_test_report
 from cleanwincli.ai_versioning import negotiate_plan_schema, schema_registry
+from cleanwincli.browser_inventory import browser_profile_inventory_report
 from cleanwincli.collectors import collect_candidates, collect_findings
 from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
+from cleanwincli.file_reports import file_report
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
 from cleanwincli.models import PLAN_SCHEMA, HostContext, Plan, plan_from_dict
 from cleanwincli.official_commands import official_command_plan_report
+from cleanwincli.presets import preset_catalog_report
+from cleanwincli.promotion_gates import promotion_gates_report
 from cleanwincli.protection import validate_filesystem_candidate
 from cleanwincli.recovery import recovery_readiness_report
+from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
+from cleanwincli.system_health import system_health_report
+from cleanwincli.windows_smoke import windows_smoke_matrix_report
 
 
 def capabilities() -> dict[str, Any]:
@@ -55,15 +62,20 @@ def capabilities() -> dict[str, Any]:
         "safe_categories": ["app-leftovers", "browser-cache", "dev-cache", "package-cache", "temp"],
         "read_only_categories": [
             "browser-cache-report",
+            "browser-profile-inventory",
             "docker-report",
+            "file-report",
             "large-files",
             "registry-report",
+            "scan-governance",
             "startup-report",
+            "system-health-report",
             "visual-studio-report",
             "windows-report",
             "wsl-report",
         ],
         "never_auto_execute": ["registry-clean", "startup-disable", "windows-component-clean"],
+        "promotion_gates_schema": "cleanwin.promotion-gates.v1",
         "ai": {
             "tool_catalog_schema": "cleanwin.ai-tools.v1",
             "host_policy_schema": "cleanwin.ai-host-policy.v1",
@@ -408,6 +420,10 @@ def doctor_report() -> dict[str, Any]:
         "passed_count": sum(1 for check in checks if check["passed"]),
         "checks": checks,
         "recommended_commands": [
+            ["make", "pytest"],
+            ["make", "lint"],
+            ["make", "type"],
+            ["make", "compile"],
             ["python3", "-m", "pytest", "-q"],
             ["python3", "-m", "ruff", "check", "cleanwin.py", "cleanwincli", "tests"],
             ["python3", "-m", "mypy", "cleanwin.py", "cleanwincli", "tests"],
@@ -552,16 +568,30 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return ai_runbook_report()
     if provider == "doctor":
         return doctor_report()
+    if provider == "file-report":
+        return file_report()
     if provider == "recovery-readiness":
         return recovery_readiness_report()
+    if provider == "scan-governance":
+        return scan_governance_report()
     if provider == "installed-app-inventory":
         return installed_app_inventory_report()
     if provider == "official-command-plan":
         return official_command_plan_report()
+    if provider == "preset-catalog":
+        return preset_catalog_report()
+    if provider == "promotion-gates":
+        return promotion_gates_report()
+    if provider == "browser-profile-inventory":
+        return browser_profile_inventory_report()
     if provider == "debloat-privacy-report":
         return debloat_privacy_report()
     if provider == "startup-service-inventory":
         return startup_service_inventory_report()
+    if provider == "system-health-report":
+        return system_health_report()
+    if provider == "windows-smoke-matrix":
+        return windows_smoke_matrix_report()
     if provider == "review-sample":
         sample = schema_registry().get("samples", {}).get("cleanwin.review.v1")
         if isinstance(sample, dict):
@@ -596,6 +626,14 @@ def recovery_readiness_command() -> dict[str, Any]:
     return recovery_readiness_report()
 
 
+def file_report_command() -> dict[str, Any]:
+    return file_report()
+
+
+def scan_governance_command() -> dict[str, Any]:
+    return scan_governance_report()
+
+
 def installed_app_inventory_command() -> dict[str, Any]:
     return installed_app_inventory_report()
 
@@ -604,12 +642,32 @@ def official_command_plan_command() -> dict[str, Any]:
     return official_command_plan_report()
 
 
+def preset_catalog_command() -> dict[str, Any]:
+    return preset_catalog_report()
+
+
+def promotion_gates_command() -> dict[str, Any]:
+    return promotion_gates_report()
+
+
+def browser_profile_inventory_command() -> dict[str, Any]:
+    return browser_profile_inventory_report()
+
+
 def debloat_privacy_report_command() -> dict[str, Any]:
     return debloat_privacy_report()
 
 
 def startup_service_inventory_command() -> dict[str, Any]:
     return startup_service_inventory_report()
+
+
+def system_health_report_command() -> dict[str, Any]:
+    return system_health_report()
+
+
+def windows_smoke_matrix_command() -> dict[str, Any]:
+    return windows_smoke_matrix_report()
 
 
 def policy_simulate(

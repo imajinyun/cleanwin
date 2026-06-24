@@ -32,6 +32,7 @@ def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, 
     display_name = str(entry.get("DisplayName") or entry.get("display_name") or "").strip()
     if not display_name:
         return None
+    normalized_source = str(entry.get("source") or source)
     raw_estimated_size = entry.get("EstimatedSize") or entry.get("estimated_size_kb")
     estimated_size_kb: int | None = None
     try:
@@ -39,8 +40,8 @@ def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, 
             estimated_size_kb = int(cast(str, raw_estimated_size))
     except (TypeError, ValueError):
         estimated_size_kb = None
-    return {
-        "source": source,
+    app = {
+        "source": normalized_source,
         "key_path": str(entry.get("key_path") or ""),
         "display_name": display_name,
         "display_version": str(entry.get("DisplayVersion") or entry.get("display_version") or "").strip(),
@@ -53,6 +54,87 @@ def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, 
         "system_component": str(entry.get("SystemComponent") or entry.get("system_component") or "") == "1",
         "release_type": str(entry.get("ReleaseType") or entry.get("release_type") or "").strip(),
         "install_date": str(entry.get("InstallDate") or entry.get("install_date") or "").strip(),
+    }
+    app["uninstall_strategy"] = _uninstall_strategy(app)
+    return app
+
+
+def _uninstall_strategy(app: Mapping[str, Any]) -> dict[str, Any]:
+    source = str(app.get("source") or "")
+    release_type = str(app.get("release_type") or "")
+    install_location = str(app.get("install_location") or "").lower()
+    key_path = str(app.get("key_path") or "").lower()
+    has_uninstall = bool(app.get("uninstall_string_present"))
+    has_quiet = bool(app.get("quiet_uninstall_string_present"))
+    windows_installer = bool(app.get("windows_installer"))
+    system_component = bool(app.get("system_component"))
+    if system_component:
+        strategy_id = "system-component-review-only"
+        confidence = "high"
+        preferred = "Windows component or vendor servicing path"
+        risk = "high"
+    elif windows_installer:
+        strategy_id = "msi-uninstall"
+        confidence = "high"
+        preferred = "Settings > Apps or msiexec uninstall after review"
+        risk = "medium"
+    elif source == "scoop":
+        strategy_id = "scoop-uninstall"
+        confidence = "high"
+        preferred = "scoop uninstall <app>"
+        risk = "low"
+    elif source == "chocolatey":
+        strategy_id = "chocolatey-uninstall"
+        confidence = "high"
+        preferred = "choco uninstall <package>"
+        risk = "medium"
+    elif source == "winget":
+        strategy_id = "winget-uninstall"
+        confidence = "high"
+        preferred = "winget uninstall --id <package-id>"
+        risk = "medium"
+    elif source == "steam" or "steamapps" in install_location or "steam" in key_path:
+        strategy_id = "steam-library-review"
+        confidence = "medium"
+        preferred = "Steam library uninstall workflow"
+        risk = "medium"
+    elif source == "portable-location" or release_type == "portable-directory":
+        strategy_id = "portable-manual-review"
+        confidence = "medium"
+        preferred = "manual portable app removal after verifying no user data is stored in the directory"
+        risk = "medium"
+    elif "appx" in source or release_type.lower() in {"appx", "msix"}:
+        strategy_id = "store-app-review-only"
+        confidence = "medium"
+        preferred = "Settings > Apps or documented AppX removal workflow after inventory snapshot"
+        risk = "high"
+    elif has_uninstall:
+        strategy_id = "registry-uninstall-string"
+        confidence = "high"
+        preferred = "Settings > Apps or vendor uninstall entry"
+        risk = "medium"
+    else:
+        strategy_id = "orphaned-entry-review"
+        confidence = "low"
+        preferred = "manual review; uninstall command evidence is missing"
+        risk = "medium"
+    return {
+        "schema": "cleanwin.uninstall-strategy.v1",
+        "strategy_id": strategy_id,
+        "preferred": preferred,
+        "confidence": confidence,
+        "risk": risk,
+        "uninstall_string_present": has_uninstall,
+        "quiet_uninstall_string_present": has_quiet,
+        "windows_installer": windows_installer,
+        "system_component": system_component,
+        "executes_by_report": False,
+        "auto_executable": False,
+        "review_steps": [
+            "Review application identity, publisher, install location, and source before uninstall.",
+            "Prefer Settings > Apps, vendor uninstallers, or package-manager uninstall commands.",
+            "Capture installed-app inventory before and after any future uninstall workflow.",
+        ],
     }
 
 
@@ -120,23 +202,23 @@ def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict
             sources.append(_source_status("scoop-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
             continue
         for child in sorted(item for item in root.iterdir() if item.is_dir()):
-            apps.append(
-                {
-                    "source": "scoop",
-                    "key_path": str(child),
-                    "display_name": child.name,
-                    "display_version": "",
-                    "publisher": "Scoop",
-                    "install_location": str(child),
-                    "uninstall_string_present": False,
-                    "quiet_uninstall_string_present": False,
-                    "estimated_size_kb": None,
-                    "windows_installer": False,
-                    "system_component": False,
-                    "release_type": "scoop-package",
-                    "install_date": "",
-                }
-            )
+            app = {
+                "source": "scoop",
+                "key_path": str(child),
+                "display_name": child.name,
+                "display_version": "",
+                "publisher": "Scoop",
+                "install_location": str(child),
+                "uninstall_string_present": False,
+                "quiet_uninstall_string_present": False,
+                "estimated_size_kb": None,
+                "windows_installer": False,
+                "system_component": False,
+                "release_type": "scoop-package",
+                "install_date": "",
+            }
+            app["uninstall_strategy"] = _uninstall_strategy(app)
+            apps.append(app)
         sources.append(_source_status("scoop-apps", available=True, reason="filesystem-manifest", evidence={"path": str(root)}))
     return apps, sources
 
@@ -163,23 +245,23 @@ def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list
                     version = package_version or ""
             except ET.ParseError:
                 pass
-        apps.append(
-            {
-                "source": "chocolatey",
-                "key_path": str(package_dir),
-                "display_name": display_name,
-                "display_version": version,
-                "publisher": "Chocolatey",
-                "install_location": str(package_dir),
-                "uninstall_string_present": False,
-                "quiet_uninstall_string_present": False,
-                "estimated_size_kb": None,
-                "windows_installer": False,
-                "system_component": False,
-                "release_type": "chocolatey-package",
-                "install_date": "",
-            }
-        )
+        app = {
+            "source": "chocolatey",
+            "key_path": str(package_dir),
+            "display_name": display_name,
+            "display_version": version,
+            "publisher": "Chocolatey",
+            "install_location": str(package_dir),
+            "uninstall_string_present": False,
+            "quiet_uninstall_string_present": False,
+            "estimated_size_kb": None,
+            "windows_installer": False,
+            "system_component": False,
+            "release_type": "chocolatey-package",
+            "install_date": "",
+        }
+        app["uninstall_strategy"] = _uninstall_strategy(app)
+        apps.append(app)
     return apps, [_source_status("chocolatey-lib", available=True, reason="filesystem-manifest", evidence={"path": str(root)})]
 
 
@@ -198,23 +280,23 @@ def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], l
             sources.append(_source_status("portable-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
             continue
         for child in sorted(item for item in root.iterdir() if item.is_dir()):
-            apps.append(
-                {
-                    "source": "portable-location",
-                    "key_path": str(child),
-                    "display_name": child.name,
-                    "display_version": "",
-                    "publisher": "",
-                    "install_location": str(child),
-                    "uninstall_string_present": False,
-                    "quiet_uninstall_string_present": False,
-                    "estimated_size_kb": None,
-                    "windows_installer": False,
-                    "system_component": False,
-                    "release_type": "portable-directory",
-                    "install_date": "",
-                }
-            )
+            app = {
+                "source": "portable-location",
+                "key_path": str(child),
+                "display_name": child.name,
+                "display_version": "",
+                "publisher": "",
+                "install_location": str(child),
+                "uninstall_string_present": False,
+                "quiet_uninstall_string_present": False,
+                "estimated_size_kb": None,
+                "windows_installer": False,
+                "system_component": False,
+                "release_type": "portable-directory",
+                "install_date": "",
+            }
+            app["uninstall_strategy"] = _uninstall_strategy(app)
+            apps.append(app)
         sources.append(_source_status("portable-apps", available=True, reason="filesystem-directory", evidence={"path": str(root)}))
     return apps, sources
 
@@ -286,6 +368,12 @@ def installed_app_inventory_report(
         key=lambda app: (str(app["display_name"]).lower(), str(app["source"]).lower(), str(app["key_path"]).lower()),
     )
     correlations = _leftover_correlations(applications, current_env)
+    strategy_counts: dict[str, int] = {}
+    for app in applications:
+        strategy = app.get("uninstall_strategy", {})
+        if isinstance(strategy, dict):
+            strategy_id = str(strategy.get("strategy_id") or "unknown")
+            strategy_counts[strategy_id] = strategy_counts.get(strategy_id, 0) + 1
     return {
         "schema": INSTALLED_APP_INVENTORY_SCHEMA,
         "destructive": False,
@@ -308,6 +396,13 @@ def installed_app_inventory_report(
             "leftover_correlation_count": len(correlations),
             "potential_uninstall_leftover_count": sum(1 for item in correlations if item["state"] == "potential-uninstall-leftover"),
             "installed_application_present_count": sum(1 for item in correlations if item["state"] == "installed-application-present"),
+            "uninstall_strategy_counts": dict(sorted(strategy_counts.items())),
+            "manual_review_strategy_count": sum(
+                1
+                for app in applications
+                if str(app.get("uninstall_strategy", {}).get("strategy_id", "")).endswith("review")
+                or "review" in str(app.get("uninstall_strategy", {}).get("strategy_id", ""))
+            ),
         },
         "non_goals": [
             "This report does not uninstall applications.",

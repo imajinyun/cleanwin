@@ -45,6 +45,10 @@ def test_registry_entries_are_normalized_without_uninstalling() -> None:
     assert app["publisher"] == "Slack Technologies LLC"
     assert app["uninstall_string_present"] is True
     assert app["estimated_size_kb"] == 250000
+    assert app["uninstall_strategy"]["schema"] == "cleanwin.uninstall-strategy.v1"
+    assert app["uninstall_strategy"]["strategy_id"] == "registry-uninstall-string"
+    assert app["uninstall_strategy"]["executes_by_report"] is False
+    assert app["uninstall_strategy"]["auto_executable"] is False
     correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
     assert correlation["state"] == "installed-application-present"
     assert correlation["recommendation"] == "skip-leftover-cleanup-until-uninstalled"
@@ -81,9 +85,64 @@ def test_filesystem_package_sources_and_leftover_correlation(tmp_path: Path) -> 
     assert ("scoop", "git") in apps
     assert ("chocolatey", "nodejs") in apps
     assert ("portable-location", "PortableTool") in apps
+    by_source_name = {(app["source"], app["display_name"]): app for app in report["applications"]}
+    assert by_source_name[("scoop", "git")]["uninstall_strategy"]["strategy_id"] == "scoop-uninstall"
+    assert by_source_name[("chocolatey", "nodejs")]["uninstall_strategy"]["strategy_id"] == "chocolatey-uninstall"
+    assert by_source_name[("portable-location", "PortableTool")]["uninstall_strategy"]["strategy_id"] == "portable-manual-review"
     slack_correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
     assert slack_correlation["state"] == "potential-uninstall-leftover"
     assert slack_correlation["leftover_path"] == str(slack_cache)
+    assert report["summary"]["uninstall_strategy_counts"]["scoop-uninstall"] == 1
+    assert report["summary"]["manual_review_strategy_count"] == 1
+
+
+def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans() -> None:
+    report = installed_app_inventory_report(
+        raw_registry_entries=[
+            {
+                "DisplayName": "MSI Tool",
+                "WindowsInstaller": "1",
+                "UninstallString": "MsiExec.exe /X{00000000-0000-0000-0000-000000000000}",
+                "key_path": r"HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\MSITool",
+            },
+            {
+                "DisplayName": "Store App",
+                "source": "appx",
+                "release_type": "appx",
+                "key_path": "AppX/StoreApp",
+            },
+            {
+                "DisplayName": "WinGet Tool",
+                "source": "winget",
+                "key_path": "winget/Example.Tool",
+            },
+            {
+                "DisplayName": "Steam Game",
+                "InstallLocation": r"D:\SteamLibrary\steamapps\common\Game",
+                "key_path": r"HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 123",
+            },
+            {
+                "DisplayName": "Orphaned Entry",
+                "key_path": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Orphaned",
+            },
+            {
+                "DisplayName": "System Component",
+                "SystemComponent": "1",
+                "key_path": r"HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\Component",
+            },
+        ],
+        env={},
+    )
+
+    by_name = {app["display_name"]: app["uninstall_strategy"] for app in report["applications"]}
+    assert by_name["MSI Tool"]["strategy_id"] == "msi-uninstall"
+    assert by_name["Store App"]["strategy_id"] == "store-app-review-only"
+    assert by_name["WinGet Tool"]["strategy_id"] == "winget-uninstall"
+    assert by_name["Steam Game"]["strategy_id"] == "steam-library-review"
+    assert by_name["Orphaned Entry"]["strategy_id"] == "orphaned-entry-review"
+    assert by_name["System Component"]["strategy_id"] == "system-component-review-only"
+    assert all(strategy["auto_executable"] is False for strategy in by_name.values())
+    assert report["summary"]["uninstall_strategy_counts"]["winget-uninstall"] == 1
 
 
 def test_cli_and_ai_provider_expose_inventory(cleanwin_json: CleanWinJSON) -> None:

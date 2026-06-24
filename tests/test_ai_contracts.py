@@ -74,6 +74,9 @@ def test_schema_samples_include_rule_metadata_and_review_details() -> None:
     assert doctor_sample["schema"] == "cleanwin.doctor.v1"
     assert doctor_sample["destructive"] is False
     assert "recommended_commands" in doctor_sample
+    assert ["make", "pytest"] in doctor_sample["recommended_commands"]
+    assert ["make", "quality"] in doctor_sample["recommended_commands"]
+    assert not any(command[:3] == ["python3", "-m", "unittest"] for command in doctor_sample["recommended_commands"])
 
     review_sample = require_schema_sample("cleanwin.review.v1")
     assert review_sample["schema"] == "cleanwin.review.v1"

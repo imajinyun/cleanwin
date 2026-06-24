@@ -14,21 +14,28 @@ from cleanwincli.core import (
     ai_runbook_command,
     ai_self_test_command,
     ai_tools_report,
+    browser_profile_inventory_command,
     build_plan,
     capabilities,
     debloat_privacy_report_command,
     doctor_report,
     execute_plan,
+    file_report_command,
     host_policy_report,
     inspect,
     installed_app_inventory_command,
     load_plan,
     official_command_plan_command,
     policy_simulate,
+    preset_catalog_command,
+    promotion_gates_command,
     recovery_readiness_command,
     review_plan,
+    scan_governance_command,
     startup_service_inventory_command,
+    system_health_report_command,
     validate_plan_payload,
+    windows_smoke_matrix_command,
 )
 
 
@@ -92,11 +99,18 @@ def build_parser() -> argparse.ArgumentParser:
             "self-test",
             "runbook",
             "doctor",
+            "file-report",
             "recovery-readiness",
+            "scan-governance",
             "installed-app-inventory",
             "official-command-plan",
+            "preset-catalog",
+            "promotion-gates",
+            "browser-profile-inventory",
             "debloat-privacy-report",
             "startup-service-inventory",
+            "system-health-report",
+            "windows-smoke-matrix",
             "review-sample",
         ],
         default="catalog",
@@ -104,11 +118,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("schema-registry", help="show machine-readable schema registry")
     subparsers.add_parser("doctor", help="run non-destructive engineering health checks")
+    subparsers.add_parser("file-report", help="show read-only large-file and duplicate-file report")
     subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
+    subparsers.add_parser("scan-governance", help="show scan performance and external rule review governance")
     subparsers.add_parser("installed-app-inventory", help="show read-only installed app inventory")
     subparsers.add_parser("official-command-plan", help="show read-only official Windows cleanup command plan")
+    subparsers.add_parser("preset-catalog", help="show read-only cleanup preset catalog")
+    subparsers.add_parser("promotion-gates", help="show report-to-execution promotion gates")
+    subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
+    subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
+    subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
 
     host_policy_parser = subparsers.add_parser("host-policy", help="show AI host allow/deny policy")
     host_policy_parser.add_argument("--validate", action="store_true")
@@ -193,8 +214,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = doctor_report()
             emit(payload, as_json=args.json)
             return 0 if payload["ready"] else 2
+        if args.command == "file-report":
+            emit(file_report_command(), as_json=args.json)
+            return 0
         if args.command == "recovery-readiness":
             emit(recovery_readiness_command(), as_json=args.json)
+            return 0
+        if args.command == "scan-governance":
+            emit(scan_governance_command(), as_json=args.json)
             return 0
         if args.command == "installed-app-inventory":
             emit(installed_app_inventory_command(), as_json=args.json)
@@ -202,11 +229,26 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "official-command-plan":
             emit(official_command_plan_command(), as_json=args.json)
             return 0
+        if args.command == "preset-catalog":
+            emit(preset_catalog_command(), as_json=args.json)
+            return 0
+        if args.command == "promotion-gates":
+            emit(promotion_gates_command(), as_json=args.json)
+            return 0
+        if args.command == "browser-profile-inventory":
+            emit(browser_profile_inventory_command(), as_json=args.json)
+            return 0
         if args.command == "debloat-privacy-report":
             emit(debloat_privacy_report_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)
+            return 0
+        if args.command == "system-health-report":
+            emit(system_health_report_command(), as_json=args.json)
+            return 0
+        if args.command == "windows-smoke-matrix":
+            emit(windows_smoke_matrix_command(), as_json=args.json)
             return 0
         if args.command == "host-policy":
             emit(host_policy_report(validate=args.validate), as_json=args.json)

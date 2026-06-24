@@ -21,6 +21,7 @@ def _command_spec(
     prerequisites: list[str],
     required_snapshots: list[str],
     review_steps: list[str],
+    action_contract: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "id": command_id,
@@ -33,6 +34,17 @@ def _command_spec(
         "prerequisites": prerequisites,
         "required_snapshots": required_snapshots,
         "review_steps": review_steps,
+        "action_contract": {
+            "schema": "cleanwin.official-action-contract.v1",
+            "action_id": command_id,
+            "allowlisted_command": command,
+            "argument_policy": "exact-argv-only",
+            "execution_enabled": False,
+            "requires_human_review": True,
+            "requires_matching_dry_run_token": True,
+            "rollback_required": bool(required_snapshots),
+            **action_contract,
+        },
         "executes_by_report": False,
         "auto_executable": False,
     }
@@ -52,6 +64,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["No pending reboot", "Windows Update is not actively installing", "Run from elevated terminal"],
             required_snapshots=["system-restore-point", "registry-export"],
             review_steps=["Check pending reboot state.", "Prefer Windows Settings or Storage Sense first.", "Do not delete WinSxS files directly."],
+            action_contract={
+                "required_privileges": ["administrator"],
+                "blocked_without": ["windows-smoke-evidence", "recovery-readiness"],
+                "expected_effects": ["Reduce superseded Windows component store payloads."],
+                "forbidden_effects": ["Direct WinSxS file deletion", "Component rollback disablement"],
+            },
         ),
         _command_spec(
             "windows.update-cache.storage-sense",
@@ -64,6 +82,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Use Windows Settings UI", "Review selected temporary file classes"],
             required_snapshots=["system-restore-point"],
             review_steps=["Open Storage Sense or Temporary files UI.", "Select Windows Update Cleanup only after updates are healthy."],
+            action_contract={
+                "required_privileges": ["interactive-user-review"],
+                "blocked_without": ["windows-update-health-review"],
+                "expected_effects": ["Open the Windows Settings cleanup surface for user-selected temporary files."],
+                "forbidden_effects": ["Direct SoftwareDistribution deletion", "Automatic update cache purge"],
+            },
         ),
         _command_spec(
             "windows.delivery-optimization.settings",
@@ -76,6 +100,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Use Windows Settings UI", "Review Delivery Optimization state"],
             required_snapshots=["system-restore-point"],
             review_steps=["Use Windows Settings controls.", "Avoid deleting DeliveryOptimization files directly."],
+            action_contract={
+                "required_privileges": ["interactive-user-review"],
+                "blocked_without": ["delivery-optimization-state-review"],
+                "expected_effects": ["Open the Delivery Optimization settings surface."],
+                "forbidden_effects": ["Direct DeliveryOptimization file deletion", "Service mutation"],
+            },
         ),
         _command_spec(
             "windows.wer.disk-cleanup",
@@ -88,6 +118,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Review dump/report retention needs"],
             required_snapshots=[],
             review_steps=["Use Disk Cleanup or Storage Settings.", "Keep crash dumps if they are needed for active debugging."],
+            action_contract={
+                "required_privileges": ["interactive-user-review"],
+                "blocked_without": ["dump-retention-review"],
+                "expected_effects": ["Open Disk Cleanup for user-selected Windows Error Reporting cleanup."],
+                "forbidden_effects": ["Automatic dump deletion", "Direct WER directory deletion"],
+            },
         ),
         _command_spec(
             "windows.thumbnail-cache.disk-cleanup",
@@ -100,6 +136,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Close File Explorer windows if possible"],
             required_snapshots=[],
             review_steps=["Use Disk Cleanup thumbnail option.", "Expect thumbnails to be regenerated after cleanup."],
+            action_contract={
+                "required_privileges": ["interactive-user-review"],
+                "blocked_without": ["explorer-cache-review"],
+                "expected_effects": ["Open Disk Cleanup for user-selected thumbnail cache cleanup."],
+                "forbidden_effects": ["Direct Explorer database deletion while Explorer is active"],
+            },
         ),
         _command_spec(
             "windows.defender.cleanup-settings",
@@ -112,6 +154,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Use Windows Security UI", "Do not delete Defender platform or signature files directly"],
             required_snapshots=["system-restore-point"],
             review_steps=["Use Windows Security or documented Defender controls.", "Avoid interfering with active protection state."],
+            action_contract={
+                "required_privileges": ["interactive-user-review", "administrator"],
+                "blocked_without": ["defender-health-review", "recovery-readiness"],
+                "expected_effects": ["Open Windows Security for documented Defender maintenance actions."],
+                "forbidden_effects": ["Direct Defender platform deletion", "Signature database deletion"],
+            },
         ),
         _command_spec(
             "windows.memory-dumps.storage-settings",
@@ -124,6 +172,12 @@ def official_command_plan_report() -> dict[str, Any]:
             prerequisites=["Confirm dump files are not needed for debugging"],
             required_snapshots=[],
             review_steps=["Preserve dumps for unresolved crashes.", "Use Settings or Disk Cleanup rather than direct wildcard deletion."],
+            action_contract={
+                "required_privileges": ["interactive-user-review"],
+                "blocked_without": ["active-debugging-review"],
+                "expected_effects": ["Open Storage Settings for user-selected dump cleanup."],
+                "forbidden_effects": ["Automatic MEMORY.DMP deletion", "Automatic CrashDumps deletion"],
+            },
         ),
     ]
     return {
@@ -138,6 +192,8 @@ def official_command_plan_report() -> dict[str, Any]:
             "auto_executable_count": sum(1 for command in commands if command["auto_executable"]),
             "requires_snapshot_count": sum(1 for command in commands if command["required_snapshots"]),
             "high_risk_count": sum(1 for command in commands if command["risk"] == "high"),
+            "action_contract_count": sum(1 for command in commands if command.get("action_contract")),
+            "execution_enabled_action_count": sum(1 for command in commands if command.get("action_contract", {}).get("execution_enabled")),
         },
         "execution_gate": {
             "system_execution_enabled": False,
