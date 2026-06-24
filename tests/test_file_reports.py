@@ -12,17 +12,19 @@ from cleanwincli.file_reports import FILE_REPORT_SCHEMA, file_report
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteBytesFile = Callable[[Path, bytes], Path]
+MakeDirectory = Callable[[Path], Path]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
-    tmp_path: Path, write_bytes_file: WriteBytesFile, assert_readonly_report: AssertReadonlyReport
+    tmp_path: Path,
+    write_bytes_file: WriteBytesFile,
+    make_directory: MakeDirectory,
+    assert_readonly_report: AssertReadonlyReport,
 ) -> None:
-    downloads = tmp_path / "Downloads"
-    onedrive = tmp_path / "OneDrive"
-    downloads.mkdir()
-    onedrive.mkdir()
+    downloads = make_directory(tmp_path / "Downloads")
+    onedrive = make_directory(tmp_path / "OneDrive")
     large = write_bytes_file(downloads / "installer.iso", b"a" * 128)
     duplicate_a = write_bytes_file(downloads / "copy-a.zip", b"duplicate-payload")
     duplicate_b = write_bytes_file(onedrive / "copy-b.zip", b"duplicate-payload")

@@ -21,6 +21,7 @@ MCPRequest = dict[str, Any]
 MCPResponse = dict[str, Any]
 CleanWinPlanFile = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+MakeDirectory = Callable[[Path], Path]
 
 
 def mcp_env() -> dict[str, str]:
@@ -112,10 +113,12 @@ def read_mcp_resource(uri: str) -> JSONPayload:
 
 
 def generate_temp_plan(
-    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    write_text_file: WriteTextFile,
+    make_directory: MakeDirectory,
 ) -> tuple[Path, Path, dict[str, str]]:
-    temp_root = tmp_path / "Temp"
-    temp_root.mkdir()
+    temp_root = make_directory(tmp_path / "Temp")
     stale_file = write_text_file(temp_root / "stale.tmp", "x")
     plan_file = tmp_path / "plan.json"
     env = mcp_env()
@@ -325,9 +328,12 @@ def test_tools_call_inspect_supports_rule_id_filter() -> None:
 
 
 def test_tools_call_review_plan(
-    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    write_text_file: WriteTextFile,
+    make_directory: MakeDirectory,
 ) -> None:
-    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file)
+    plan_file, _, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file, make_directory)
     response = call_mcp_tool(
         "cleanwin_review_plan",
         {"plan_file": str(plan_file), "require_plan_context": False},
@@ -342,9 +348,12 @@ def test_tools_call_review_plan(
 
 
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
-    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    write_text_file: WriteTextFile,
+    make_directory: MakeDirectory,
 ) -> None:
-    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file)
+    plan_file, stale_file, env = generate_temp_plan(tmp_path, cleanwin_plan_file, write_text_file, make_directory)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     result = response["result"]
 

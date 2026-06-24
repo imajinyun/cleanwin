@@ -20,6 +20,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteBytesFile = Callable[[Path, bytes], Path]
+MakeDirectory = Callable[[Path], Path]
 ReadJSONFile = Callable[[Path], JSONPayload]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
@@ -58,6 +59,15 @@ def write_bytes_file() -> WriteBytesFile:
         return path
 
     return _write_bytes_file
+
+
+@pytest.fixture
+def make_directory() -> MakeDirectory:
+    def _make_directory(path: Path) -> Path:
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    return _make_directory
 
 
 def load_json_file(path: Path) -> JSONPayload:

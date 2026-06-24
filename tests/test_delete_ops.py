@@ -11,6 +11,7 @@ from cleanwincli.identity import capture_filesystem_identity
 
 JSONPayload = dict[str, object]
 WriteTextFile = Callable[[Path, str], Path]
+MakeDirectory = Callable[[Path], Path]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
 
 
@@ -54,10 +55,10 @@ def test_symlinked_trash_fails_closed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     write_text_file: WriteTextFile,
+    make_directory: MakeDirectory,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
-    real_trash = tmp_path / "real-trash"
-    real_trash.mkdir()
+    real_trash = make_directory(tmp_path / "real-trash")
     trash_link = tmp_path / "trash-link"
     try:
         trash_link.symlink_to(real_trash, target_is_directory=True)
