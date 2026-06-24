@@ -43,6 +43,7 @@ make lint
 make pytest
 make type
 make compile
+make ci-smoke
 ```
 
 Full local gate:
@@ -84,6 +85,13 @@ For release-facing or packaging changes, run:
 
 ```bash
 make quality
+```
+
+For CI or workflow changes, run:
+
+```bash
+make ci-smoke
+make pytest-governance-smoke
 ```
 
 ## AI and MCP Contract Changes

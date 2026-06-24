@@ -102,11 +102,13 @@ make lint
 make pytest
 make type
 make compile
+make ci-smoke
 ```
 
-`make quality` runs the full local gate, including packaging and smoke checks.
-`make docker-quality` is available when Docker is installed and image pulls are
-allowed. See [AGENTS.md](AGENTS.md) for the full agent workflow.
+`make ci-smoke` mirrors the Linux CI quality gate. `make quality` runs the full
+local gate, including packaging and smoke checks. `make docker-quality` is
+available when Docker is installed and image pulls are allowed. See
+[AGENTS.md](AGENTS.md) for the full agent workflow.
 
 ---
 

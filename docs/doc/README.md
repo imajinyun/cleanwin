@@ -338,10 +338,11 @@ Common local checks run through a project virtual environment:
 
 ```bash
 make dev-install
+make ci-smoke
 make quality
 ```
 
-The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for pytest, Ruff, mypy, compile, package, AI, and MCP checks. Equivalent manual commands:
+The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for pytest, Ruff, mypy, compile, package, AI, and MCP checks. `make ci-smoke` mirrors the non-packaging CI gate, while `make quality` adds install/package smoke checks and cleanup. Equivalent manual commands:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -354,6 +355,14 @@ The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that envir
 
 New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` instead of repeating `unittest.TestCase` setup methods.
 
+Pytest governance smoke:
+
+```bash
+make pytest-governance-smoke
+```
+
+This guard keeps test updates pytest-native and checks that CI and Docker sandbox paths do not reintroduce `unittest discover`.
+
 Optional Docker sandbox:
 
 ```bash
@@ -362,6 +371,7 @@ make docker-quality
 
 CI entrypoint:
 
+- `.github/workflows/ci.yml` runs Linux quality gates on Python 3.10 and 3.12, package install smoke checks, and the optional Docker sandbox gate.
 - `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 
 Governance roadmap:

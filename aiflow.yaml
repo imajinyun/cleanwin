@@ -9,6 +9,8 @@ workspace:
     - "Makefile"
     - "Dockerfile.test"
     - "aiflow.yaml"
+    - ".github/workflows/*.yml"
+    - ".github/workflows/*.yaml"
     - ".github/*"
     - ".github/workflows/*"
     - "cleanwincli/*"
