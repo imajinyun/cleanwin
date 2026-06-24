@@ -21,6 +21,7 @@ READ_ONLY_CATEGORIES = frozenset(
         "visual-studio-report",
         "browser-cache-report",
         "disable-revert-contract",
+        "permanent-delete-denial",
         "file-report",
     }
 )

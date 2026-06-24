@@ -32,6 +32,7 @@ REQUIRED_AI_SCHEMAS = frozenset(
         "cleanwin.official-command-plan.v1",
         "cleanwin.debloat-privacy-report.v1",
         "cleanwin.disable-revert-contract.v1",
+        "cleanwin.permanent-delete-denial.v1",
         "cleanwin.system-health-report.v1",
         "cleanwin.startup-service-inventory.v1",
         "cleanwin.filesystem-identity.v1",

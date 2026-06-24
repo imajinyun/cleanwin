@@ -28,6 +28,7 @@ from cleanwincli.core import (
     installed_app_inventory_command,
     load_plan,
     official_command_plan_command,
+    permanent_delete_denial_command,
     policy_simulate,
     preset_catalog_command,
     promotion_gates_command,
@@ -112,6 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
             "browser-profile-inventory",
             "debloat-privacy-report",
             "disable-revert-contract",
+            "permanent-delete-denial",
             "startup-service-inventory",
             "system-health-report",
             "windows-smoke-matrix",
@@ -133,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
     subparsers.add_parser("disable-revert-contract", help="show non-executable disable/revert action contracts")
+    subparsers.add_parser("permanent-delete-denial", help="show permanent deletion denial contract")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
     subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
@@ -252,6 +255,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "disable-revert-contract":
             emit(disable_revert_contract_command(), as_json=args.json)
+            return 0
+        if args.command == "permanent-delete-denial":
+            emit(permanent_delete_denial_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)

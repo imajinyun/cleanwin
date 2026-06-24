@@ -57,6 +57,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-evidence.v1", 1, "cleanwincli.debloat_privacy", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.disable-revert-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.permanent-delete-denial.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-smoke-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
@@ -636,6 +637,35 @@ def _sample_backup_delete_contract() -> dict[str, Any]:
     }
 
 
+def _sample_permanent_delete_denial() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.permanent-delete-denial.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "capability": {
+            "id": "permanent-delete",
+            "risk": "critical",
+            "default_state": "denied",
+            "execution_enabled": False,
+            "ai_auto_call_allowed": False,
+            "mcp_tool_exposed": False,
+            "allowed_delete_modes": ["recycle"],
+            "denied_delete_modes": ["permanent"],
+        },
+        "required_future_gates": ["separate explicit permanent-delete command surface"],
+        "current_enforcement": {
+            "plan_validation_rejects_permanent": True,
+            "execute_plan_passes_allow_permanent_false": True,
+            "ai_host_policy_requires_recycle": True,
+            "mcp_execute_schema_allows_recycle_only": True,
+            "delete_ops_requires_allow_permanent_true": True,
+        },
+        "summary": {"execution_enabled_count": 0, "denied_mode_count": 1, "future_gate_count": 1},
+        "non_goals": ["This report does not enable permanent deletion."],
+    }
+
+
 def _sample_promotion_gates() -> dict[str, Any]:
     return {
         "schema": "cleanwin.promotion-gates.v1",
@@ -953,6 +983,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_debloat_privacy_report()["findings"][0]["change_evidence"]
     if schema_name == "cleanwin.disable-revert-contract.v1":
         return _sample_disable_revert_contract()
+    if schema_name == "cleanwin.permanent-delete-denial.v1":
+        return _sample_permanent_delete_denial()
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":
