@@ -75,9 +75,10 @@ ipython_config.py
 # Local environment files
 .env.*
 !.env.example
+docs/*
+!docs/doc
 
 # IDE / editor metadata
-docs/*
 .idea/
 .vscode/
 *.swp
