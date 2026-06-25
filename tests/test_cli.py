@@ -17,6 +17,8 @@ CleanWinPlanFile = Callable[..., JSONPayload]
 AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
 AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
@@ -40,10 +42,11 @@ def test_inspect_temp_finds_sandbox_candidate(
     cleanwin_json: CleanWinJSON,
     make_temp_plan_fixture: MakeTempPlan,
     assert_payload_schema: AssertPayloadSchema,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, False)
     payload = cleanwin_json("inspect", "--categories", "temp", "--older-than-days", "0", env=env)
-    assert payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(payload, {"candidate_count": 1})
     assert payload["candidates"][0]["path"] == str(stale_file)
     assert_payload_schema(payload["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
@@ -85,6 +88,7 @@ def test_review_plan_summarizes_execution_handoff(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
@@ -105,7 +109,7 @@ def test_review_plan_summarizes_execution_handoff(
     assert_readonly_report(review, "cleanwin.review.v1")
     assert_payload_status_true(review, "validation", "valid")
     assert review["execution_handoff"]["requires_human_confirmation"]
-    assert review["summary"]["candidate_count"] == 1
+    assert_summary_counts(review, {"candidate_count": 1})
     assert review["rule_summary"][0]["rule_id"] == "dev-cache.npm.cache"
     assert review["official_cleanup_commands"] == ["npm cache clean --force"]
     assert "cleanwin_dry_run_plan" in review["execution_handoff"]["required_predecessor_tools"]
@@ -144,14 +148,14 @@ def test_review_plan_rejects_invalid_plan_exit_code(
 def test_read_only_categories_do_not_create_candidates(
     cleanwin_json: CleanWinJSON,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     payload = cleanwin_json(
         "inspect",
         "--categories",
         "registry-report,startup-report,windows-report,large-files,docker-report,wsl-report,visual-studio-report,browser-cache-report",
     )
-    assert payload["summary"]["candidate_count"] == 0
-    assert payload["summary"]["finding_count"] == 8
+    assert_summary_counts(payload, {"candidate_count": 0, "finding_count": 8})
     for finding in payload["findings"]:
         assert_safe_to_execute_disabled(finding)
     by_category = {finding["category"]: finding for finding in payload["findings"]}
@@ -165,6 +169,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
@@ -179,7 +184,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
         "0",
         env=env,
     )
-    assert payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(payload, {"candidate_count": 1})
     candidate = payload["candidates"][0]
     assert candidate["category"] == "dev-cache"
     assert candidate["rule_id"] == "dev-cache.npm.cache"
@@ -225,6 +230,7 @@ def test_package_cache_scans_common_windows_package_manager_caches(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -245,7 +251,7 @@ def test_package_cache_scans_common_windows_package_manager_caches(
         env=make_windows_cache_env(root),
     )
     rule_ids = {candidate["rule_id"] for candidate in payload["candidates"]}
-    assert payload["summary"]["candidate_count"] == 4
+    assert_summary_counts(payload, {"candidate_count": 4})
     assert "package-cache.winget.packages" in rule_ids
     assert "package-cache.scoop.cache" in rule_ids
     assert "package-cache.chocolatey.cache" in rule_ids
@@ -260,6 +266,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -283,7 +290,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
         env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
-    assert payload["summary"]["candidate_count"] == 4
+    assert_summary_counts(payload, {"candidate_count": 4})
     assert str(slack_cache) in paths
     assert str(teams_logs) in paths
     assert str(vscode_cache) in paths
@@ -328,6 +335,7 @@ def test_app_leftovers_skips_when_active_install_marker_exists(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -343,7 +351,7 @@ def test_app_leftovers_skips_when_active_install_marker_exists(
         "0",
         env=make_windows_cache_env(root),
     )
-    assert payload["summary"]["candidate_count"] == 0
+    assert_summary_counts(payload, {"candidate_count": 0})
 
 def test_app_leftovers_skips_globbed_active_install_markers(
     tmp_path: Path,
@@ -479,6 +487,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     write_text_file: WriteTextFile,
     assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -497,7 +506,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
         "app-leftovers.vscode.cached-data",
         env=env,
     )
-    assert plan_payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(plan_payload, {"candidate_count": 1})
     assert plan_payload["candidates"][0]["path"] == str(vscode_cache)
     assert plan_payload["candidates"][0]["rule_id"] == "app-leftovers.vscode.cached-data"
 
@@ -514,6 +523,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -535,7 +545,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
         env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
-    assert payload["summary"]["candidate_count"] == 2
+    assert_summary_counts(payload, {"candidate_count": 2})
     assert str(chrome_cache) in paths
     assert str(edge_code_cache) in paths
     assert str(cookies) not in paths
@@ -547,6 +557,7 @@ def test_browser_cache_discovers_additional_browser_profiles(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -567,7 +578,7 @@ def test_browser_cache_discovers_additional_browser_profiles(
         env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
-    assert payload["summary"]["candidate_count"] == 3
+    assert_summary_counts(payload, {"candidate_count": 3})
     assert paths == {str(path) for path in cache_paths}
 
 def test_browser_cache_discovers_brave_profile_caches(
@@ -638,6 +649,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     write_text_file: WriteTextFile,
     assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -656,7 +668,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
         "package-cache.uv.cache",
         env=env,
     )
-    assert plan_payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(plan_payload, {"candidate_count": 1})
     assert plan_payload["candidates"][0]["rule_id"] == "package-cache.uv.cache"
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
@@ -695,6 +707,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     pip_cache = root / "LocalAppData" / "pip" / "Cache"
@@ -714,7 +727,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
         "dev-cache.npm.cache",
         env=env,
     )
-    assert payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(payload, {"candidate_count": 1})
     assert payload["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
 
 def test_plan_rule_id_filters_candidates_before_write(
@@ -722,6 +735,7 @@ def test_plan_rule_id_filters_candidates_before_write(
     cleanwin_plan_file: CleanWinPlanFile,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -742,7 +756,7 @@ def test_plan_rule_id_filters_candidates_before_write(
         "dev-cache.pip.cache",
         env=env,
     )
-    assert payload["summary"]["candidate_count"] == 1
+    assert_summary_counts(payload, {"candidate_count": 1})
     assert payload["candidates"][0]["rule_id"] == "dev-cache.pip.cache"
 
 def test_read_only_findings_include_structured_review_details(cleanwin_json: CleanWinJSON) -> None:
@@ -760,6 +774,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -771,7 +786,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
         "docker-report",
         env=make_windows_cache_env(root),
     )
-    assert payload["summary"]["candidate_count"] == 0
+    assert_summary_counts(payload, {"candidate_count": 0})
 
     details = payload["findings"][0]["review_details"]
     evidence = {item["path"]: item for item in details["path_evidence"]}
