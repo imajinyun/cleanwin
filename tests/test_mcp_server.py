@@ -24,6 +24,7 @@ CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
 MakeMCPTempPlan = Callable[[Path], tuple[Path, Path, dict[str, str]]]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
@@ -185,12 +186,10 @@ def mcp_success_result(response: MCPResponse) -> JSONPayload:
     return result
 
 
-def mcp_structured_content(response: MCPResponse, *, schema: str | None = None) -> JSONPayload:
+def mcp_structured_content(response: MCPResponse) -> JSONPayload:
     result = mcp_success_result(response)
     structured = result["structuredContent"]
     assert isinstance(structured, dict)
-    if schema is not None:
-        assert structured["schema"] == schema
     return structured
 
 
@@ -211,20 +210,26 @@ def test_resources_list_exposes_expected_uri(uri: str, cleanwin_test_env: CleanW
     assert uri in uris
 
 
-def test_host_policy_resource_exposes_execute_plan_denial(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_host_policy_resource_exposes_execute_plan_denial(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     payload = read_mcp_resource("cleanwin://ai/host-policy", cleanwin_test_env())
 
-    assert payload["schema"] == "cleanwin.ai-host-policy.v1"
+    assert_payload_schema(payload, "cleanwin.ai-host-policy.v1")
     assert "cleanwin_execute_plan" in payload["auto_call"]["deny"]
 
 
 @pytest.mark.parametrize(("uri", "schema"), MCP_RESOURCE_SCHEMAS)
 def test_resources_readiness_self_test_and_runbook(
-    uri: str, schema: str, cleanwin_test_env: CleanWinTestEnv
+    uri: str,
+    schema: str,
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     payload = read_mcp_resource(uri, cleanwin_test_env())
 
-    assert payload["schema"] == schema
+    assert_payload_schema(payload, schema)
 
 
 def test_initialize_and_tools_list(
@@ -254,16 +259,22 @@ def test_initialize_and_tools_list(
     assert tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"]
 
 
-def test_resources_read_responds_before_persistent_stdin_eof(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_resources_read_responds_before_persistent_stdin_eof(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     read = persistent_mcp_request(
         build_mcp_request("resources/read", request_id=41, params={"uri": "cleanwin://ai/runbook"}),
         cleanwin_test_env(),
     )
     payload = mcp_content_json(read)
-    assert payload["schema"] == "cleanwin.ai-runbook.v1"
+    assert_payload_schema(payload, "cleanwin.ai-runbook.v1")
 
 
-def test_tools_call_readonly_capabilities(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tools_call_readonly_capabilities(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -275,11 +286,14 @@ def test_tools_call_readonly_capabilities(cleanwin_test_env: CleanWinTestEnv) ->
     )
     result = mcp_success_result(response)
     assert result["structuredContent"]["tool"] == "cleanwin"
-    assert result["governanceDecision"]["schema"] == "cleanwin.ai-host-tool-call-decision.v1"
+    assert_payload_schema(result["governanceDecision"], "cleanwin.ai-host-tool-call-decision.v1")
     assert result["governanceDecision"]["allowed"]
 
 
-def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tools_call_workflow_router(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -289,7 +303,7 @@ def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
         },
         cleanwin_test_env(),
     )
-    structured = mcp_structured_content(response, schema="cleanwin.workflow-router.v1")
+    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.workflow-router.v1")
     routes = {route["id"]: route for route in structured["routes"]}
     assert routes["recycle-execution"]["auto_call_allowed"] is False
 
@@ -307,7 +321,11 @@ def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
     ],
 )
 def test_tools_call_workflow_context_tools(
-    tool: str, arguments: JSONPayload, schema: str, cleanwin_test_env: CleanWinTestEnv
+    tool: str,
+    arguments: JSONPayload,
+    schema: str,
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     response = mcp_request(
         {
@@ -318,10 +336,13 @@ def test_tools_call_workflow_context_tools(
         },
         cleanwin_test_env(),
     )
-    mcp_structured_content(response, schema=schema)
+    assert_payload_schema(mcp_structured_content(response), schema)
 
 
-def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tools_call_inspect_supports_rule_id_filter(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -334,13 +355,14 @@ def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinT
         },
         cleanwin_test_env(),
     )
-    structured = mcp_structured_content(response, schema="cleanwin.inspect.v1")
+    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.inspect.v1")
     assert structured["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
 
 
 def test_tools_call_review_plan(
     tmp_path: Path,
     make_mcp_temp_plan: MakeMCPTempPlan,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     plan_file, _, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool(
@@ -349,17 +371,18 @@ def test_tools_call_review_plan(
         env=env,
         request_id=52,
     )
-    structured = mcp_structured_content(response, schema="cleanwin.review.v1")
+    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.review.v1")
     assert "execution_handoff" in structured
 
 
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     tmp_path: Path,
     make_mcp_temp_plan: MakeMCPTempPlan,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     plan_file, stale_file, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
-    structured = mcp_structured_content(response, schema="cleanwin.execute.v1")
+    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.execute.v1")
     assert not structured["executed"]
     assert structured["results"][0]["status"] == "dry-run"
     assert structured["results"][0]["path"] == str(stale_file)
@@ -368,7 +391,10 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     assert stale_file.exists()
 
 
-def test_raw_command_argument_denied_for_readonly_tool(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_raw_command_argument_denied_for_readonly_tool(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -379,11 +405,14 @@ def test_raw_command_argument_denied_for_readonly_tool(cleanwin_test_env: CleanW
         cleanwin_test_env(),
     )
     result = mcp_error_result(response)
-    assert result["structuredContent"]["schema"] == "cleanwin.mcp-tool-error.v1"
+    assert_payload_schema(result["structuredContent"], "cleanwin.mcp-tool-error.v1")
     assert result["governanceDecision"]["blocking_reasons"][0]["code"] == "RAW_COMMAND_ARGUMENT_DENIED"
 
 
-def test_tool_call_rejects_schema_invalid_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tool_call_rejects_schema_invalid_arguments(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -395,7 +424,7 @@ def test_tool_call_rejects_schema_invalid_arguments(cleanwin_test_env: CleanWinT
     )
     result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
-    assert validation["schema"] == "cleanwin.ai-tool-argument-validation.v1"
+    assert_payload_schema(validation, "cleanwin.ai-tool-argument-validation.v1")
     assert "arguments.categories must be an array" in validation["violations"]
     assert "arguments.older_than_days must be a number" in validation["violations"]
     assert result["governanceDecision"]["allowed"]

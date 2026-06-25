@@ -15,13 +15,6 @@ PROVIDER_SCHEMA_ALLOWLIST = {
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
     ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 1,
     ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
-    ("test_mcp_server.py", "<module>"): 1,
-    ("test_mcp_server.py", "test_host_policy_resource_exposes_execute_plan_denial"): 1,
-    ("test_mcp_server.py", "test_resources_readiness_self_test_and_runbook"): 1,
-    ("test_mcp_server.py", "test_resources_read_responds_before_persistent_stdin_eof"): 1,
-    ("test_mcp_server.py", "test_tools_call_readonly_capabilities"): 1,
-    ("test_mcp_server.py", "test_raw_command_argument_denied_for_readonly_tool"): 1,
-    ("test_mcp_server.py", "test_tool_call_rejects_schema_invalid_arguments"): 1,
     ("test_official_commands.py", "test_official_commands_include_structured_non_executable_action_contracts"): 1,
 }
 READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
