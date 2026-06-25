@@ -32,6 +32,20 @@ DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
     ("test_mcp_server.py", "test_tool_call_rejects_schema_invalid_arguments"): 1,
     ("test_official_commands.py", "test_official_commands_include_structured_non_executable_action_contracts"): 1,
 }
+READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
+    ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 1,
+    ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,
+    ("test_ai_readiness.py", "test_workflow_router_routes_intents_without_enabling_execution"): 1,
+    ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 1,
+    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
+    ("test_presets.py", "test_preset_catalog_contains_safe_templates_and_review_gates"): 1,
+    ("test_recovery.py", "test_cli_and_ai_provider_expose_recovery_readiness"): 1,
+}
+READONLY_BOOLEAN_KEYS = {
+    "destructive": False,
+    "dry_run": True,
+    "executes_system_commands": False,
+}
 
 
 class ParsedTestModule(NamedTuple):
@@ -203,6 +217,26 @@ def test_direct_schema_assertions_stay_in_migration_budget(repo_root: Path) -> N
     assert observed == DIRECT_SCHEMA_ASSERTION_ALLOWLIST
 
 
+def test_direct_readonly_boolean_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_readonly_boolean_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == READONLY_BOOLEAN_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -280,6 +314,41 @@ def _is_direct_schema_assertion(node: ast.AST) -> bool:
     return _is_schema_subscript(node.test.left) or any(
         _is_schema_subscript(comparator) for comparator in node.test.comparators
     )
+
+
+def _is_direct_readonly_boolean_assertion(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Assert):
+        return False
+    test = node.test
+    if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+        return _readonly_boolean_subscript_expected(test.operand) is False
+    if not isinstance(test, ast.Compare):
+        return False
+    left_expected = _readonly_boolean_subscript_expected(test.left)
+    for operator, comparator in zip(test.ops, test.comparators, strict=False):
+        if not isinstance(operator, ast.Is):
+            continue
+        if left_expected is not None and _constant_bool(comparator) is left_expected:
+            return True
+        right_expected = _readonly_boolean_subscript_expected(comparator)
+        if right_expected is not None and _constant_bool(test.left) is right_expected:
+            return True
+    return False
+
+
+def _readonly_boolean_subscript_expected(node: ast.AST) -> bool | None:
+    if not isinstance(node, ast.Subscript):
+        return None
+    key = _slice_value(node.slice)
+    if key not in READONLY_BOOLEAN_KEYS:
+        return None
+    return READONLY_BOOLEAN_KEYS[key]
+
+
+def _constant_bool(node: ast.AST) -> bool | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, bool):
+        return node.value
+    return None
 
 
 def _slice_value(node: ast.AST) -> str | None:
