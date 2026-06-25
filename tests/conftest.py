@@ -46,6 +46,9 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
 
 
 class AssertPayloadStatus(Protocol):
@@ -232,6 +235,35 @@ def assert_dry_run_result() -> AssertDryRunResult:
         return payload
 
     return _assert_dry_run_result
+
+
+@pytest.fixture
+def assert_summary_counts() -> AssertSummaryCounts:
+    def _assert_summary_counts(payload: JSONPayload, expected: SummaryCounts) -> JSONPayload:
+        summary = payload["summary"]
+        assert isinstance(summary, dict)
+        for key, value in expected.items():
+            assert summary[key] == value
+        return payload
+
+    return _assert_summary_counts
+
+
+@pytest.fixture
+def assert_dry_run_summary(
+    assert_dry_run_result: AssertDryRunResult,
+    assert_summary_counts: AssertSummaryCounts,
+) -> AssertDryRunSummary:
+    def _assert_dry_run_summary(payload: JSONPayload, target: Path) -> JSONPayload:
+        assert payload["executed"] is False
+        if "dry_run" in payload:
+            assert payload["dry_run"] is True
+        assert_dry_run_result(payload, target)
+        assert_summary_counts(payload, {"result_count": 1})
+        assert payload["summary"]["status_counts"] == {"dry-run": 1}
+        return payload
+
+    return _assert_dry_run_summary
 
 
 @pytest.fixture
