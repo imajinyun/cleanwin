@@ -67,10 +67,16 @@ Use pytest-native patterns for new or updated tests:
 - Prefer fixtures over repeated setup.
 - Prefer `pytest.mark.parametrize` for repeated rule/category assertions.
 - Prefer plain `assert` and `pytest.raises`.
+- Reuse shared helpers from `tests/conftest.py` for CLI JSON calls, schema
+  assertions, read-only report assertions, execution-disabled contracts, command
+  sequences, and schema registry samples.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
   mode.
+- Keep pytest governance budgets in `tests/test_pytest_governance.py` aligned
+  when retiring legacy direct schema or read-only boolean assertions; do not add
+  new direct assertions when a shared helper exists.
 
 Minimum verification for ordinary code or test changes:
 
