@@ -34,6 +34,7 @@ AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
@@ -48,11 +49,12 @@ READONLY_WORKFLOW_CONTEXT_TOOLS = [
 def test_ai_schema_validation_and_provider_parity(
     assert_payload_status_true: AssertPayloadStatus,
     assert_field_values: AssertFieldValues,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     validation = validate_ai_schema()
     assert_payload_status_true(validation, "valid")
     destructive = [tool for tool in AI_TOOL_DEFINITIONS if tool["risk"] == "destructive"]
-    assert [tool["name"] for tool in destructive] == ["cleanwin_execute_plan"]
+    assert_exact_sequence([tool["name"] for tool in destructive], ["cleanwin_execute_plan"])
     assert_field_values(destructive[0], {"auto_call_allowed": False, "requires_confirmation": True})
 
 
