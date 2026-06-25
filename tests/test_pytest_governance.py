@@ -23,6 +23,32 @@ SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+COLLECTION_ASSERTION_HELPERS = {
+    "assert_contains_all",
+    "assert_contains_none",
+    "assert_text_contains_all",
+    "assert_any_text_contains",
+}
+COLLECTION_HELPER_ADOPTION_FILES = {
+    "test_ai_readiness.py",
+    "test_ai_contracts.py",
+    "test_mcp_server.py",
+    "test_cli.py",
+    "test_execution_contracts.py",
+    "test_official_commands.py",
+    "test_presets.py",
+    "test_promotion_gates.py",
+    "test_system_health.py",
+    "test_windows_smoke.py",
+    "test_file_reports.py",
+    "test_browser_inventory.py",
+    "test_installed_apps.py",
+    "test_startup_inventory.py",
+    "test_debloat_privacy.py",
+    "test_recovery.py",
+    "test_rule_catalog.py",
+    "test_scan_governance.py",
+}
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
@@ -305,6 +331,24 @@ def test_direct_summary_assertions_stay_in_migration_budget(repo_root: Path) -> 
             observed[key] = observed.get(key, 0) + 1
 
     assert observed == SUMMARY_ASSERTION_ALLOWLIST
+
+
+def test_collection_and_text_assertion_helpers_are_adopted(repo_root: Path) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert COLLECTION_ASSERTION_HELPERS <= helper_defs
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in COLLECTION_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in COLLECTION_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert missing == []
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
