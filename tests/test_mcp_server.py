@@ -26,6 +26,7 @@ MakeDirectory = Callable[[Path], Path]
 MakeMCPTempPlan = Callable[[Path], tuple[Path, Path, dict[str, str]]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
+AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
 
 MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
@@ -381,16 +382,13 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     tmp_path: Path,
     make_mcp_temp_plan: MakeMCPTempPlan,
     assert_payload_schema: AssertPayloadSchema,
+    assert_dry_run_summary: AssertDryRunSummary,
 ) -> None:
     plan_file, stale_file, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.execute.v1")
-    assert not structured["executed"]
-    assert structured["results"][0]["status"] == "dry-run"
-    assert structured["results"][0]["path"] == str(stale_file)
-    assert structured["summary"] == {"result_count": 1, "status_counts": {"dry-run": 1}}
+    assert_dry_run_summary(structured, stale_file)
     assert "confirmation_token" in structured["confirmation"]
-    assert stale_file.exists()
 
 
 def test_raw_command_argument_denied_for_readonly_tool(

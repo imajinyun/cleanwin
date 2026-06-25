@@ -49,7 +49,6 @@ SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
     ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
     ("test_installed_apps.py", "test_report_is_non_destructive_and_supports_non_windows"): 1,
     ("test_installed_apps.py", "test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans"): 1,
-    ("test_mcp_server.py", "test_tools_call_dry_run_plan_returns_candidate_results_and_token"): 1,
     ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 3,
     ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 1,
     ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
