@@ -4,22 +4,19 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from cleanwincli.debloat_privacy import DEBLOAT_PRIVACY_REPORT_SCHEMA, debloat_privacy_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_report_is_non_destructive_and_gated() -> None:
+def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
     report = debloat_privacy_report(raw_registry_values={}, raw_appx_packages=[], env={})
 
-    assert report["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, DEBLOAT_PRIVACY_REPORT_SCHEMA)
     assert report["execution_gate"]["system_execution_enabled"] is False
     assert report["execution_gate"]["requires_registry_export"] is True
     assert any("does not remove AppX" in item for item in report["non_goals"])
@@ -71,12 +68,7 @@ def test_appx_and_oem_findings_are_review_only(tmp_path: Path, write_text_file: 
     assert report["summary"]["oem_location_count"] == 1
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("debloat-privacy-report",),
-        ("ai-tools", "--provider", "debloat-privacy-report"),
-    ],
-)
-def test_cli_and_ai_provider_expose_report(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
-    assert cleanwin_json(*args)["schema"] == DEBLOAT_PRIVACY_REPORT_SCHEMA
+def test_cli_and_ai_provider_expose_report(
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+) -> None:
+    assert_cli_provider_schema_sample("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA)
