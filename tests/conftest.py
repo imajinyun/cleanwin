@@ -53,6 +53,9 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertAnyMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Any]
+AssertAllMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
+AssertNoneMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
 
 
 class AssertPayloadStatus(Protocol):
@@ -302,11 +305,41 @@ def assert_text_contains_all() -> AssertTextContainsAll:
 
 
 @pytest.fixture
-def assert_any_text_contains() -> AssertAnyTextContains:
+def assert_any_text_contains(assert_any_match: AssertAnyMatch) -> AssertAnyTextContains:
     def _assert_any_text_contains(texts: Sequence[str], expected: str) -> None:
-        assert any(expected in text for text in texts)
+        assert_any_match(texts, lambda text: expected in text)
 
     return _assert_any_text_contains
+
+
+@pytest.fixture
+def assert_any_match() -> AssertAnyMatch:
+    def _assert_any_match(items: Sequence[Any], predicate: Callable[[Any], bool]) -> Any:
+        matches = [item for item in items if predicate(item)]
+        assert matches != []
+        return matches[0]
+
+    return _assert_any_match
+
+
+@pytest.fixture
+def assert_all_match() -> AssertAllMatch:
+    def _assert_all_match(items: Sequence[Any], predicate: Callable[[Any], bool]) -> Sequence[Any]:
+        failures = [item for item in items if not predicate(item)]
+        assert failures == []
+        return items
+
+    return _assert_all_match
+
+
+@pytest.fixture
+def assert_none_match() -> AssertNoneMatch:
+    def _assert_none_match(items: Sequence[Any], predicate: Callable[[Any], bool]) -> Sequence[Any]:
+        matches = [item for item in items if predicate(item)]
+        assert matches == []
+        return items
+
+    return _assert_none_match
 
 
 @pytest.fixture
