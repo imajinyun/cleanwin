@@ -33,6 +33,11 @@ COLLECTION_ASSERTION_HELPERS = {
     "assert_all_match",
     "assert_none_match",
 }
+FIELD_ASSERTION_HELPERS = {
+    "field_value",
+    "assert_field_values",
+    "assert_fields_present",
+}
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -53,6 +58,7 @@ COLLECTION_HELPER_ADOPTION_FILES = {
     "test_rule_catalog.py",
     "test_scan_governance.py",
 }
+FIELD_HELPER_ADOPTION_FILES: set[str] = set()
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
@@ -369,6 +375,24 @@ def test_collection_and_text_assertion_helpers_are_adopted(repo_root: Path) -> N
         for node in ast.walk(module.tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id in COLLECTION_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert missing == []
+
+
+def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert FIELD_ASSERTION_HELPERS <= helper_defs
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in FIELD_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in FIELD_ASSERTION_HELPERS:
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
