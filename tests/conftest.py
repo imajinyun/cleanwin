@@ -48,6 +48,10 @@ AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
 
 
+class AssertPayloadStatus(Protocol):
+    def __call__(self, payload: JSONPayload, *fields: str) -> JSONPayload: ...
+
+
 class AssertExecutionDisabled(Protocol):
     def __call__(self, payload: JSONPayload, *fields: str) -> JSONPayload: ...
 
@@ -301,6 +305,32 @@ def assert_payload_schema() -> AssertPayloadSchema:
         return payload
 
     return _assert_payload_schema
+
+
+def _payload_status_value(payload: JSONPayload, fields: Sequence[str]) -> Any:
+    value: Any = payload
+    for field in fields:
+        assert isinstance(value, dict)
+        value = value[field]
+    return value
+
+
+@pytest.fixture
+def assert_payload_status_true() -> AssertPayloadStatus:
+    def _assert_payload_status_true(payload: JSONPayload, *fields: str) -> JSONPayload:
+        assert _payload_status_value(payload, fields) is True
+        return payload
+
+    return _assert_payload_status_true
+
+
+@pytest.fixture
+def assert_payload_status_false() -> AssertPayloadStatus:
+    def _assert_payload_status_false(payload: JSONPayload, *fields: str) -> JSONPayload:
+        assert _payload_status_value(payload, fields) is False
+        return payload
+
+    return _assert_payload_status_false
 
 
 @pytest.fixture
