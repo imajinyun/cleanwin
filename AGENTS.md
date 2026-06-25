@@ -79,6 +79,10 @@ Use pytest-native patterns for new or updated tests:
 - Use predicate assertion helpers such as `assert_any_match`,
   `assert_all_match`, and `assert_none_match` for repeated `any(...)` /
   `all(...)` style checks over structured collections.
+- Use field assertion helpers such as `assert_field_values`,
+  `assert_fields_present`, and `field_value` for repeated structured payload
+  field checks. Dot paths may target nested dictionaries and numeric path
+  segments may target list indexes, for example `rule_summary.0.rule_id`.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
@@ -87,9 +91,10 @@ Use pytest-native patterns for new or updated tests:
   when retiring legacy direct schema, read-only boolean, `safe_to_execute`, or
   execution-disabled flag assertions; do not add new direct assertions when a
   shared helper exists. Current direct assertion budgets for those categories,
-  including direct status, summary, and predicate assertions, should remain
-  empty unless a migration plan explicitly reopens one. Keep the collection/text
-  helper adoption smoke updated when adding new migrated test files.
+  including direct status, summary, predicate, and migrated field assertions,
+  should remain empty unless a migration plan explicitly reopens one. Keep the
+  collection/text/predicate/field helper adoption smoke updated when adding new
+  migrated test files.
 
 Minimum verification for ordinary code or test changes:
 

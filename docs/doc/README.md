@@ -353,7 +353,7 @@ The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that envir
 .venv/bin/python cleanwin.py --json doctor
 ```
 
-New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` or focused MCP helpers instead of repeating `unittest.TestCase` setup methods. Reuse shared helpers for payload schemas, read-only payloads and reports, `safe_to_execute`, execution-disabled contracts, schema registry samples, command sequences, summary counts, dry-run result summaries, and boolean status fields such as `valid`, `ready`, `passed`, and `allowed`. Use the collection and text helpers for repeated expected membership, absence, and substring checks; keep direct `in`/`not in` assertions for isolated one-off checks. Use `assert_any_match`, `assert_all_match`, and `assert_none_match` for repeated `any(...)` / `all(...)` style checks over structured collections. Exception-path tests should assert the error contract with `pytest.raises(..., match=...)`.
+New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` or focused MCP helpers instead of repeating `unittest.TestCase` setup methods. Reuse shared helpers for payload schemas, read-only payloads and reports, `safe_to_execute`, execution-disabled contracts, schema registry samples, command sequences, summary counts, dry-run result summaries, and boolean status fields such as `valid`, `ready`, `passed`, and `allowed`. Use the collection and text helpers for repeated expected membership, absence, and substring checks; keep direct `in`/`not in` assertions for isolated one-off checks. Use `assert_any_match`, `assert_all_match`, and `assert_none_match` for repeated `any(...)` / `all(...)` style checks over structured collections. Use `assert_field_values`, `assert_fields_present`, and `field_value` for repeated structured field checks; dot paths support nested dictionaries and numeric list indexes such as `rule_summary.0.rule_id`. Exception-path tests should assert the error contract with `pytest.raises(..., match=...)`.
 
 Pytest governance smoke:
 
@@ -361,7 +361,7 @@ Pytest governance smoke:
 make pytest-governance-smoke
 ```
 
-This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, keeps legacy direct schema, read-only boolean, `safe_to_execute`, execution-disabled flag, status, summary, and predicate assertion budgets empty, verifies collection/text/predicate helper adoption for migrated files, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
+This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, keeps legacy direct schema, read-only boolean, `safe_to_execute`, execution-disabled flag, status, summary, and predicate assertion budgets empty, verifies collection/text/predicate/field helper adoption for migrated files, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
 
 Optional Docker sandbox:
 
