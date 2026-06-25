@@ -18,6 +18,7 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason=WINDOWS_ONLY_REASON)
 JSONPayload = dict[str, Any]
 WriteTextFile = Callable[[Path, str], Path]
 AssertFieldValues = Callable[[JSONPayload, dict[str, object]], JSONPayload]
+AssertPathMissing = Callable[[Path], Path]
 
 
 def test_native_identity_reports_windows_fields(tmp_path: Path, write_text_file: WriteTextFile) -> None:
@@ -38,6 +39,7 @@ def test_real_windows_recycle_bin_smoke(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_field_values: AssertFieldValues,
+    assert_path_missing: AssertPathMissing,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
@@ -45,4 +47,4 @@ def test_real_windows_recycle_bin_smoke(
     result = safe_delete(str(target), dry_run=False, mode="recycle", expected_identity=identity)
 
     assert_field_values(result, {"status": "recycled"})
-    assert not target.exists()
+    assert_path_missing(target)
