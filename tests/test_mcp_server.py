@@ -18,6 +18,7 @@ MCP_MODULE = "cleanwincli.mcp_server"
 JSONPayload = dict[str, Any]
 MCPRequest = dict[str, Any]
 MCPResponse = dict[str, Any]
+MCPRequestFactory = Callable[..., MCPRequest]
 CleanWinPlanFile = Callable[..., JSONPayload]
 CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
@@ -47,6 +48,18 @@ def load_json_object(text: str) -> JSONPayload:
     payload = json.loads(text)
     assert isinstance(payload, dict)
     return payload
+
+
+def build_mcp_request(method: str, *, request_id: int = 1, params: JSONPayload | None = None) -> MCPRequest:
+    request: MCPRequest = {"jsonrpc": "2.0", "id": request_id, "method": method}
+    if params is not None:
+        request["params"] = params
+    return request
+
+
+@pytest.fixture
+def mcp_request_factory() -> MCPRequestFactory:
+    return build_mcp_request
 
 
 def parse_mcp_stdout(stdout: str, stderr: str) -> MCPResponse:
@@ -114,12 +127,7 @@ def mcp_content_json(response: MCPResponse) -> JSONPayload:
 
 def read_mcp_resource(uri: str, env: dict[str, str]) -> JSONPayload:
     read = mcp_request(
-        {
-            "jsonrpc": "2.0",
-            "id": 40,
-            "method": "resources/read",
-            "params": {"uri": uri},
-        },
+        build_mcp_request("resources/read", request_id=40, params={"uri": uri}),
         env,
     )
     return mcp_content_json(read)
@@ -154,12 +162,7 @@ def call_mcp_tool(
     )
     stdout, stderr = proc.communicate(
         input=json.dumps(
-            {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "method": "tools/call",
-                "params": {"name": name, "arguments": arguments},
-            }
+            build_mcp_request("tools/call", request_id=request_id, params={"name": name, "arguments": arguments})
         ),
         timeout=15,
     )
@@ -189,7 +192,7 @@ def mcp_error_result(response: MCPResponse) -> JSONPayload:
     EXPECTED_MCP_RESOURCE_URIS,
 )
 def test_resources_list_exposes_expected_uri(uri: str, cleanwin_test_env: CleanWinTestEnv) -> None:
-    listed = mcp_request({"jsonrpc": "2.0", "id": 3, "method": "resources/list"}, cleanwin_test_env())
+    listed = mcp_request(build_mcp_request("resources/list", request_id=3), cleanwin_test_env())
     uris = {resource["uri"] for resource in listed["result"]["resources"]}
 
     assert uri in uris
@@ -211,13 +214,15 @@ def test_resources_readiness_self_test_and_runbook(
     assert payload["schema"] == schema
 
 
-def test_initialize_and_tools_list(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_initialize_and_tools_list(
+    cleanwin_test_env: CleanWinTestEnv, mcp_request_factory: MCPRequestFactory
+) -> None:
     env = cleanwin_test_env()
-    initialized = mcp_request({"jsonrpc": "2.0", "id": 1, "method": "initialize"}, env)
+    initialized = mcp_request(mcp_request_factory("initialize", request_id=1), env)
     assert initialized["result"]["serverInfo"]["name"] == "cleanwin-mcp"
     assert initialized["result"]["serverInfo"]["version"] == __version__
 
-    response = mcp_request({"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, env)
+    response = mcp_request(mcp_request_factory("tools/list", request_id=2), env)
     tools = response["result"]["tools"]
     names = {tool["name"] for tool in tools}
     assert "cleanwin_capabilities" in names
@@ -238,12 +243,7 @@ def test_initialize_and_tools_list(cleanwin_test_env: CleanWinTestEnv) -> None:
 
 def test_resources_read_responds_before_persistent_stdin_eof(cleanwin_test_env: CleanWinTestEnv) -> None:
     read = persistent_mcp_request(
-        {
-            "jsonrpc": "2.0",
-            "id": 41,
-            "method": "resources/read",
-            "params": {"uri": "cleanwin://ai/runbook"},
-        },
+        build_mcp_request("resources/read", request_id=41, params={"uri": "cleanwin://ai/runbook"}),
         cleanwin_test_env(),
     )
     payload = mcp_content_json(read)
@@ -452,6 +452,8 @@ def test_destructive_tool_missing_gates_denied(cleanwin_test_env: CleanWinTestEn
     assert "CONFIRMATION_TOKEN_REQUIRED" in codes
 
 
-def test_unknown_method_returns_jsonrpc_error(cleanwin_test_env: CleanWinTestEnv) -> None:
-    response = mcp_request({"jsonrpc": "2.0", "id": 8, "method": "unknown/method"}, cleanwin_test_env())
+def test_unknown_method_returns_jsonrpc_error(
+    cleanwin_test_env: CleanWinTestEnv, mcp_request_factory: MCPRequestFactory
+) -> None:
+    response = mcp_request(mcp_request_factory("unknown/method", request_id=8), cleanwin_test_env())
     assert response["error"]["code"] == -32601
