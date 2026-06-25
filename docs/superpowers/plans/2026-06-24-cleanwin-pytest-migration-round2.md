@@ -306,3 +306,90 @@ coverage. No production defect was proven by the remaining assertion style.
 ## Explicit Non-Goal
 
 Do not rewrite `tests/test_cli.py` in this round. It remains a dedicated future task because it should first get scenario-level fixtures before class removal.
+
+## Round 5 Pytest Governance Plan
+
+**Goal:** Finish the remaining read-only boolean migration budget and reduce the execution-disabled assertion budget with reusable pytest helpers.
+
+**Architecture:** Keep the work in small, independently verifiable commits. Add only test helper surface that removes repeated assertion logic, then migrate focused test modules and tighten AST governance budgets after each group.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.wIF3QEszcJ`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared pytest safety helpers",
+      "locator": "assert_readonly_report, assert_execution_disabled helpers",
+      "source": "explicit",
+      "reason": "remaining direct assertions need a reusable helper for nested read-only payloads and named execution-disabled flags",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_contracts.py tests/test_ai_readiness.py tests/test_presets.py tests/test_recovery.py",
+      "target_type": "file",
+      "symbol": "read-only boolean assertions",
+      "locator": "READONLY_BOOLEAN_ASSERTION_ALLOWLIST entries",
+      "source": "explicit",
+      "reason": "these tests still carry the read-only boolean migration budget",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_official_commands.py tests/test_system_health.py tests/test_browser_inventory.py tests/test_debloat_privacy.py tests/test_installed_apps.py tests/test_startup_inventory.py tests/test_ai_contracts.py tests/test_ai_readiness.py tests/test_presets.py tests/test_promotion_gates.py",
+      "target_type": "file",
+      "symbol": "execution-disabled assertions",
+      "locator": "EXECUTION_DISABLED_ASSERTION_ALLOWLIST entries",
+      "source": "explicit",
+      "reason": "remaining direct disabled-flag assertions should use the shared execution-disabled helper where it keeps intent clear",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest governance budgets",
+      "locator": "READONLY_BOOLEAN_ASSERTION_ALLOWLIST and EXECUTION_DISABLED_ASSERTION_ALLOWLIST",
+      "source": "explicit",
+      "reason": "budget updates make the migration machine-checkable",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is duplicated direct boolean assertions that can drift from shared pytest safety contracts.
+
+### Round 5 Tasks
+
+- `PYTEST-GOV-98`: Record this Round 5 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-99`: Add a reusable read-only payload helper for nested samples/routes/templates that do not need a full report schema assertion.
+- `PYTEST-GOV-100`: Migrate remaining read-only schema sample assertions in `tests/test_ai_contracts.py`.
+- `PYTEST-GOV-101`: Migrate remaining read-only CLI/readiness assertions in `tests/test_ai_readiness.py`.
+- `PYTEST-GOV-102`: Migrate remaining read-only preset and recovery assertions in `tests/test_presets.py` and `tests/test_recovery.py`.
+- `PYTEST-GOV-103`: Clear the `READONLY_BOOLEAN_ASSERTION_ALLOWLIST` budget and verify the governance smoke.
+- `PYTEST-GOV-104`: Migrate execution-disabled report gate assertions in `tests/test_official_commands.py` and `tests/test_system_health.py`.
+- `PYTEST-GOV-105`: Migrate execution-disabled inventory/report assertions in `tests/test_browser_inventory.py`, `tests/test_debloat_privacy.py`, `tests/test_installed_apps.py`, `tests/test_startup_inventory.py`, and `tests/test_recovery.py`.
+- `PYTEST-GOV-106`: Migrate execution-disabled workflow/preset/promotion assertions in `tests/test_ai_contracts.py`, `tests/test_ai_readiness.py`, `tests/test_presets.py`, and `tests/test_promotion_gates.py`.
+- `PYTEST-GOV-107`: Tighten the execution-disabled budget, update pytest governance documentation, run quality gates, and refresh the local aiflow governance report.
+
+### Verification
+
+Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
