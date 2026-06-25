@@ -58,6 +58,7 @@ AssertExactSet = Callable[[Collection[Any], Collection[Any]], set[Any]]
 AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
 AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
 AssertExactCount = Callable[[Sequence[Any], int], Sequence[Any]]
+AssertAtLeast = Callable[[int, int], int]
 AssertOneOf = Callable[[Any, Collection[Any]], Any]
 AssertTextContainsAny = Callable[[str, Sequence[str]], str]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
@@ -369,6 +370,15 @@ def assert_exact_count() -> AssertExactCount:
         return items
 
     return _assert_exact_count
+
+
+@pytest.fixture
+def assert_at_least() -> AssertAtLeast:
+    def _assert_at_least(value: int, minimum: int) -> int:
+        assert value >= minimum
+        return value
+
+    return _assert_at_least
 
 
 @pytest.fixture

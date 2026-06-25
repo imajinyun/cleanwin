@@ -7,6 +7,7 @@ from typing import Any, NamedTuple
 
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
+AssertAtLeast = Callable[[int, int], int]
 
 HELPER_MODULES = {"conftest.py", "test_pytest_governance.py"}
 AD_HOC_FILESYSTEM_METHODS = {"mkdir", "write_text", "write_bytes"}
@@ -49,6 +50,7 @@ EXACT_ASSERTION_HELPERS = {
     "assert_returncode",
 }
 SCALAR_ASSERTION_HELPERS = {
+    "assert_at_least",
     "assert_exact_count",
     "assert_one_of",
     "assert_text_contains_any",
@@ -482,11 +484,15 @@ def test_pytest_governance_uses_shared_assertion_helpers(
     assert_exact_sequence(missing, [])
 
 
-def test_field_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
+def test_field_assertion_helpers_are_adopted(
+    repo_root: Path,
+    assert_at_least: AssertAtLeast,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert FIELD_ASSERTION_HELPERS <= helper_defs
-    assert len(FIELD_HELPER_ADOPTION_FILES) >= MIN_FIELD_HELPER_ADOPTION_FILES
+    assert_at_least(len(FIELD_HELPER_ADOPTION_FILES), MIN_FIELD_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in FIELD_HELPER_ADOPTION_FILES}
     helper_call_count = 0
@@ -501,14 +507,18 @@ def test_field_assertion_helpers_are_adopted(repo_root: Path, assert_exact_seque
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
     assert_exact_sequence(missing, [])
-    assert helper_call_count >= MIN_FIELD_HELPER_CALLS
+    assert_at_least(helper_call_count, MIN_FIELD_HELPER_CALLS)
 
 
-def test_exact_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
+def test_exact_assertion_helpers_are_adopted(
+    repo_root: Path,
+    assert_at_least: AssertAtLeast,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert EXACT_ASSERTION_HELPERS <= helper_defs
-    assert len(EXACT_HELPER_ADOPTION_FILES) >= MIN_EXACT_HELPER_ADOPTION_FILES
+    assert_at_least(len(EXACT_HELPER_ADOPTION_FILES), MIN_EXACT_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in EXACT_HELPER_ADOPTION_FILES}
     for module in iter_test_modules(repo_root):
@@ -523,11 +533,15 @@ def test_exact_assertion_helpers_are_adopted(repo_root: Path, assert_exact_seque
     assert_exact_sequence(missing, [])
 
 
-def test_scalar_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
+def test_scalar_assertion_helpers_are_adopted(
+    repo_root: Path,
+    assert_at_least: AssertAtLeast,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert SCALAR_ASSERTION_HELPERS <= helper_defs
-    assert len(SCALAR_HELPER_ADOPTION_FILES) >= MIN_SCALAR_HELPER_ADOPTION_FILES
+    assert_at_least(len(SCALAR_HELPER_ADOPTION_FILES), MIN_SCALAR_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in SCALAR_HELPER_ADOPTION_FILES}
     for module in iter_test_modules(repo_root):
