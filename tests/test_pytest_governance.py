@@ -26,14 +26,11 @@ EXECUTION_DISABLED_ASSERTION_ALLOWLIST = {
     ("test_browser_inventory.py", "test_browser_inventory_excludes_sensitive_profile_data"): 1,
     ("test_debloat_privacy.py", "test_report_is_non_destructive_and_gated"): 1,
     ("test_installed_apps.py", "test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans"): 1,
-    ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 2,
-    ("test_official_commands.py", "test_report_covers_windows_owned_cleanup_surfaces"): 2,
     ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 3,
     ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
     ("test_promotion_gates.py", "test_promotion_gates_cover_high_risk_report_surfaces"): 1,
     ("test_recovery.py", "test_recovery_readiness_is_non_destructive_and_declares_gates"): 1,
     ("test_startup_inventory.py", "test_report_is_non_destructive_and_gated"): 1,
-    ("test_system_health.py", "test_system_health_report_is_read_only_and_gated"): 2,
     ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
 }
 EXECUTION_DISABLED_KEYS = {

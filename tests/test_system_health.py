@@ -10,15 +10,18 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
-def test_system_health_report_is_read_only_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
+def test_system_health_report_is_read_only_and_gated(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = system_health_report()
 
     assert_readonly_report(report, SYSTEM_HEALTH_REPORT_SCHEMA)
-    assert report["execution_gate"]["system_repair_execution_enabled"] is False
-    assert report["execution_gate"]["ai_auto_call_allowed"] is False
+    assert_execution_disabled(report["execution_gate"], "system_repair_execution_enabled", "ai_auto_call_allowed")
     assert report["summary"]["auto_executable_count"] == 0
     assert any("does not execute DISM" in item for item in report["non_goals"])
 
