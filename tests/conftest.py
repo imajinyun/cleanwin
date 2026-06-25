@@ -6,7 +6,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import pytest
 
@@ -43,9 +43,12 @@ AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
+
+
+class AssertExecutionDisabled(Protocol):
+    def __call__(self, payload: JSONPayload, *fields: str) -> JSONPayload: ...
 
 
 @pytest.fixture
@@ -359,13 +362,10 @@ def assert_readonly_report() -> AssertReadonlyReport:
 
 @pytest.fixture
 def assert_execution_disabled() -> AssertExecutionDisabled:
-    def _assert_execution_disabled(payload: JSONPayload) -> JSONPayload:
-        if "execution_enabled" in payload:
-            assert payload["execution_enabled"] is False
-        if "auto_executable" in payload:
-            assert payload["auto_executable"] is False
-        if "executes_by_report" in payload:
-            assert payload["executes_by_report"] is False
+    def _assert_execution_disabled(payload: JSONPayload, *fields: str) -> JSONPayload:
+        for field in ("execution_enabled", "auto_executable", "executes_by_report", *fields):
+            if field in payload:
+                assert payload[field] is False
         return payload
 
     return _assert_execution_disabled

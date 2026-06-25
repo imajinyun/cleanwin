@@ -20,30 +20,23 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
-AssertNoExecutableItems = Callable[[list[JSONPayload]], None]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 
 
-@pytest.fixture
-def assert_no_executable_items() -> AssertNoExecutableItems:
-    def _assert_no_executable_items(items: list[JSONPayload]) -> None:
-        assert all(item["execution_enabled"] is False for item in items)
-        assert all(item["auto_executable"] is False for item in items)
-
-    return _assert_no_executable_items
-
-
-def test_disable_revert_contract_is_non_executable(assert_readonly_report: AssertReadonlyReport) -> None:
+def test_disable_revert_contract_is_non_executable(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = disable_revert_contract_report()
 
     assert_readonly_report(report, DISABLE_REVERT_CONTRACT_SCHEMA)
     assert report["summary"]["execution_enabled_count"] == 0
-    assert report["execution_gate"]["disable_revert_execution_enabled"] is False
-    assert report["execution_gate"]["ai_auto_call_allowed"] is False
+    assert_execution_disabled(report["execution_gate"], "disable_revert_execution_enabled", "ai_auto_call_allowed")
     assert any("does not disable startup" in item for item in report["non_goals"])
 
 
 def test_disable_revert_contracts_require_snapshots_and_revert_metadata(
-    assert_no_executable_items: AssertNoExecutableItems,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = disable_revert_contract_report()
     by_id = {contract["id"]: contract for contract in report["action_contracts"]}
@@ -56,18 +49,19 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata(
     assert "service-state" in by_id["disable-revert.service"]["required_snapshots"]
     assert "scheduled-task-state" in by_id["disable-revert.scheduled-task"]["required_snapshots"]
     assert "previous_value" in by_id["disable-revert.policy"]["required_rollback_metadata"]
-    assert_no_executable_items(report["action_contracts"])
+    for contract in report["action_contracts"]:
+        assert_execution_disabled(contract)
 
 
 def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
     assert_readonly_report: AssertReadonlyReport,
-    assert_no_executable_items: AssertNoExecutableItems,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = backup_delete_contract_report()
 
     assert_readonly_report(report, BACKUP_DELETE_CONTRACT_SCHEMA)
     assert report["summary"]["execution_enabled_count"] == 0
-    assert report["execution_gate"]["backup_delete_execution_enabled"] is False
+    assert_execution_disabled(report["execution_gate"], "backup_delete_execution_enabled")
     assert report["execution_gate"]["requires_pre_delete_backup"] is True
     assert report["execution_gate"]["requires_backup_verification"] is True
     assert report["execution_gate"]["requires_operation_log"] is True
@@ -78,19 +72,20 @@ def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
     assert "cleanwin.filesystem-identity.v1" in by_id["backup-delete.file-tree"]["required_identity"]
     assert "verification_digest" in by_id["backup-delete.file-tree"]["required_backup_metadata"]
     assert "operation_log_ref" in by_id["backup-delete.registry-key"]["required_audit_refs"]
-    assert_no_executable_items(report["backup_scopes"])
+    for scope in report["backup_scopes"]:
+        assert_execution_disabled(scope)
 
 
 def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
     assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = permanent_delete_denial_report()
 
     assert_readonly_report(report, PERMANENT_DELETE_DENIAL_SCHEMA)
     assert report["capability"]["risk"] == "critical"
     assert report["capability"]["default_state"] == "denied"
-    assert report["capability"]["execution_enabled"] is False
-    assert report["capability"]["ai_auto_call_allowed"] is False
+    assert_execution_disabled(report["capability"], "ai_auto_call_allowed")
     assert report["capability"]["mcp_tool_exposed"] is False
     assert report["capability"]["allowed_delete_modes"] == ["recycle"]
     assert report["capability"]["denied_delete_modes"] == ["permanent"]
@@ -114,10 +109,11 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
     command: str,
     schema: str,
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     sample = assert_cli_provider_schema_sample(command, schema)
     if schema == PERMANENT_DELETE_DENIAL_SCHEMA:
-        assert sample["capability"]["execution_enabled"] is False
+        assert_execution_disabled(sample["capability"])
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete() -> None:
