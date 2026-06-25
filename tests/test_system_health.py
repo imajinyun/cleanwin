@@ -10,6 +10,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_system_health_report_is_read_only_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -22,7 +23,9 @@ def test_system_health_report_is_read_only_and_gated(assert_readonly_report: Ass
     assert any("does not execute DISM" in item for item in report["non_goals"])
 
 
-def test_system_health_recommendations_use_official_tools_without_execution() -> None:
+def test_system_health_recommendations_use_official_tools_without_execution(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+) -> None:
     report = system_health_report()
     by_id = {item["id"]: item for item in report["recommendations"]}
 
@@ -33,7 +36,8 @@ def test_system_health_recommendations_use_official_tools_without_execution() ->
     assert by_id["health.component-store.dism-scanhealth"]["commands"][0][0] == "dism.exe"
     assert by_id["health.system-files.sfc-scannow"]["commands"][0] == ["sfc.exe", "/scannow"]
     assert all(item["executes_by_report"] is False for item in report["recommendations"])
-    assert all(item["safe_to_execute"] is False for item in report["recommendations"])
+    for item in report["recommendations"]:
+        assert_safe_to_execute_disabled(item)
     assert all(item["evidence_required"] for item in report["recommendations"])
 
 

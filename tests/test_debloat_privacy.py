@@ -12,6 +12,7 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -23,7 +24,10 @@ def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReado
     assert any("does not remove AppX" in item for item in report["non_goals"])
 
 
-def test_registry_policy_values_are_classified(assert_payload_schema: AssertPayloadSchema) -> None:
+def test_registry_policy_values_are_classified(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+) -> None:
     report = debloat_privacy_report(
         raw_registry_values={
             r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowTelemetry": 3,
@@ -36,7 +40,7 @@ def test_registry_policy_values_are_classified(assert_payload_schema: AssertPayl
 
     assert by_id["privacy.telemetry.allow-telemetry"]["state"] == "review-recommended"
     assert by_id["privacy.ad-id.disabled"]["state"] == "privacy-hardened"
-    assert by_id["privacy.telemetry.allow-telemetry"]["safe_to_execute"] is False
+    assert_safe_to_execute_disabled(by_id["privacy.telemetry.allow-telemetry"])
     evidence = by_id["privacy.telemetry.allow-telemetry"]["change_evidence"]
     assert_payload_schema(evidence, "cleanwin.registry-privacy-evidence.v1")
     assert evidence["hive"] == "HKLM"
@@ -47,7 +51,11 @@ def test_registry_policy_values_are_classified(assert_payload_schema: AssertPayl
     assert report["summary"]["privacy_hardened_count"] == 1
 
 
-def test_appx_and_oem_findings_are_review_only(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_appx_and_oem_findings_are_review_only(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+) -> None:
     program_files = tmp_path / "Program Files"
     support_assist = program_files / "Dell" / "SupportAssistAgent"
     write_text_file(support_assist / "SupportAssist.exe", "exe")
@@ -62,7 +70,7 @@ def test_appx_and_oem_findings_are_review_only(tmp_path: Path, write_text_file: 
     oem_findings = [finding for finding in report["findings"] if finding["kind"] == "oem-app-location"]
     assert len(appx_findings) == 1
     assert appx_findings[0]["state"] == "review-recommended"
-    assert appx_findings[0]["safe_to_execute"] is False
+    assert_safe_to_execute_disabled(appx_findings[0])
     assert len(oem_findings) == 1
     assert "SupportAssistAgent" in oem_findings[0]["path"]
     assert report["summary"]["appx_review_count"] == 1

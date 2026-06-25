@@ -14,6 +14,7 @@ MakeDirectory = Callable[[Path], Path]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -21,6 +22,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     write_bytes_file: WriteBytesFile,
     make_directory: MakeDirectory,
     assert_readonly_report: AssertReadonlyReport,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
 ) -> None:
     downloads = make_directory(tmp_path / "Downloads")
     onedrive = make_directory(tmp_path / "OneDrive")
@@ -46,7 +48,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert report["large_files"][0]["path"] == str(large)
     assert report["summary"]["duplicate_group_count"] == 1
     duplicate_group = report["duplicate_groups"][0]
-    assert duplicate_group["safe_to_execute"] is False
+    assert_safe_to_execute_disabled(duplicate_group)
     assert duplicate_group["potential_reclaimable_bytes"] == duplicate_a.stat().st_size
     assert {item["path"] for item in duplicate_group["files"]} == {str(duplicate_a), str(duplicate_b)}
     assert any(item["onedrive_or_cloud_path"] for item in duplicate_group["files"])

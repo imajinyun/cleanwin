@@ -12,10 +12,14 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
-    tmp_path: Path, write_text_file: WriteTextFile, assert_readonly_report: AssertReadonlyReport
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_readonly_report: AssertReadonlyReport,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
 ) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
@@ -39,7 +43,8 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert layers["Cache"]["exists"] is True
     assert layers["Cache"]["promotable"] is True
     assert layers["Code Cache"]["type"] == "code-cache"
-    assert all(layer["safe_to_execute"] is False for layer in profile["cache_layers"])
+    for layer in profile["cache_layers"]:
+        assert_safe_to_execute_disabled(layer)
 
 
 def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path, write_text_file: WriteTextFile) -> None:

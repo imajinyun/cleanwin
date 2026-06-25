@@ -11,6 +11,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -23,7 +24,9 @@ def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReado
 
 
 def test_registry_and_startup_folder_entries_are_inventory_only(
-    tmp_path: Path, write_text_file: WriteTextFile
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
 ) -> None:
     appdata = tmp_path / "Roaming"
     startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
@@ -45,13 +48,15 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     entries = {entry["name"]: entry for entry in report["startup_entries"]}
     assert entries["Example"]["target_exists"] is True
     assert entries["MissingTarget"]["target_exists"] is False
-    assert entries["Example"]["safe_to_execute"] is False
+    assert_safe_to_execute_disabled(entries["Example"])
     assert "Example.lnk" in entries
     assert report["summary"]["startup_entry_count"] == 3
     assert report["summary"]["missing_target_count"] == 1
 
 
-def test_service_and_scheduled_task_fixtures_are_report_only() -> None:
+def test_service_and_scheduled_task_fixtures_are_report_only(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+) -> None:
     report = startup_service_inventory_report(
         raw_registry_values={},
         raw_services=[{"Name": "ExampleService", "DisplayName": "Example Service", "Status": "Running", "StartType": "Automatic"}],
@@ -62,8 +67,8 @@ def test_service_and_scheduled_task_fixtures_are_report_only() -> None:
     assert report["summary"]["service_count"] == 1
     assert report["summary"]["scheduled_task_count"] == 1
     assert report["services"][0]["risk"] == "high"
-    assert report["services"][0]["safe_to_execute"] is False
-    assert report["scheduled_tasks"][0]["safe_to_execute"] is False
+    assert_safe_to_execute_disabled(report["services"][0])
+    assert_safe_to_execute_disabled(report["scheduled_tasks"][0])
     assert report["scheduled_tasks"][0]["target_exists"] is False
 
 
