@@ -16,6 +16,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
+AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
@@ -62,7 +63,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     make_temp_plan_fixture: MakeTempPlan,
-    assert_dry_run_result: AssertDryRunResult,
+    assert_dry_run_summary: AssertDryRunSummary,
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
@@ -72,11 +73,8 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
     payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_payload_schema(payload, "cleanwin.execute.v1")
-    assert not payload["executed"]
-    assert payload["dry_run"]
     assert_payload_status_true(payload, "validation", "valid")
-    assert_dry_run_result(payload, stale_file)
-    assert payload["summary"] == {"result_count": 1, "status_counts": {"dry-run": 1}}
+    assert_dry_run_summary(payload, stale_file)
     assert "confirmation_token" in payload["confirmation"]
 
 def test_review_plan_summarizes_execution_handoff(
@@ -479,7 +477,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
-    assert_dry_run_result: AssertDryRunResult,
+    assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
@@ -508,7 +506,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     assert any("Uninstall Visual Studio Code" in command for command in review["cleanup_strategy"]["official_cleanup_commands"])
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert_dry_run_result(dry_run_payload, vscode_cache)
+    assert_dry_run_summary(dry_run_payload, vscode_cache)
     assert slack_cache.exists()
 
 def test_browser_cache_scans_cache_only_directories_without_profile_data(
@@ -638,7 +636,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
-    assert_dry_run_result: AssertDryRunResult,
+    assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
@@ -666,7 +664,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     assert "uv cache clean" in review["cleanup_strategy"]["official_cleanup_commands"]
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert_dry_run_result(dry_run_payload, uv_cache)
+    assert_dry_run_summary(dry_run_payload, uv_cache)
     assert winget_cache.exists()
 
 def test_package_cache_scans_additional_developer_package_caches(

@@ -30,7 +30,6 @@ SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
     ("test_cli.py", "test_browser_cache_discovers_additional_browser_profiles"): 1,
     ("test_cli.py", "test_browser_cache_scans_cache_only_directories_without_profile_data"): 1,
     ("test_cli.py", "test_dev_cache_candidates_include_rule_metadata_and_official_commands"): 1,
-    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
     ("test_cli.py", "test_inspect_rule_id_filters_dev_cache_candidates"): 1,
     ("test_cli.py", "test_inspect_temp_finds_sandbox_candidate"): 1,
     ("test_cli.py", "test_package_cache_scans_common_windows_package_manager_caches"): 1,
