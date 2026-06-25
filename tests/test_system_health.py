@@ -17,6 +17,7 @@ AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
+AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 
 
 def test_system_health_report_is_read_only_and_gated(
@@ -38,6 +39,7 @@ def test_system_health_recommendations_use_official_tools_without_execution(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_contains_all: AssertContainsAll,
     assert_all_match: AssertAllMatch,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     report = system_health_report()
     by_id = {item["id"]: item for item in report["recommendations"]}
@@ -51,8 +53,8 @@ def test_system_health_recommendations_use_official_tools_without_execution(
             "health.windows-update.troubleshooter",
         ],
     )
-    assert by_id["health.component-store.dism-scanhealth"]["commands"][0][0] == "dism.exe"
-    assert by_id["health.system-files.sfc-scannow"]["commands"][0] == ["sfc.exe", "/scannow"]
+    assert_exact_sequence(by_id["health.component-store.dism-scanhealth"]["commands"][0][:1], ["dism.exe"])
+    assert_exact_sequence(by_id["health.system-files.sfc-scannow"]["commands"][0], ["sfc.exe", "/scannow"])
     for item in report["recommendations"]:
         assert_execution_disabled(item)
         assert_safe_to_execute_disabled(item)

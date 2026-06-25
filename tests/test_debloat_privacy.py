@@ -20,6 +20,7 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 
 
 def test_report_is_non_destructive_and_gated(
@@ -42,6 +43,7 @@ def test_registry_policy_values_are_classified(
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
     assert_field_values: AssertFieldValues,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     report = debloat_privacy_report(
         raw_registry_values={
@@ -59,7 +61,7 @@ def test_registry_policy_values_are_classified(
     evidence = by_id["privacy.telemetry.allow-telemetry"]["change_evidence"]
     assert_payload_schema(evidence, "cleanwin.registry-privacy-evidence.v1")
     assert_field_values(evidence, {"hive": "HKLM", "value_name": "AllowTelemetry"})
-    assert evidence["required_export_command"][:2] == ["reg.exe", "export"]
+    assert_exact_sequence(evidence["required_export_command"][:2], ["reg.exe", "export"])
     assert_contains_all(evidence["rollback_metadata_required"], ["previous_value"])
     assert_summary_counts(report, {"review_recommended_count": 1, "privacy_hardened_count": 1})
 
