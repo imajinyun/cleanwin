@@ -22,13 +22,20 @@ def dangerous_windows_paths() -> list[str]:
 
 @pytest.mark.parametrize("path", dangerous_windows_paths())
 def test_dangerous_windows_paths_are_rejected(path: str) -> None:
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Refusing (protected|sensitive)"):
         validate_path_text(path)
 
 
-@pytest.mark.parametrize("path", ["relative\\cache", "C:\\Users\\alice\\..\\Windows", "C:\\Temp\\bad\x00name"])
-def test_relative_traversal_and_control_paths_are_rejected(path: str) -> None:
-    with pytest.raises(RuntimeError):
+@pytest.mark.parametrize(
+    ("path", "message"),
+    [
+        ("relative\\cache", "Refusing non-absolute path"),
+        ("C:\\Users\\alice\\..\\Windows", "Refusing path with traversal component"),
+        ("C:\\Temp\\bad\x00name", "Refusing path with control characters"),
+    ],
+)
+def test_relative_traversal_and_control_paths_are_rejected(path: str, message: str) -> None:
+    with pytest.raises(RuntimeError, match=message):
         validate_path_text(path)
 
 
@@ -45,7 +52,7 @@ def test_symlink_candidate_is_rejected(tmp_path: Path, write_text_file: WriteTex
         link.symlink_to(target, target_is_directory=True)
     except OSError:
         pytest.skip("symlink creation is unavailable")
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Refusing symlink/reparse-point candidate"):
         validate_filesystem_candidate(link)
 
 
