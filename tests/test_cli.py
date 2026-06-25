@@ -18,6 +18,7 @@ AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
@@ -114,6 +115,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     cleanwin_result_json: CleanWinResultJSON,
     write_text_file: WriteTextFile,
     write_json_file: WriteJSONFile,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     plan = Plan(
@@ -135,9 +137,12 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     assert result.returncode == 2
     payload = cleanwin_result_json(result)
     assert not payload["validation"]["valid"]
-    assert not payload["execution_handoff"]["safe_to_execute"]
+    assert_safe_to_execute_disabled(payload["execution_handoff"])
 
-def test_read_only_categories_do_not_create_candidates(cleanwin_json: CleanWinJSON) -> None:
+def test_read_only_categories_do_not_create_candidates(
+    cleanwin_json: CleanWinJSON,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+) -> None:
     payload = cleanwin_json(
         "inspect",
         "--categories",
@@ -145,7 +150,8 @@ def test_read_only_categories_do_not_create_candidates(cleanwin_json: CleanWinJS
     )
     assert payload["summary"]["candidate_count"] == 0
     assert payload["summary"]["finding_count"] == 8
-    assert all(not finding["safe_to_execute"] for finding in payload["findings"])
+    for finding in payload["findings"]:
+        assert_safe_to_execute_disabled(finding)
     by_category = {finding["category"]: finding for finding in payload["findings"]}
     assert by_category["docker-report"]["rule_id"] == "report.docker.manual-cleanup"
     assert by_category["wsl-report"]["owner"] == "WSL"

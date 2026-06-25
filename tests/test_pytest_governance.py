@@ -26,6 +26,7 @@ READONLY_BOOLEAN_KEYS = {
     "dry_run": True,
     "executes_system_commands": False,
 }
+SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 
 
 class ParsedTestModule(NamedTuple):
@@ -217,6 +218,26 @@ def test_direct_readonly_boolean_assertions_stay_in_migration_budget(repo_root: 
     assert observed == READONLY_BOOLEAN_ASSERTION_ALLOWLIST
 
 
+def test_direct_safe_to_execute_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_safe_to_execute_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -314,6 +335,39 @@ def _is_direct_readonly_boolean_assertion(node: ast.AST) -> bool:
         if right_expected is not None and _constant_bool(test.left) is right_expected:
             return True
     return False
+
+
+def _is_direct_safe_to_execute_assertion(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Assert):
+        return False
+    return _contains_safe_to_execute_disabled_check(node.test)
+
+
+def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return _is_safe_to_execute_subscript(node.operand)
+    if isinstance(node, ast.Compare):
+        left_is_safe_to_execute = _is_safe_to_execute_subscript(node.left)
+        for operator, comparator in zip(node.ops, node.comparators, strict=False):
+            if isinstance(operator, ast.Is):
+                if left_is_safe_to_execute and _constant_bool(comparator) is False:
+                    return True
+                if _is_safe_to_execute_subscript(comparator) and _constant_bool(node.left) is False:
+                    return True
+            if isinstance(operator, ast.Eq):
+                if left_is_safe_to_execute and _constant_bool(comparator) is False:
+                    return True
+                if _is_safe_to_execute_subscript(comparator) and _constant_bool(node.left) is False:
+                    return True
+    if isinstance(node, ast.Call):
+        return any(_contains_safe_to_execute_disabled_check(child) for child in ast.iter_child_nodes(node))
+    if isinstance(node, (ast.BoolOp, ast.GeneratorExp, ast.ListComp, ast.SetComp, ast.DictComp)):
+        return any(_contains_safe_to_execute_disabled_check(child) for child in ast.iter_child_nodes(node))
+    return False
+
+
+def _is_safe_to_execute_subscript(node: ast.AST) -> bool:
+    return isinstance(node, ast.Subscript) and _slice_value(node.slice) == "safe_to_execute"
 
 
 def _readonly_boolean_subscript_expected(node: ast.AST) -> bool | None:
