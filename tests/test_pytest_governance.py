@@ -23,10 +23,7 @@ SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_recovery.py", "test_recovery_readiness_declares_snapshot_specs"): 1,
-    ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
-}
+PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 COLLECTION_ASSERTION_HELPERS = {
     "assert_contains_all",
     "assert_contains_none",

@@ -12,6 +12,7 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates(
@@ -27,7 +28,10 @@ def test_recovery_readiness_is_non_destructive_and_declares_gates(
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
 
 
-def test_recovery_readiness_declares_snapshot_specs(assert_contains_all: AssertContainsAll) -> None:
+def test_recovery_readiness_declares_snapshot_specs(
+    assert_contains_all: AssertContainsAll,
+    assert_none_match: AssertNoneMatch,
+) -> None:
     report = recovery_readiness_report()
     specs = {item["id"]: item for item in report["snapshot_specs"]}
 
@@ -42,7 +46,7 @@ def test_recovery_readiness_declares_snapshot_specs(assert_contains_all: AssertC
             "installed-app-inventory",
         ],
     )
-    assert all(not spec["executed_by_report"] for spec in specs.values())
+    assert_none_match(list(specs.values()), lambda spec: spec["executed_by_report"])
     assert_contains_all(specs["registry-export"]["required_before"], ["registry-change"])
 
 

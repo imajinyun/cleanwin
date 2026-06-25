@@ -16,6 +16,7 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 
 
 def test_system_health_report_is_read_only_and_gated(
@@ -36,6 +37,7 @@ def test_system_health_recommendations_use_official_tools_without_execution(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_contains_all: AssertContainsAll,
+    assert_all_match: AssertAllMatch,
 ) -> None:
     report = system_health_report()
     by_id = {item["id"]: item for item in report["recommendations"]}
@@ -54,7 +56,7 @@ def test_system_health_recommendations_use_official_tools_without_execution(
     for item in report["recommendations"]:
         assert_execution_disabled(item)
         assert_safe_to_execute_disabled(item)
-    assert all(item["evidence_required"] for item in report["recommendations"])
+    assert_all_match(report["recommendations"], lambda item: item["evidence_required"])
 
 
 def test_cli_provider_and_schema_registry_expose_system_health(
