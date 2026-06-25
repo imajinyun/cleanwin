@@ -16,6 +16,8 @@ CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
 AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
@@ -31,13 +33,16 @@ def test_capabilities_reports_dry_run_and_single_exit(cleanwin_json: CleanWinJSO
     assert "registry-clean" in payload["never_auto_execute"]
 
 def test_inspect_temp_finds_sandbox_candidate(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, make_temp_plan_fixture: MakeTempPlan
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    make_temp_plan_fixture: MakeTempPlan,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, False)
     payload = cleanwin_json("inspect", "--categories", "temp", "--older-than-days", "0", env=env)
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["path"] == str(stale_file)
-    assert payload["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
+    assert_payload_schema(payload["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
 def test_plan_validate_round_trip(
     tmp_path: Path,
@@ -56,13 +61,14 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     cleanwin_json: CleanWinJSON,
     make_temp_plan_fixture: MakeTempPlan,
     assert_dry_run_result: AssertDryRunResult,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
 
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
     payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert payload["schema"] == "cleanwin.execute.v1"
+    assert_payload_schema(payload, "cleanwin.execute.v1")
     assert not payload["executed"]
     assert payload["dry_run"]
     assert payload["validation"]["valid"]
@@ -76,6 +82,7 @@ def test_review_plan_summarizes_execution_handoff(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_readonly_report: AssertReadonlyReport,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
@@ -93,8 +100,7 @@ def test_review_plan_summarizes_execution_handoff(
     )
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review["schema"] == "cleanwin.review.v1"
-    assert not review["destructive"]
+    assert_readonly_report(review, "cleanwin.review.v1")
     assert review["validation"]["valid"]
     assert review["execution_handoff"]["requires_human_confirmation"]
     assert review["summary"]["candidate_count"] == 1
@@ -150,6 +156,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
@@ -171,7 +178,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     assert candidate["cache_owner"] == "npm"
     assert candidate["official_cleanup_command"] == "npm cache clean --force"
     assert "regenerated" in candidate["safe_to_delete_rationale"].lower()
-    assert candidate["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
+    assert_payload_schema(candidate["identity"], "cleanwin.filesystem-identity.v1")
 
 def test_dev_cache_scans_expanded_python_and_node_tool_caches(
     tmp_path: Path,

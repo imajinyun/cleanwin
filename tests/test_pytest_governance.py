@@ -13,10 +13,6 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
-    ("test_cli.py", "test_inspect_temp_finds_sandbox_candidate"): 1,
-    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
-    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
-    ("test_cli.py", "test_dev_cache_candidates_include_rule_metadata_and_official_commands"): 1,
     ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 1,
     ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
     ("test_mcp_server.py", "<module>"): 1,
@@ -33,7 +29,6 @@ READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
     ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,
     ("test_ai_readiness.py", "test_workflow_router_routes_intents_without_enabling_execution"): 1,
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 1,
-    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
     ("test_presets.py", "test_preset_catalog_contains_safe_templates_and_review_gates"): 1,
     ("test_recovery.py", "test_cli_and_ai_provider_expose_recovery_readiness"): 1,
 }
