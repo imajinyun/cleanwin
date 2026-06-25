@@ -80,9 +80,10 @@ Use pytest-native patterns for new or updated tests:
   `assert_all_match`, and `assert_none_match` for repeated `any(...)` /
   `all(...)` style checks over structured collections.
 - Use field assertion helpers such as `assert_field_values`,
-  `assert_fields_present`, and `field_value` for repeated structured payload
-  field checks. Dot paths may target nested dictionaries and numeric path
-  segments may target list indexes, for example `rule_summary.0.rule_id`.
+  `assert_fields_present`, `assert_fields_not_none`, and `field_value` for
+  repeated structured payload field checks. Dot paths may target nested
+  dictionaries and numeric path segments may target list indexes, for example
+  `rule_summary.0.rule_id`.
 - Use exact assertion helpers such as `assert_exact_sequence`,
   `assert_exact_set`, `assert_unique_items`, `assert_non_empty`, and
   `assert_returncode` for repeated strict sequence, set, uniqueness,
