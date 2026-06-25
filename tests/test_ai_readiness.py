@@ -29,7 +29,7 @@ AssertSchemasRegistered = Callable[[list[str]], None]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[list[tuple[str, str]]], None]
 AssertAIProviderSchemas = Callable[[list[tuple[str, str]]], None]
-AssertNoUnittestCommands = Callable[[list[str] | list[list[str]]], None]
+AssertCommandSequence = Callable[[list[str] | list[list[str]], list[str] | list[list[str]]], None]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
@@ -191,7 +191,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
 
 
 def test_doctor_report_checks_static_safety_and_contracts(
-    assert_no_unittest_commands: AssertNoUnittestCommands,
+    assert_command_sequence: AssertCommandSequence,
     assert_readonly_report: AssertReadonlyReport,
 ) -> None:
     report = doctor_report()
@@ -208,7 +208,7 @@ def test_doctor_report_checks_static_safety_and_contracts(
     assert version_check["evidence"]["pyproject_version"] == __version__
     assert version_check["evidence"]["distribution_version"] in {None, __version__}
     assert version_check["evidence"]["capabilities_version"] == __version__
-    assert_no_unittest_commands(report["recommended_commands"])
+    assert_command_sequence(report["recommended_commands"], [])
 
 
 @pytest.mark.parametrize("command", EXPECTED_DOCTOR_COMMANDS)
@@ -217,12 +217,8 @@ def test_doctor_report_recommends_quality_command(command: list[str]) -> None:
 
 
 def test_ai_readiness_release_gates_use_pytest_workflow(
-    assert_no_unittest_commands: AssertNoUnittestCommands,
+    assert_command_sequence: AssertCommandSequence,
 ) -> None:
     report = ai_readiness_report()
 
-    assert "make pytest" in report["release_gate_commands"]
-    assert "make lint" in report["release_gate_commands"]
-    assert "make type" in report["release_gate_commands"]
-    assert "make quality" in report["release_gate_commands"]
-    assert_no_unittest_commands(report["release_gate_commands"])
+    assert_command_sequence(report["release_gate_commands"], ["make pytest", "make lint", "make type", "make quality"])

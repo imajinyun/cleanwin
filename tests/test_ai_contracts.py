@@ -26,7 +26,7 @@ AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
-AssertNoUnittestCommands = Callable[[list[list[str]]], None]
+AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
     "cleanwin_environment_index",
@@ -68,7 +68,7 @@ def test_schema_registry_includes_ai_host_critical_schemas(
 def test_schema_samples_include_rule_metadata_and_review_details(
     assert_schema_samples: AssertSchemaSamples,
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
-    assert_no_unittest_commands: AssertNoUnittestCommands,
+    assert_command_sequence: AssertCommandSequence,
 ) -> None:
     samples = assert_schema_samples(
         [
@@ -97,9 +97,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     doctor_sample = assert_readonly_schema_sample("cleanwin.doctor.v1")
     assert doctor_sample["schema"] == "cleanwin.doctor.v1"
     assert "recommended_commands" in doctor_sample
-    assert ["make", "pytest"] in doctor_sample["recommended_commands"]
-    assert ["make", "quality"] in doctor_sample["recommended_commands"]
-    assert_no_unittest_commands(doctor_sample["recommended_commands"])
+    assert_command_sequence(doctor_sample["recommended_commands"], [["make", "pytest"], ["make", "quality"]])
 
     review_sample = assert_readonly_schema_sample("cleanwin.review.v1")
     assert review_sample["schema"] == "cleanwin.review.v1"

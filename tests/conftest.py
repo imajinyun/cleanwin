@@ -44,7 +44,7 @@ AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
-AssertNoUnittestCommands = Callable[[CommandSequence], None]
+AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
 
 
 @pytest.fixture
@@ -371,13 +371,15 @@ def assert_execution_disabled() -> AssertExecutionDisabled:
 
 
 @pytest.fixture
-def assert_no_unittest_commands() -> AssertNoUnittestCommands:
+def assert_command_sequence() -> AssertCommandSequence:
     def _is_unittest_command(command: str | Sequence[str]) -> bool:
         if isinstance(command, str):
             return "unittest" in command.lower()
         return list(command[:3]) == ["python3", "-m", "unittest"]
 
-    def _assert_no_unittest_commands(commands: CommandSequence) -> None:
+    def _assert_command_sequence(commands: CommandSequence, required: CommandSequence = ()) -> None:
         assert not [command for command in commands if _is_unittest_command(command)]
+        for command in required:
+            assert command in commands
 
-    return _assert_no_unittest_commands
+    return _assert_command_sequence
