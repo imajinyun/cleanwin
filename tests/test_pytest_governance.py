@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 AssertAtLeast = Callable[[int, int], int]
+AssertNoneMatch = Callable[[Sequence[str], Callable[[str], bool]], Sequence[str]]
 
 HELPER_MODULES = {"conftest.py", "test_pytest_governance.py"}
 AD_HOC_FILESYSTEM_METHODS = {"mkdir", "write_text", "write_bytes"}
@@ -205,22 +207,26 @@ def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path, assert_exa
     assert_exact_sequence(violations, [])
 
 
-def test_workflows_use_makefile_venv_pytest_contract(repo_root: Path) -> None:
+def test_workflows_use_makefile_venv_pytest_contract(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
     workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     dockerfile = (repo_root / "Dockerfile.test").read_text(encoding="utf-8")
 
-    assert "pytest: dev-install" in makefile
-    assert "$(DEV_PYTHON) -m pytest -q" in makefile
-    assert "$(DEV_PYTHON) -m ruff check" in makefile
-    assert "$(DEV_PYTHON) -m mypy" in makefile
-    assert "make pytest" in workflow
-    assert "python -m pytest" not in workflow
-    assert "unittest" not in workflow
-    assert ".venv/bin/python -m pytest -q" in dockerfile
-    assert ".venv/bin/python -m ruff check" in dockerfile
-    assert ".venv/bin/python -m mypy" in dockerfile
-    assert "unittest discover" not in dockerfile
+    assert_text_contains_all(
+        makefile,
+        ["pytest: dev-install", "$(DEV_PYTHON) -m pytest -q", "$(DEV_PYTHON) -m ruff check", "$(DEV_PYTHON) -m mypy"],
+    )
+    assert_text_contains_all(workflow, ["make pytest"])
+    assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
+    assert_none_match([dockerfile], lambda text: "unittest discover" in text)
+    assert_text_contains_all(
+        dockerfile,
+        [".venv/bin/python -m pytest -q", ".venv/bin/python -m ruff check", ".venv/bin/python -m mypy"],
+    )
 
 
 def test_pytest_raises_assertions_match_messages(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
