@@ -1146,6 +1146,17 @@ committing. The final task must run `make quality` so lint, pytest, type
 checking, compile, packaging, smoke tests, and pytest governance all execute
 through the repository `.venv`.
 
+### Round 15 Focused Gate
+
+- `assert_fields_not_none` is available in `tests/conftest.py` and adopted by
+  `tests/test_windows_integration.py`.
+- Pytest governance now tracks non-null field helper adoption with
+  `MIN_NONNULL_FIELD_HELPER_ADOPTION_FILES = 1`.
+- Path helper adoption now includes `tests/test_identity.py` and
+  `tests/test_windows_integration.py`, with
+  `MIN_PATH_HELPER_ADOPTION_FILES = 5`.
+- Focused gate passed with `make pytest-governance-smoke`: `22 passed`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
