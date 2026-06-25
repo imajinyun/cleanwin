@@ -58,7 +58,11 @@ COLLECTION_HELPER_ADOPTION_FILES = {
     "test_rule_catalog.py",
     "test_scan_governance.py",
 }
-FIELD_HELPER_ADOPTION_FILES: set[str] = set()
+FIELD_HELPER_ADOPTION_FILES = {
+    "test_browser_inventory.py",
+    "test_file_reports.py",
+    "test_identity.py",
+}
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",

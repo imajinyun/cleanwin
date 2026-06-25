@@ -20,6 +20,8 @@ AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], JSONPayload]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -32,6 +34,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert_contains_all: AssertContainsAll,
     assert_contains_none: AssertContainsNone,
     assert_any_match: AssertAnyMatch,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     downloads = make_directory(tmp_path / "Downloads")
     onedrive = make_directory(tmp_path / "OneDrive")
@@ -53,10 +56,10 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
 
     assert_readonly_report(report, FILE_REPORT_SCHEMA)
     assert_summary_counts(report, {"file_count": 3, "large_file_count": 1, "duplicate_group_count": 1})
-    assert report["large_files"][0]["path"] == str(large)
+    assert_field_values(report["large_files"][0], {"path": str(large)})
     duplicate_group = report["duplicate_groups"][0]
     assert_safe_to_execute_disabled(duplicate_group)
-    assert duplicate_group["potential_reclaimable_bytes"] == duplicate_a.stat().st_size
+    assert_field_values(duplicate_group, {"potential_reclaimable_bytes": duplicate_a.stat().st_size})
     assert {item["path"] for item in duplicate_group["files"]} == {str(duplicate_a), str(duplicate_b)}
     assert_any_match(duplicate_group["files"], lambda item: item["onedrive_or_cloud_path"])
     assert_contains_all({group["extension"] for group in report["extension_groups"]}, [".iso", ".zip"])
@@ -70,6 +73,7 @@ def test_file_report_traversal_budget_stops_scanning(
     tmp_path: Path,
     write_bytes_file: WriteBytesFile,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path / "Downloads"
     for index in range(3):
@@ -78,7 +82,7 @@ def test_file_report_traversal_budget_stops_scanning(
     report = file_report(env={"CLEANWIN_FILE_REPORT_ROOTS": str(root)}, min_duplicate_bytes=1, max_files_scanned=2)
 
     assert_summary_counts(report, {"file_count": 2})
-    assert report["traversal_budget"]["limit_reached"] is True
+    assert_field_values(report, {"traversal_budget.limit_reached": True})
 
 
 def test_cli_provider_exposes_file_report(

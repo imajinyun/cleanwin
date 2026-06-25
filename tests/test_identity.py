@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -20,35 +20,43 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertAnyMatch = Callable[[list[str], Callable[[str], bool]], str]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertFieldsPresent = Callable[[JSONPayload, Sequence[str]], JSONPayload]
 
 
 def test_capture_identity_contains_replay_fields(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
+    assert_fields_present: AssertFieldsPresent,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
     assert_payload_schema(identity, "cleanwin.filesystem-identity.v1")
-    assert identity["exists"] is True
-    assert identity["file_type"] == "file"
-    assert identity["size_bytes"] == 1
-    assert "canonical_path" in identity
-    assert "file_id" in identity
-    assert "volume_serial_number" in identity
-    assert "windows_file_index" in identity
+    assert_field_values(identity, {"exists": True, "file_type": "file", "size_bytes": 1})
+    assert_fields_present(identity, ["canonical_path", "file_id", "volume_serial_number", "windows_file_index"])
 
 
-def test_windows_native_identity_falls_back_off_windows(tmp_path: Path) -> None:
+def test_windows_native_identity_falls_back_off_windows(
+    tmp_path: Path,
+    assert_field_values: AssertFieldValues,
+) -> None:
     if os.name == "nt":
         pytest.skip("fallback assertion is for non-Windows hosts")
 
     identity = capture_windows_native_identity(tmp_path / "candidate.tmp")
 
-    assert identity["windows_native_available"] is False
-    assert identity["windows_native_error"] == "not-windows"
-    assert identity["volume_serial_number"] is None
+    assert_field_values(
+        identity,
+        {
+            "windows_native_available": False,
+            "windows_native_error": "not-windows",
+            "volume_serial_number": None,
+        },
+    )
 
 
 def test_compare_identity_detects_content_replacement(

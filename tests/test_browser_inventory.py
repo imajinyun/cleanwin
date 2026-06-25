@@ -19,6 +19,8 @@ AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertNoneMatch = Callable[[Sequence[str], Callable[[str], bool]], Sequence[str]]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
@@ -27,6 +29,7 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert_readonly_report: AssertReadonlyReport,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
@@ -41,14 +44,13 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert_readonly_report(report, BROWSER_PROFILE_INVENTORY_SCHEMA)
     assert_summary_counts(report, {"profile_count": 1, "locked_profile_count": 1})
     profile = report["profiles"][0]
-    assert profile["browser"] == "chrome"
-    assert profile["profile_name"] == "Default"
-    assert profile["locked_profile"]["state"] == "locked-or-running"
+    assert_field_values(
+        profile,
+        {"browser": "chrome", "profile_name": "Default", "locked_profile.state": "locked-or-running"},
+    )
     layers = {layer["name"]: layer for layer in profile["cache_layers"]}
-    assert layers["Cache"]["type"] == "http-cache"
-    assert layers["Cache"]["exists"] is True
-    assert layers["Cache"]["promotable"] is True
-    assert layers["Code Cache"]["type"] == "code-cache"
+    assert_field_values(layers["Cache"], {"type": "http-cache", "exists": True, "promotable": True})
+    assert_field_values(layers["Code Cache"], {"type": "code-cache"})
     for layer in profile["cache_layers"]:
         assert_safe_to_execute_disabled(layer)
 
