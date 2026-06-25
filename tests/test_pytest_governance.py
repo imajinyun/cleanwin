@@ -83,6 +83,62 @@ def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
     assert violations == []
 
 
+def test_tests_use_shared_schema_registry_helpers(repo_root: Path) -> None:
+    violations: list[str] = []
+    for path in sorted((repo_root / "tests").glob("test_*.py")):
+        if path.name in HELPER_MODULES:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        assignments = _assigned_cleanwin_json_commands(tree)
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(tree):
+            if _is_schema_registry_call(node):
+                test_name = _enclosing_test_name(node, parents)
+                violations.append(f"{path.name}:{test_name or '<module>'}: use shared schema registry helper")
+            elif _is_registry_sample_subscript(node, assignments):
+                test_name = _enclosing_test_name(node, parents)
+                violations.append(f"{path.name}:{test_name or '<module>'}: use shared schema sample helper")
+
+    assert violations == []
+
+
+def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
+    assignments: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+            continue
+        if not _is_cleanwin_json_call(node.value):
+            continue
+        first_arg = node.value.args[0] if node.value.args else None
+        if not isinstance(first_arg, ast.Constant) or not isinstance(first_arg.value, str):
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                assignments[target.id] = first_arg.value
+    return assignments
+
+
+def _is_schema_registry_call(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Call) or not _is_cleanwin_json_call(node):
+        return False
+    first_arg = node.args[0] if node.args else None
+    return isinstance(first_arg, ast.Constant) and first_arg.value == "schema-registry"
+
+
+def _is_registry_sample_subscript(node: ast.AST, assignments: dict[str, str]) -> bool:
+    if not isinstance(node, ast.Subscript):
+        return False
+    value = node.value
+    if not isinstance(value, ast.Subscript) or _slice_value(value.slice) != "samples":
+        return False
+    root = _subscript_root(value)
+    return isinstance(root, ast.Name) and assignments.get(root.id) == "schema-registry"
+
+
 def _is_cleanwin_json_call(node: ast.AST | None) -> bool:
     return (
         isinstance(node, ast.Call)
