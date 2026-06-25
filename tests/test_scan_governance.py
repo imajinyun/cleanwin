@@ -11,7 +11,7 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 
 
 def test_scan_governance_is_read_only_and_release_gated(assert_readonly_report: AssertReadonlyReport) -> None:

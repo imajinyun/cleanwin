@@ -77,7 +77,8 @@ Use pytest-native patterns for new or updated tests:
 - Keep pytest governance budgets in `tests/test_pytest_governance.py` aligned
   when retiring legacy direct schema, read-only boolean, `safe_to_execute`, or
   execution-disabled flag assertions; do not add new direct assertions when a
-  shared helper exists.
+  shared helper exists. Current direct assertion budgets for those categories
+  should remain empty unless a migration plan explicitly reopens one.
 
 Minimum verification for ordinary code or test changes:
 

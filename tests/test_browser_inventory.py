@@ -12,7 +12,7 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 

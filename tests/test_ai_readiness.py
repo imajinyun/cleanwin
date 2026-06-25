@@ -33,7 +33,7 @@ AssertCommandSequence = Callable[[list[str] | list[list[str]], list[str] | list[
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -177,6 +177,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     assert_cli_provider_schemas: AssertCliProviderSchemas,
     assert_ai_provider_schemas: AssertAIProviderSchemas,
     assert_payload_schema: AssertPayloadSchema,
+    assert_readonly_report: AssertReadonlyReport,
 ) -> None:
     assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
     assert cleanwin_json("ai-readiness", "--validate")["valid"]

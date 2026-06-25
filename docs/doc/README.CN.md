@@ -352,7 +352,7 @@ make quality
 .venv/bin/python cleanwin.py --json doctor
 ```
 
-新增测试优先使用 pytest 函数风格，包括原生 `assert`、`tmp_path`、`monkeypatch`、`pytest.raises` 和 `pytest.mark.parametrize`。可复用的 subprocess 或 JSON helper 放入 `tests/conftest.py` 或专用 MCP helper，不要继续复制 `unittest.TestCase` setup 方法。payload schema、只读报告、禁用执行契约、schema registry sample 和命令序列断言应复用共享 helper。异常路径测试应使用 `pytest.raises(..., match=...)` 校验错误信息契约。
+新增测试优先使用 pytest 函数风格，包括原生 `assert`、`tmp_path`、`monkeypatch`、`pytest.raises` 和 `pytest.mark.parametrize`。可复用的 subprocess 或 JSON helper 放入 `tests/conftest.py` 或专用 MCP helper，不要继续复制 `unittest.TestCase` setup 方法。payload schema、只读 payload 和报告、`safe_to_execute`、禁用执行契约、schema registry sample 和命令序列断言应复用共享 helper。异常路径测试应使用 `pytest.raises(..., match=...)` 校验错误信息契约。
 
 Pytest 治理 smoke：
 
@@ -360,7 +360,7 @@ Pytest 治理 smoke：
 make pytest-governance-smoke
 ```
 
-该检查会保持测试 pytest-native，约束直接 CLI subprocess 调用收敛到共享 helper，要求 `pytest.raises` 校验错误信息，对遗留的直接 schema、只读布尔、`safe_to_execute` 和 execution-disabled flag 断言执行迁移预算，并防止 CI 和 Docker 沙箱重新引入 `unittest discover` 或绕过项目 `.venv`。
+该检查会保持测试 pytest-native，约束直接 CLI subprocess 调用收敛到共享 helper，要求 `pytest.raises` 校验错误信息，并保持遗留的直接 schema、只读布尔、`safe_to_execute` 和 execution-disabled flag 断言预算为空，同时防止 CI 和 Docker 沙箱重新引入 `unittest discover` 或绕过项目 `.venv`。
 
 可选 Docker 沙箱：
 

@@ -9,7 +9,7 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 
 
 def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(

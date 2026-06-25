@@ -28,7 +28,7 @@ AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [

@@ -11,7 +11,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 

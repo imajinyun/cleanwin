@@ -353,7 +353,7 @@ The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that envir
 .venv/bin/python cleanwin.py --json doctor
 ```
 
-New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` or focused MCP helpers instead of repeating `unittest.TestCase` setup methods. Reuse shared helpers for payload schemas, read-only reports, execution-disabled contracts, schema registry samples, and command sequences. Exception-path tests should assert the error contract with `pytest.raises(..., match=...)`.
+New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` or focused MCP helpers instead of repeating `unittest.TestCase` setup methods. Reuse shared helpers for payload schemas, read-only payloads and reports, `safe_to_execute`, execution-disabled contracts, schema registry samples, and command sequences. Exception-path tests should assert the error contract with `pytest.raises(..., match=...)`.
 
 Pytest governance smoke:
 
@@ -361,7 +361,7 @@ Pytest governance smoke:
 make pytest-governance-smoke
 ```
 
-This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, enforces migration budgets for legacy direct schema, read-only boolean, `safe_to_execute`, and execution-disabled flag assertions, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
+This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, keeps legacy direct schema, read-only boolean, `safe_to_execute`, and execution-disabled flag assertion budgets empty, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
 
 Optional Docker sandbox:
 

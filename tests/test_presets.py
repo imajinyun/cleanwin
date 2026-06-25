@@ -12,7 +12,7 @@ AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
-AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[..., JSONPayload]
 
 
 def test_preset_catalog_is_read_only_and_non_executable(
