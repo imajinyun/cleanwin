@@ -823,6 +823,138 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 
 Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
 
+## Round 11 Pytest Governance Plan
+
+**Goal:** Continue shrinking repeated low-level assertions by introducing focused helpers for exact collection equality, subprocess return-code contracts, and non-empty collection expectations, then migrate the remaining compact assertion clusters.
+
+**Architecture:** Keep this round test-only. Add narrowly scoped helper fixtures to `tests/conftest.py`, make helper adoption visible in `tests/test_pytest_governance.py`, migrate focused test files in small commits, and keep all validation through Makefile-backed `.venv` targets.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.nPuQo6jfre`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared exact collection, return-code, and non-empty assertion helpers",
+      "locator": "near existing field, collection, predicate, and CLI helpers",
+      "source": "explicit",
+      "reason": "remaining tests repeat exact sequence/set equality, subprocess return-code checks, and non-empty collection checks",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "helper adoption governance smoke",
+      "locator": "helper registration and adoption checks",
+      "source": "explicit",
+      "reason": "new helpers should be machine-visible and adopted by migrated files",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_delete_ops.py tests/test_windows_integration.py",
+      "target_type": "file",
+      "symbol": "delete and Windows integration result field assertions",
+      "locator": "direct recycled status and operation-log field equality checks",
+      "source": "explicit",
+      "reason": "small execution-safety tests can reuse shared field helpers without changing delete behavior",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_system_health.py tests/test_debloat_privacy.py",
+      "target_type": "file",
+      "symbol": "exact command and evidence sequence assertions",
+      "locator": "direct command list and registry export command equality checks",
+      "source": "explicit",
+      "reason": "read-only report tests repeat exact sequence contracts that should use shared diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_rule_catalog.py tests/test_file_reports.py",
+      "target_type": "file",
+      "symbol": "exact set and uniqueness assertions",
+      "locator": "direct set equality and uniqueness checks",
+      "source": "explicit",
+      "reason": "catalog and report tests contain compact collection equality checks that can share helper behavior",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py tests/test_ai_contracts.py",
+      "target_type": "file",
+      "symbol": "CLI and AI subprocess return-code assertions",
+      "locator": "direct result.returncode equality checks",
+      "source": "explicit",
+      "reason": "subprocess assertions should report stdout/stderr consistently through shared helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_readiness.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "AI readiness and MCP sequence/field assertions",
+      "locator": "direct first/last tool and error-code equality checks",
+      "source": "explicit",
+      "reason": "contract-order and JSON-RPC response checks should reuse helper fixtures where intent stays clear",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_safety.py",
+      "target_type": "file",
+      "symbol": "safety boolean assertions",
+      "locator": "direct protected registry and sensitive path boolean checks",
+      "source": "explicit",
+      "reason": "remaining safety predicates can use pytest parametrization and shared status helpers without changing protection logic",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest helper workflow documentation",
+      "locator": "pytest governance helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe when to use the new exact collection, non-empty, and return-code helpers",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is repeated low-level assertion style that can drift from shared pytest diagnostics.
+
+### Round 11 Tasks
+
+- `PYTEST-GOV-158`: Record this Round 11 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-159`: Add reusable exact collection, non-empty collection, and subprocess return-code assertion helpers.
+- `PYTEST-GOV-160`: Add pytest governance smoke coverage for the new helper family and adoption evidence.
+- `PYTEST-GOV-161`: Migrate delete operation and Windows integration result field assertions.
+- `PYTEST-GOV-162`: Migrate system-health and debloat/privacy exact command and evidence assertions.
+- `PYTEST-GOV-163`: Migrate rule-catalog and file-report exact set and uniqueness assertions.
+- `PYTEST-GOV-164`: Migrate CLI and AI contract subprocess return-code assertions.
+- `PYTEST-GOV-165`: Migrate AI readiness and MCP sequence/field response assertions.
+- `PYTEST-GOV-166`: Migrate safety boolean assertions through parametrization and shared helpers, then run focused pytest governance gates.
+- `PYTEST-GOV-167`: Update pytest workflow docs, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
 ## Round 10 Pytest Governance Plan
 
 **Goal:** Move repeated structured field equality assertions into shared pytest helpers so tests express contract checks as compact field maps with better drift control.
