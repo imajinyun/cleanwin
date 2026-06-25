@@ -10,9 +10,12 @@ from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_r
 JSONPayload = dict[str, Any]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
+AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
+AssertAtLeast = Callable[[int, int], int]
 AssertTextContainsAny = Callable[[str, Sequence[str]], str]
 
 
@@ -36,12 +39,13 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
     assert_payload_schema: AssertPayloadSchema,
     assert_contains_all: AssertContainsAll,
     assert_field_values: AssertFieldValues,
+    assert_at_least: AssertAtLeast,
 ) -> None:
     catalog = rule_catalog
 
     assert_payload_schema(catalog, CATALOG_SCHEMA)
     assert_field_values(catalog, {"version": "1"})
-    assert catalog["rule_count"] >= 40
+    assert_at_least(catalog["rule_count"], 40)
     assert_contains_all(
         {rule["rule_id"] for rule in catalog["dev_cache_rules"]},
         ["dev-cache.npm.cache", "dev-cache.poetry.cache"],
@@ -67,19 +71,23 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
     rule_id: str,
     rule_catalog: dict[str, Any],
+    assert_non_empty: AssertNonEmpty,
     assert_text_contains_any: AssertTextContainsAny,
 ) -> None:
     rule = {rule["rule_id"]: rule for rule in catalog_rules(rule_catalog)}[rule_id]
-    assert rule["official_cleanup_command"]
+    assert_non_empty([rule["official_cleanup_command"]])
     assert_text_contains_any(rule["rationale"].lower(), ["regenerated", "recreated"])
 
 
-def test_cleanup_rule_catalog_expanded_rules_avoid_unsafe_default_segments(rule_catalog: dict[str, Any]) -> None:
+def test_cleanup_rule_catalog_expanded_rules_avoid_unsafe_default_segments(
+    rule_catalog: dict[str, Any],
+    assert_contains_none: AssertContainsNone,
+) -> None:
     rules = catalog_rules(rule_catalog)
     unsafe_segments = {"documents", "desktop", "cookies", "login data", "sessions", "extensions", "history"}
     for rule in rules:
         default_segments = {segment.strip().lower() for segment in str(rule.get("default", "")).replace("\\", "/").split("/")}
-        assert not (default_segments & unsafe_segments), rule["rule_id"]
+        assert_contains_none(default_segments, sorted(unsafe_segments))
 
 
 def test_cleanup_rule_catalog_rule_ids_are_unique(
