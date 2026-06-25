@@ -489,3 +489,108 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 ### Verification
 
 Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
+## Round 7 Pytest Governance Plan
+
+**Goal:** Move repeated summary-count and dry-run-result assertions into shared pytest helpers, then govern remaining direct summary assertions with AST budgets.
+
+**Architecture:** Keep all previous assertion budgets closed. Add small helpers for payload summary counts and dry-run execution summaries, introduce a migration budget for direct summary assertions, then migrate focused tests in small commits.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.GMINKXsx4v`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared summary and dry-run assertion helpers",
+      "locator": "assert_dry_run_result and shared payload helpers",
+      "source": "explicit",
+      "reason": "tests repeat direct summary count and dry-run result assertions across CLI, MCP, inventory, and contract tests",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "summary assertion governance budget",
+      "locator": "AST checks for direct summary assertions",
+      "source": "explicit",
+      "reason": "summary-count assertions should be machine-checked like schema, read-only, status, and execution-disabled assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "CLI and MCP dry-run result assertions",
+      "locator": "direct executed/dry_run/result_count/status_counts assertions",
+      "source": "explicit",
+      "reason": "dry-run output semantics are repeated and should use shared helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py tests/test_file_reports.py tests/test_installed_apps.py tests/test_browser_inventory.py",
+      "target_type": "file",
+      "symbol": "summary count assertions in high-density tests",
+      "locator": "direct payload['summary'][...] assertions",
+      "source": "explicit",
+      "reason": "these files contain the highest-density repeated summary count assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_startup_inventory.py tests/test_debloat_privacy.py tests/test_execution_contracts.py tests/test_official_commands.py tests/test_presets.py tests/test_system_health.py tests/test_windows_smoke.py",
+      "target_type": "file",
+      "symbol": "remaining summary count assertions",
+      "locator": "direct report['summary'][...] assertions",
+      "source": "explicit",
+      "reason": "remaining direct summary assertions should migrate or be locked by a shrinking budget",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest workflow documentation",
+      "locator": "pytest governance helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe the new summary helper and budget contract",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is duplicated summary and dry-run result assertions that can drift from shared pytest contract helpers.
+
+### Round 7 Tasks
+
+- `PYTEST-GOV-118`: Record this Round 7 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-119`: Add reusable summary-count and dry-run summary helpers.
+- `PYTEST-GOV-120`: Add AST governance budgets for direct summary assertions.
+- `PYTEST-GOV-121`: Migrate CLI dry-run result summary assertions.
+- `PYTEST-GOV-122`: Migrate MCP dry-run result summary assertions.
+- `PYTEST-GOV-123`: Migrate high-density CLI summary count assertions.
+- `PYTEST-GOV-124`: Migrate file, installed-app, and browser inventory summary assertions.
+- `PYTEST-GOV-125`: Migrate startup and debloat/privacy summary assertions.
+- `PYTEST-GOV-126`: Migrate execution, official-command, preset, system-health, and Windows-smoke summary assertions and clear the summary budget.
+- `PYTEST-GOV-127`: Update pytest governance documentation, run quality gates, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
