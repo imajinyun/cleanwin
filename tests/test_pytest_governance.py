@@ -234,7 +234,7 @@ def test_pytest_raises_assertions_match_messages(repo_root: Path, assert_exact_s
     assert_exact_sequence(violations, [])
 
 
-def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
+def test_tests_use_shared_provider_schema_helpers(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -253,10 +253,10 @@ def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
                 continue
             violations.append(f"{path.name}:{test_name or '<module>'}: use shared provider schema helper")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
-def test_tests_use_shared_schema_registry_helpers(repo_root: Path) -> None:
+def test_tests_use_shared_schema_registry_helpers(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -276,10 +276,13 @@ def test_tests_use_shared_schema_registry_helpers(repo_root: Path) -> None:
                 test_name = _enclosing_test_name(node, parents)
                 violations.append(f"{path.name}:{test_name or '<module>'}: use shared schema sample helper")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
-def test_direct_schema_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_schema_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -296,10 +299,13 @@ def test_direct_schema_assertions_stay_in_migration_budget(repo_root: Path) -> N
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == DIRECT_SCHEMA_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(DIRECT_SCHEMA_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_readonly_boolean_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_readonly_boolean_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -316,10 +322,13 @@ def test_direct_readonly_boolean_assertions_stay_in_migration_budget(repo_root: 
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == READONLY_BOOLEAN_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(READONLY_BOOLEAN_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_safe_to_execute_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_safe_to_execute_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -336,7 +345,7 @@ def test_direct_safe_to_execute_assertions_stay_in_migration_budget(repo_root: P
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST.items()))
 
 
 def test_direct_execution_disabled_assertions_stay_in_migration_budget(repo_root: Path) -> None:
