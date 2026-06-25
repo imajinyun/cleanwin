@@ -38,6 +38,8 @@ AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
+AssertPathExists = Callable[[Path], Path]
+AssertPathMissing = Callable[[Path], Path]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
     "cleanwin_environment_index",
@@ -282,6 +284,8 @@ def test_execute_requires_dry_run_confirmation_token(
     make_temp_plan_fixture: MakeTempPlan,
     assert_text_contains_all: AssertTextContainsAll,
     assert_returncode: AssertReturnCode,
+    assert_path_exists: AssertPathExists,
+    assert_path_missing: AssertPathMissing,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
@@ -306,7 +310,7 @@ def test_execute_requires_dry_run_confirmation_token(
     )
     assert_returncode(denied, 2)
     assert_text_contains_all(cleanwin_result_json(denied)["error"], ["confirmation phrase"])
-    assert target.exists()
+    assert_path_exists(target)
 
     allowed = run_cleanwin(
         "execute-plan",
@@ -326,4 +330,4 @@ def test_execute_requires_dry_run_confirmation_token(
         env=env,
     )
     assert_returncode(allowed, 0)
-    assert not target.exists()
+    assert_path_missing(target)
