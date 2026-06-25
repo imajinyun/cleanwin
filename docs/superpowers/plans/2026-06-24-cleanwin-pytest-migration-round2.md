@@ -10,6 +10,99 @@
 
 ---
 
+## Round 13 Pytest Governance Plan
+
+**Goal:** Make the pytest governance tests self-host the same shared assertion
+helpers they enforce for the rest of the suite.
+
+**Architecture:** Keep the current zero-budget checks for migrated assertion
+families. Add a compact "governance helper" adoption lane for
+`tests/test_pytest_governance.py`, then migrate its repeated empty-list,
+workflow-text, and helper-adoption scalar assertions in small commits. This
+round stays test/doc only and does not change cleanwin runtime behavior or any
+cleanup execution path.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests,
+Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed.
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.BvpRrUsC2c`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty. Project
+conventions require pytest-native tests, shared helpers, and Makefile-backed
+`.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest governance self-hosted assertion helpers",
+      "locator": "direct empty-list, length, and workflow text assertions",
+      "source": "explicit",
+      "reason": "governance tests should model the helper usage they require from migrated test files",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared assertion helper support layer",
+      "locator": "existing collection, text, exact, scalar, and predicate fixtures",
+      "source": "explicit",
+      "reason": "reuse existing helpers first; only add narrow helpers if governance tests expose a real shared need",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/doc/README.md docs/doc/README.CN.md AGENTS.md",
+      "target_type": "file",
+      "symbol": "pytest governance workflow documentation",
+      "locator": "development and CI test workflow sections",
+      "source": "explicit",
+      "reason": "docs should stay aligned if governance self-hosting rules or helper families change",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is
+that governance tests still contain repeated direct assertions while enforcing
+shared assertion helpers elsewhere.
+
+### Round 13 Tasks
+
+- `PYTEST-GOV-178`: Record this Round 13 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-179`: Add governance-test adoption tracking for shared helper usage in `tests/test_pytest_governance.py`.
+- `PYTEST-GOV-180`: Migrate pytest-native, filesystem-fixture, subprocess, and raises-budget empty-list assertions to shared helpers.
+- `PYTEST-GOV-181`: Migrate provider/schema registry and direct schema/readonly/safety budget empty-list assertions to shared helpers.
+- `PYTEST-GOV-182`: Migrate execution-disabled/status/summary/predicate budget empty-list assertions to shared helpers.
+- `PYTEST-GOV-183`: Migrate helper-adoption missing-list assertions to shared helpers.
+- `PYTEST-GOV-184`: Migrate helper-adoption minimum-count assertions to scalar helpers.
+- `PYTEST-GOV-185`: Migrate workflow text contract assertions to shared text membership helpers.
+- `PYTEST-GOV-186`: Run focused pytest governance gates and tighten governance-test helper adoption evidence.
+- `PYTEST-GOV-187`: Update docs if needed, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest governance check
+before committing. The final task must run `make quality` so lint, pytest, type
+checking, compile, packaging, smoke tests, and pytest governance all execute
+through the repository `.venv`.
+
 ## Unit-Test Workflow Checkpoints
 
 Step1 status: completed. `bits-unit-test-gen` preparation produced `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.raeuPuK4Cq`.
