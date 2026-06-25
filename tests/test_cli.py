@@ -119,6 +119,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     write_text_file: WriteTextFile,
     write_json_file: WriteJSONFile,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     plan = Plan(
@@ -139,7 +140,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context")
     assert result.returncode == 2
     payload = cleanwin_result_json(result)
-    assert not payload["validation"]["valid"]
+    assert_payload_status_false(payload, "validation", "valid")
     assert_safe_to_execute_disabled(payload["execution_handoff"])
 
 def test_read_only_categories_do_not_create_candidates(
@@ -782,7 +783,10 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
     assert details["evidence_summary"]["existing_path_count"] >= 1
 
 def test_validate_plan_rejects_permanent_and_admin_candidates(
-    tmp_path: Path, run_cleanwin: RunCleanWin, write_text_file: WriteTextFile
+    tmp_path: Path,
+    run_cleanwin: RunCleanWin,
+    write_text_file: WriteTextFile,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     permanent_plan = Plan(
@@ -800,7 +804,7 @@ def test_validate_plan_rejects_permanent_and_admin_candidates(
     )
     permanent_raw = permanent_plan.to_dict()
     permanent_validation = validate_plan_payload(permanent_plan, permanent_raw, require_context=False)
-    assert not permanent_validation["valid"]
+    assert_payload_status_false(permanent_validation, "valid")
     assert "Unsupported plan delete_mode" in "\n".join(permanent_validation["errors"])
 
     admin_plan = Plan(
@@ -809,5 +813,5 @@ def test_validate_plan_rejects_permanent_and_admin_candidates(
     )
     admin_raw = admin_plan.to_dict()
     admin_validation = validate_plan_payload(admin_plan, admin_raw, require_context=False)
-    assert not admin_validation["valid"]
+    assert_payload_status_false(admin_validation, "valid")
     assert "Admin-scoped candidate" in "\n".join(admin_validation["errors"])
