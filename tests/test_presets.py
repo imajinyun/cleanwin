@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 from cleanwincli.presets import PRESET_CATALOG_SCHEMA, preset_catalog_report
@@ -15,6 +15,8 @@ AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_preset_catalog_is_read_only_and_non_executable(
@@ -34,21 +36,21 @@ def test_preset_catalog_is_read_only_and_non_executable(
 def test_preset_catalog_contains_safe_templates_and_review_gates(
     assert_payload_schema: AssertPayloadSchema,
     assert_readonly_payload: AssertReadonlyPayload,
+    assert_contains_all: AssertContainsAll,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = preset_catalog_report()
     by_id = {preset["id"]: preset for preset in report["presets"]}
 
-    assert "preset.daily-safe-cache" in by_id
-    assert "preset.browser-cache-only" in by_id
-    assert "preset.uninstalled-app-leftovers" in by_id
+    assert_contains_all(by_id, ["preset.daily-safe-cache", "preset.browser-cache-only", "preset.uninstalled-app-leftovers"])
     browser = by_id["preset.browser-cache-only"]
     assert browser["categories"] == ["browser-cache"]
-    assert "browser-cache.chrome.cache" in browser["rule_ids"]
+    assert_contains_all(browser["rule_ids"], ["browser-cache.chrome.cache"])
     assert_payload_schema(browser["plan_template"], "cleanwin.preset-plan-template.v1")
     assert_readonly_payload(browser["plan_template"])
     assert browser["plan_template"]["requires_validate_plan"] is True
     assert browser["plan_template"]["requires_matching_dry_run_token"] is True
-    assert any("cookies" in step.lower() for step in browser["review_steps"])
+    assert_any_text_contains([step.lower() for step in browser["review_steps"]], "cookies")
 
 
 def test_cli_provider_and_schema_registry_expose_preset_catalog(

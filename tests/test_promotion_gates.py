@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 from cleanwincli.promotion_gates import PROMOTION_GATES_SCHEMA, promotion_gates_report
@@ -12,43 +12,52 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = promotion_gates_report()
 
     assert_readonly_report(report, PROMOTION_GATES_SCHEMA)
     assert_execution_disabled(report)
     assert_summary_counts(report, {"report_only_gate_count": 4})
-    assert any("does not enable registry" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "does not enable registry")
 
 
 def test_promotion_gates_cover_high_risk_report_surfaces(
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = promotion_gates_report()
     by_id = {gate["id"]: gate for gate in report["gates"]}
 
-    assert "registry-privacy-to-registry-change" in by_id
-    assert "startup-entry-to-disable-plan" in by_id
-    assert "service-task-to-disable-plan" in by_id
-    assert "official-command-to-executable-action" in by_id
-    assert "browser-profile-to-cache-plan" in by_id
+    assert_contains_all(
+        by_id,
+        [
+            "registry-privacy-to-registry-change",
+            "startup-entry-to-disable-plan",
+            "service-task-to-disable-plan",
+            "official-command-to-executable-action",
+            "browser-profile-to-cache-plan",
+        ],
+    )
 
     registry_gate = by_id["registry-privacy-to-registry-change"]
     assert registry_gate["default_state"] == "report-only"
     assert_execution_disabled(registry_gate, "ai_auto_call_allowed")
-    assert "registry-export" in registry_gate["required_snapshots"]
-    assert "rollback-metadata-validation" in registry_gate["required_tests"]
+    assert_contains_all(registry_gate["required_snapshots"], ["registry-export"])
+    assert_contains_all(registry_gate["required_tests"], ["rollback-metadata-validation"])
 
     browser_gate = by_id["browser-profile-to-cache-plan"]
     assert browser_gate["default_state"] == "low-risk-cache-only"
     assert browser_gate["ai_auto_call_allowed"] is True
-    assert "sensitive_exclusions" in browser_gate["required_evidence"]
+    assert_contains_all(browser_gate["required_evidence"], ["sensitive_exclusions"])
 
 
 def test_cli_ai_provider_and_schema_registry_expose_promotion_gates(
