@@ -14,6 +14,8 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
@@ -21,6 +23,7 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     write_text_file: WriteTextFile,
     assert_readonly_report: AssertReadonlyReport,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
@@ -33,8 +36,7 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     report = browser_profile_inventory_report(env={"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")})
 
     assert_readonly_report(report, BROWSER_PROFILE_INVENTORY_SCHEMA)
-    assert report["summary"]["profile_count"] == 1
-    assert report["summary"]["locked_profile_count"] == 1
+    assert_summary_counts(report, {"profile_count": 1, "locked_profile_count": 1})
     profile = report["profiles"][0]
     assert profile["browser"] == "chrome"
     assert profile["profile_name"] == "Default"

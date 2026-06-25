@@ -13,15 +13,18 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
     assert_readonly_report: AssertReadonlyReport,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = installed_app_inventory_report(raw_registry_entries=[], env={})
 
     assert_readonly_report(report, INSTALLED_APP_INVENTORY_SCHEMA)
-    assert report["summary"]["application_count"] == 0
+    assert_summary_counts(report, {"application_count": 0})
     assert any(source["id"] == "winget" and not source["available"] for source in report["sources"])
     assert any("does not uninstall" in item for item in report["non_goals"])
 
@@ -29,6 +32,7 @@ def test_report_is_non_destructive_and_supports_non_windows(
 def test_registry_entries_are_normalized_without_uninstalling(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_schema: AssertPayloadSchema,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -46,7 +50,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
         env={},
     )
 
-    assert report["summary"]["registry_application_count"] == 1
+    assert_summary_counts(report, {"registry_application_count": 1})
     app = report["applications"][0]
     assert app["display_name"] == "Slack"
     assert app["publisher"] == "Slack Technologies LLC"
@@ -61,7 +65,9 @@ def test_registry_entries_are_normalized_without_uninstalling(
 
 
 def test_filesystem_package_sources_and_leftover_correlation(
-    tmp_path: Path, write_text_file: WriteTextFile
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     local = tmp_path / "Local"
     profile = tmp_path / "Profile"
@@ -99,12 +105,15 @@ def test_filesystem_package_sources_and_leftover_correlation(
     slack_correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
     assert slack_correlation["state"] == "potential-uninstall-leftover"
     assert slack_correlation["leftover_path"] == str(slack_cache)
-    assert report["summary"]["uninstall_strategy_counts"]["scoop-uninstall"] == 1
-    assert report["summary"]["manual_review_strategy_count"] == 1
+    assert_summary_counts(
+        report,
+        {"uninstall_strategy_counts.scoop-uninstall": 1, "manual_review_strategy_count": 1},
+    )
 
 
 def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -152,7 +161,7 @@ def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(
     assert by_name["System Component"]["strategy_id"] == "system-component-review-only"
     for strategy in by_name.values():
         assert_execution_disabled(strategy)
-    assert report["summary"]["uninstall_strategy_counts"]["winget-uninstall"] == 1
+    assert_summary_counts(report, {"uninstall_strategy_counts.winget-uninstall": 1})
 
 def test_cli_and_ai_provider_expose_inventory(
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,

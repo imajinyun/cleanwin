@@ -15,6 +15,8 @@ AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -23,6 +25,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     make_directory: MakeDirectory,
     assert_readonly_report: AssertReadonlyReport,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     downloads = make_directory(tmp_path / "Downloads")
     onedrive = make_directory(tmp_path / "OneDrive")
@@ -43,10 +46,8 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     )
 
     assert_readonly_report(report, FILE_REPORT_SCHEMA)
-    assert report["summary"]["file_count"] == 3
-    assert report["summary"]["large_file_count"] == 1
+    assert_summary_counts(report, {"file_count": 3, "large_file_count": 1, "duplicate_group_count": 1})
     assert report["large_files"][0]["path"] == str(large)
-    assert report["summary"]["duplicate_group_count"] == 1
     duplicate_group = report["duplicate_groups"][0]
     assert_safe_to_execute_disabled(duplicate_group)
     assert duplicate_group["potential_reclaimable_bytes"] == duplicate_a.stat().st_size
@@ -56,14 +57,18 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert str(ignored) not in {item["path"] for group in report["duplicate_groups"] for item in group["files"]}
 
 
-def test_file_report_traversal_budget_stops_scanning(tmp_path: Path, write_bytes_file: WriteBytesFile) -> None:
+def test_file_report_traversal_budget_stops_scanning(
+    tmp_path: Path,
+    write_bytes_file: WriteBytesFile,
+    assert_summary_counts: AssertSummaryCounts,
+) -> None:
     root = tmp_path / "Downloads"
     for index in range(3):
         write_bytes_file(root / f"{index}.bin", b"x" * 10)
 
     report = file_report(env={"CLEANWIN_FILE_REPORT_ROOTS": str(root)}, min_duplicate_bytes=1, max_files_scanned=2)
 
-    assert report["summary"]["file_count"] == 2
+    assert_summary_counts(report, {"file_count": 2})
     assert report["traversal_budget"]["limit_reached"] is True
 
 

@@ -243,7 +243,11 @@ def assert_summary_counts() -> AssertSummaryCounts:
         summary = payload["summary"]
         assert isinstance(summary, dict)
         for key, value in expected.items():
-            assert summary[key] == value
+            current: Any = summary
+            for part in key.split("."):
+                assert isinstance(current, dict)
+                current = current[part]
+            assert current == value
         return payload
 
     return _assert_summary_counts

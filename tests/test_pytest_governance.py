@@ -23,18 +23,11 @@ SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_browser_inventory.py", "test_browser_inventory_reports_profiles_cache_layers_and_locks"): 2,
     ("test_debloat_privacy.py", "test_appx_and_oem_findings_are_review_only"): 2,
     ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 2,
     ("test_execution_contracts.py", "test_backup_delete_contract_requires_backup_identity_and_audit_refs"): 1,
     ("test_execution_contracts.py", "test_disable_revert_contract_is_non_executable"): 1,
     ("test_execution_contracts.py", "test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled"): 1,
-    ("test_file_reports.py", "test_file_report_finds_large_files_duplicates_extensions_and_onedrive"): 3,
-    ("test_file_reports.py", "test_file_report_traversal_budget_stops_scanning"): 1,
-    ("test_installed_apps.py", "test_filesystem_package_sources_and_leftover_correlation"): 2,
-    ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
-    ("test_installed_apps.py", "test_report_is_non_destructive_and_supports_non_windows"): 1,
-    ("test_installed_apps.py", "test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans"): 1,
     ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 3,
     ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 1,
     ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
