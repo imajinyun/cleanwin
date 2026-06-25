@@ -4,7 +4,7 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -49,6 +49,10 @@ AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
+AssertTextContainsAll = Callable[[str, Sequence[str]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 class AssertPayloadStatus(Protocol):
@@ -268,6 +272,41 @@ def assert_dry_run_summary(
         return payload
 
     return _assert_dry_run_summary
+
+
+@pytest.fixture
+def assert_contains_all() -> AssertContainsAll:
+    def _assert_contains_all(collection: Collection[Any], expected: Sequence[Any]) -> None:
+        missing = [item for item in expected if item not in collection]
+        assert missing == []
+
+    return _assert_contains_all
+
+
+@pytest.fixture
+def assert_contains_none() -> AssertContainsNone:
+    def _assert_contains_none(collection: Collection[Any], unexpected: Sequence[Any]) -> None:
+        present = [item for item in unexpected if item in collection]
+        assert present == []
+
+    return _assert_contains_none
+
+
+@pytest.fixture
+def assert_text_contains_all() -> AssertTextContainsAll:
+    def _assert_text_contains_all(text: str, expected: Sequence[str]) -> None:
+        missing = [fragment for fragment in expected if fragment not in text]
+        assert missing == []
+
+    return _assert_text_contains_all
+
+
+@pytest.fixture
+def assert_any_text_contains() -> AssertAnyTextContains:
+    def _assert_any_text_contains(texts: Sequence[str], expected: str) -> None:
+        assert any(expected in text for text in texts)
+
+    return _assert_any_text_contains
 
 
 @pytest.fixture
