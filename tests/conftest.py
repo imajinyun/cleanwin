@@ -22,6 +22,7 @@ CleanWinTestEnv = Callable[..., dict[str, str]]
 WriteTextFile = Callable[[Path, str], Path]
 WriteBytesFile = Callable[[Path, bytes], Path]
 MakeDirectory = Callable[[Path], Path]
+MakeWindowsCacheEnv = Callable[[Path], dict[str, str]]
 ReadJSONFile = Callable[[Path], JSONPayload]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
@@ -88,6 +89,20 @@ def make_directory() -> MakeDirectory:
         return path
 
     return _make_directory
+
+
+@pytest.fixture
+def make_windows_cache_env() -> MakeWindowsCacheEnv:
+    def _make_windows_cache_env(root: Path) -> dict[str, str]:
+        return {
+            "APPDATA": str(root / "Roaming"),
+            "LOCALAPPDATA": str(root / "LocalAppData"),
+            "PROGRAMDATA": str(root / "ProgramData"),
+            "PROGRAMFILES": str(root / "ProgramFiles"),
+            "USERPROFILE": str(root / "User"),
+        }
+
+    return _make_windows_cache_env
 
 
 def load_json_file(path: Path) -> JSONPayload:

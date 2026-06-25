@@ -17,6 +17,7 @@ CleanWinPlanFile = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
+MakeWindowsCacheEnv = Callable[[Path], dict[str, str]]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(cleanwin_json: CleanWinJSON) -> None:
@@ -72,11 +73,12 @@ def test_review_plan_summarizes_execution_handoff(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
     plan_file = tmp_path / "plan.json"
-    env = {"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(tmp_path / "LocalAppData"), "USERPROFILE": str(tmp_path / "User")}
+    env = make_windows_cache_env(tmp_path) | {"NPM_CONFIG_CACHE": str(npm_cache)}
     cleanwin_plan_file(
         plan_file,
         "--categories",
@@ -142,11 +144,15 @@ def test_read_only_categories_do_not_create_candidates(cleanwin_json: CleanWinJS
     assert "browser profiles" in by_category["browser-cache-report"]["detail"].lower()
 
 def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
+    env = make_windows_cache_env(root) | {"NPM_CONFIG_CACHE": str(npm_cache)}
 
     payload = cleanwin_json(
         "inspect",
@@ -154,7 +160,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
         "dev-cache",
         "--older-than-days",
         "0",
-        env={"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(root / "LocalAppData"), "USERPROFILE": str(root / "User")},
+        env=env,
     )
     assert payload["summary"]["candidate_count"] == 1
     candidate = payload["candidates"][0]
@@ -166,7 +172,10 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     assert candidate["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
 def test_dev_cache_scans_expanded_python_and_node_tool_caches(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -185,7 +194,7 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
         "dev-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(user)},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["dev-cache.poetry.cache"]["cache_owner"] == "Poetry"
@@ -195,7 +204,10 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
     assert "poetry cache clear" in by_rule["dev-cache.poetry.cache"]["official_cleanup_command"]
 
 def test_package_cache_scans_common_windows_package_manager_caches(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -213,7 +225,7 @@ def test_package_cache_scans_common_windows_package_manager_caches(
         "package-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "PROGRAMDATA": str(root / "ProgramData")},
+        env=make_windows_cache_env(root),
     )
     rule_ids = {candidate["rule_id"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 4
