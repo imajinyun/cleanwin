@@ -32,6 +32,7 @@ AssertAIProviderSchemas = Callable[[list[tuple[str, str]]], None]
 AssertCommandSequence = Callable[[list[str] | list[list[str]], list[str] | list[list[str]]], None]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -121,12 +122,13 @@ def test_ai_runbook_documents_safe_execution_gates(assert_payload_schema: Assert
 
 def test_workflow_router_routes_intents_without_enabling_execution(
     assert_readonly_report: AssertReadonlyReport,
+    assert_readonly_payload: AssertReadonlyPayload,
 ) -> None:
     report = workflow_router_report()
     assert_readonly_report(report, WORKFLOW_ROUTER_SCHEMA)
     routes = {route["id"]: route for route in report["routes"]}
     assert routes["read-only-inventory"]["auto_call_allowed"] is True
-    assert routes["dry-run-execution"]["destructive"] is False
+    assert_readonly_payload(routes["dry-run-execution"])
     assert routes["recycle-execution"]["destructive"] is True
     assert routes["recycle-execution"]["auto_call_allowed"] is False
     assert "dry-run-execution" in routes["recycle-execution"]["required_previous_steps"]
@@ -184,7 +186,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     doctor_payload = cleanwin_json("doctor")
     assert_payload_schema(doctor_payload, "cleanwin.doctor.v1")
     assert doctor_payload["ready"], doctor_payload
-    assert not doctor_payload["destructive"]
+    assert_readonly_report(doctor_payload, "cleanwin.doctor.v1")
 
     assert_cli_provider_schemas(EXPECTED_READINESS_PROVIDERS[8:])
     assert_ai_provider_schemas(EXPECTED_READINESS_PROVIDERS)
