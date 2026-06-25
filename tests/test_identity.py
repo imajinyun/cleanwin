@@ -20,6 +20,7 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertAnyMatch = Callable[[list[str], Callable[[str], bool]], str]
+AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertFieldsPresent = Callable[[JSONPayload, Sequence[str]], JSONPayload]
@@ -82,6 +83,7 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, False)
     plan_file = tmp_path / "plan.json"
@@ -102,7 +104,7 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     write_text_file(target, "changed")
     validation = validate_plan_payload(plan, raw, require_context=False)
     assert_payload_status_false(validation, "valid")
-    assert "Filesystem identity mismatch" in "\n".join(validation["errors"])
+    assert_text_contains_all("\n".join(validation["errors"]), ["Filesystem identity mismatch"])
 
 
 def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path, write_text_file: WriteTextFile) -> None:
