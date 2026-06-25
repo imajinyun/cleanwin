@@ -916,6 +916,113 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 
 Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
 
+## Round 14 Pytest Governance Plan
+
+**Goal:** Continue shrinking ad-hoc pytest assertions by moving repeated path,
+non-empty, lower-bound, status, and MCP result checks into shared helpers.
+
+**Architecture:** Add only narrow helper surface where repeated patterns already
+exist. Keep all changes test/doc/governance-only, preserve cleanwin runtime
+behavior, and avoid any cleanup execution path changes.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests,
+Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed.
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.kIiiYRlqlM`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty. Project
+conventions require pytest-native tests, shared helpers, and Makefile-backed
+`.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "path and assertion helper support layer",
+      "locator": "existing collection, exact, scalar, predicate, field, and returncode fixtures",
+      "source": "explicit",
+      "reason": "repeated path existence assertions should use shared helpers with consistent diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_delete_ops.py tests/test_ai_contracts.py tests/test_cli.py",
+      "target_type": "file",
+      "symbol": "path existence assertion clusters",
+      "locator": "target/cache/trash path exists and missing checks",
+      "source": "explicit",
+      "reason": "these tests repeat stable path existence checks that can migrate without changing runtime behavior",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_rule_catalog.py tests/test_ai_readiness.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "remaining scalar, status, and MCP result assertion clusters",
+      "locator": "lower-bound, non-empty, status boolean, and structured MCP result checks",
+      "source": "explicit",
+      "reason": "small focused migrations continue reducing unittest-style assertion drift while preserving pytest-native style",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest governance helper adoption checks",
+      "locator": "helper family definitions and adoption evidence",
+      "source": "explicit",
+      "reason": "new helper families should be covered by governance smoke and adoption evidence",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/doc/README.md docs/doc/README.CN.md AGENTS.md",
+      "target_type": "file",
+      "symbol": "pytest helper workflow documentation",
+      "locator": "test workflow helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should stay aligned when shared helper guidance changes",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is
+duplicated pytest assertions that can drift from shared helper contracts.
+
+### Round 14 Tasks
+
+- `PYTEST-GOV-188`: Record this Round 14 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-189`: Add reusable path existence assertion helpers and governance coverage.
+- `PYTEST-GOV-190`: Migrate delete-ops path existence assertions to shared helpers.
+- `PYTEST-GOV-191`: Migrate AI contract execution path assertions to shared helpers.
+- `PYTEST-GOV-192`: Migrate selected CLI path and non-empty assertions to shared helpers.
+- `PYTEST-GOV-193`: Migrate rule catalog scalar, non-empty, and exclusion assertions to shared helpers.
+- `PYTEST-GOV-194`: Migrate AI readiness boolean status assertions to shared helpers.
+- `PYTEST-GOV-195`: Migrate MCP structured result assertions to shared helpers.
+- `PYTEST-GOV-196`: Run focused pytest governance gates and tighten path helper adoption evidence.
+- `PYTEST-GOV-197`: Update docs, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest check before
+committing. The final task must run `make quality` so lint, pytest, type
+checking, compile, packaging, smoke tests, and pytest governance all execute
+through the repository `.venv`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
