@@ -364,7 +364,10 @@ def test_app_leftovers_skips_globbed_active_install_markers(
     assert str(jetbrains_log) not in paths
 
 def test_app_leftovers_scans_more_common_app_cache_and_logs(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -385,7 +388,7 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["app-leftovers.notion.cache"]["path"] == str(notion_cache)
@@ -394,7 +397,10 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(
     assert by_rule["app-leftovers.spotify.browser-cache"]["path"] == str(spotify_cache)
 
 def test_app_leftovers_scans_additional_vendor_cache_and_logs(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -421,14 +427,17 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={"APPDATA": str(root / "Roaming"), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     for rule_id, path, _, _ in cases:
         assert by_rule[rule_id]["path"] == str(path)
 
 def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -444,12 +453,7 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={
-            "APPDATA": str(root / "Roaming"),
-            "LOCALAPPDATA": str(local),
-            "PROGRAMFILES": str(program_files),
-            "USERPROFILE": str(root / "User"),
-        },
+        env=make_windows_cache_env(root),
     )
     assert "app-leftovers.steam.htmlcache" not in {candidate["rule_id"] for candidate in payload["candidates"]}
 
@@ -459,14 +463,14 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     assert_dry_run_result: AssertDryRunResult,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
-    local = root / "LocalAppData"
     slack_cache = write_text_file(roaming / "Slack" / "Cache" / "entry", "slack").parent
     vscode_cache = write_text_file(roaming / "Code" / "CachedData" / "cache.bin", "code").parent
     plan_file = root / "vscode-leftovers-plan.json"
-    env = {"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "CLEANWIN_TEST_MODE": "1"}
+    env = make_windows_cache_env(root) | {"CLEANWIN_TEST_MODE": "1"}
 
     plan_payload = cleanwin_plan_file(
         plan_file,
@@ -491,7 +495,10 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     assert slack_cache.exists()
 
 def test_browser_cache_scans_cache_only_directories_without_profile_data(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -510,7 +517,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
         "browser-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 2
@@ -521,7 +528,10 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert all("cookies" not in candidate["path"].lower() for candidate in payload["candidates"])
 
 def test_browser_cache_discovers_additional_browser_profiles(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -539,14 +549,17 @@ def test_browser_cache_discovers_additional_browser_profiles(
         "browser-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 3
     assert paths == {str(path) for path in cache_paths}
 
 def test_browser_cache_discovers_brave_profile_caches(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -565,7 +578,7 @@ def test_browser_cache_discovers_brave_profile_caches(
         "browser-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["browser-cache.brave.cache"]["path"] == str(brave_cache)
