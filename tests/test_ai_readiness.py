@@ -30,6 +30,8 @@ AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[list[tuple[str, str]]], None]
 AssertAIProviderSchemas = Callable[[list[tuple[str, str]]], None]
 AssertNoUnittestCommands = Callable[[list[str] | list[list[str]]], None]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -67,9 +69,10 @@ EXPECTED_READINESS_PROVIDERS = [
 
 def test_ai_readiness_is_valid_and_registers_critical_schemas(
     assert_schemas_registered: AssertSchemasRegistered,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     report = ai_readiness_report()
-    assert report["schema"] == "cleanwin.ai-readiness.v1"
+    assert_payload_schema(report, "cleanwin.ai-readiness.v1")
     assert report["ready_for_ai_host"], report
     assert report["ready_for_mcp"], report
     validation = validate_ai_readiness(report)
@@ -94,9 +97,9 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
     )
 
 
-def test_ai_self_test_passes_expected_policy_checks() -> None:
+def test_ai_self_test_passes_expected_policy_checks(assert_payload_schema: AssertPayloadSchema) -> None:
     report = ai_self_test_report()
-    assert report["schema"] == "cleanwin.ai-self-test.v1"
+    assert_payload_schema(report, "cleanwin.ai-self-test.v1")
     assert report["passed"], report
     test_names = {test["name"] for test in report["tests"]}
     assert "raw_command_denied" in test_names
@@ -104,9 +107,9 @@ def test_ai_self_test_passes_expected_policy_checks() -> None:
     assert "destructive_all_gates_allowed_by_policy" in test_names
 
 
-def test_ai_runbook_documents_safe_execution_gates() -> None:
+def test_ai_runbook_documents_safe_execution_gates(assert_payload_schema: AssertPayloadSchema) -> None:
     report = ai_runbook_report()
-    assert report["schema"] == "cleanwin.ai-runbook.v1"
+    assert_payload_schema(report, "cleanwin.ai-runbook.v1")
     tools = [step["tool"] for step in report["workflow"]]
     assert tools[0] == "cleanwin_workflow_router"
     assert tools[-1] == "cleanwin_execute_plan"
@@ -116,10 +119,11 @@ def test_ai_runbook_documents_safe_execution_gates() -> None:
     assert required_args["require_plan_context"]
 
 
-def test_workflow_router_routes_intents_without_enabling_execution() -> None:
+def test_workflow_router_routes_intents_without_enabling_execution(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = workflow_router_report()
-    assert report["schema"] == WORKFLOW_ROUTER_SCHEMA
-    assert report["destructive"] is False
+    assert_readonly_report(report, WORKFLOW_ROUTER_SCHEMA)
     routes = {route["id"]: route for route in report["routes"]}
     assert routes["read-only-inventory"]["auto_call_allowed"] is True
     assert routes["dry-run-execution"]["destructive"] is False
@@ -129,11 +133,11 @@ def test_workflow_router_routes_intents_without_enabling_execution() -> None:
     assert "permanent delete" in routes["recycle-execution"]["blocked_actions"]
 
 
-def test_environment_index_is_readonly_and_reports_fail_closed_execution() -> None:
+def test_environment_index_is_readonly_and_reports_fail_closed_execution(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = environment_index_report()
-    assert report["schema"] == ENVIRONMENT_INDEX_SCHEMA
-    assert report["destructive"] is False
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, ENVIRONMENT_INDEX_SCHEMA)
     capabilities = {capability["id"]: capability for capability in report["capabilities"]}
     assert capabilities["read-only-inventory"]["available"] is True
     assert "windows-recycle-execution" in capabilities
@@ -141,19 +145,20 @@ def test_environment_index_is_readonly_and_reports_fail_closed_execution() -> No
     assert "permanent delete route is not exposed" in report["fail_closed"]
 
 
-def test_workflow_decision_blocks_destructive_route_without_artifacts() -> None:
+def test_workflow_decision_blocks_destructive_route_without_artifacts(
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     decision = workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan")
-    assert decision["schema"] == WORKFLOW_DECISION_SCHEMA
+    assert_payload_schema(decision, WORKFLOW_DECISION_SCHEMA)
     assert decision["allowed"] is False
     codes = {reason["code"] for reason in decision["blocking_reasons"]}
     assert "MISSING_REQUIRED_ARTIFACTS" in codes
     assert "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES" in codes
 
 
-def test_workflow_trace_documents_required_artifact_chain() -> None:
+def test_workflow_trace_documents_required_artifact_chain(assert_readonly_report: AssertReadonlyReport) -> None:
     trace = workflow_trace_report()
-    assert trace["schema"] == WORKFLOW_TRACE_SCHEMA
-    assert trace["destructive"] is False
+    assert_readonly_report(trace, WORKFLOW_TRACE_SCHEMA)
     schemas = [item["artifact_schema"] for item in trace["artifact_chain"]]
     assert "cleanwin.plan.v1" in schemas
     assert "cleanwin.review.v1" in schemas
@@ -165,18 +170,19 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     cleanwin_json: CleanWinJSON,
     assert_cli_provider_schemas: AssertCliProviderSchemas,
     assert_ai_provider_schemas: AssertAIProviderSchemas,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
     assert cleanwin_json("ai-readiness", "--validate")["valid"]
     assert cleanwin_json("ai-self-test")["passed"]
-    assert cleanwin_json("ai-runbook")["schema"] == "cleanwin.ai-runbook.v1"
-    assert cleanwin_json("workflow-router")["schema"] == WORKFLOW_ROUTER_SCHEMA
-    assert cleanwin_json("environment-index")["schema"] == ENVIRONMENT_INDEX_SCHEMA
-    assert cleanwin_json("workflow-decision", "--route-id", "recycle-execution")["schema"] == WORKFLOW_DECISION_SCHEMA
-    assert cleanwin_json("workflow-trace")["schema"] == WORKFLOW_TRACE_SCHEMA
+    assert_payload_schema(cleanwin_json("ai-runbook"), "cleanwin.ai-runbook.v1")
+    assert_payload_schema(cleanwin_json("workflow-router"), WORKFLOW_ROUTER_SCHEMA)
+    assert_payload_schema(cleanwin_json("environment-index"), ENVIRONMENT_INDEX_SCHEMA)
+    assert_payload_schema(cleanwin_json("workflow-decision", "--route-id", "recycle-execution"), WORKFLOW_DECISION_SCHEMA)
+    assert_payload_schema(cleanwin_json("workflow-trace"), WORKFLOW_TRACE_SCHEMA)
 
     doctor_payload = cleanwin_json("doctor")
-    assert doctor_payload["schema"] == "cleanwin.doctor.v1"
+    assert_payload_schema(doctor_payload, "cleanwin.doctor.v1")
     assert doctor_payload["ready"], doctor_payload
     assert not doctor_payload["destructive"]
 
@@ -186,11 +192,11 @@ def test_cli_exposes_readiness_self_test_and_runbook(
 
 def test_doctor_report_checks_static_safety_and_contracts(
     assert_no_unittest_commands: AssertNoUnittestCommands,
+    assert_readonly_report: AssertReadonlyReport,
 ) -> None:
     report = doctor_report()
-    assert report["schema"] == "cleanwin.doctor.v1"
+    assert_readonly_report(report, "cleanwin.doctor.v1")
     assert report["ready"], report
-    assert not report["destructive"]
     check_ids = {check["id"] for check in report["checks"]}
     assert "single_destructive_exit" in check_ids
     assert "delete_primitives_owned_by_delete_ops" in check_ids
