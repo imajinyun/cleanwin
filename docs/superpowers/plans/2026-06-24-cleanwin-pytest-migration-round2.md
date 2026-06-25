@@ -1157,6 +1157,15 @@ through the repository `.venv`.
   `MIN_PATH_HELPER_ADOPTION_FILES = 5`.
 - Focused gate passed with `make pytest-governance-smoke`: `22 passed`.
 
+### Round 15 Completion
+
+- Final gate passed with `make quality`: Ruff passed, pytest reported
+  `237 passed, 2 skipped`, mypy passed, compile passed, docs smoke passed,
+  AI/doctor smoke passed, pytest governance smoke reported `22 passed`, and
+  wheel/sdist install smoke passed.
+- Local aiflow governance report was refreshed at `.aiflow/governance.json`;
+  this remains untracked local state.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
