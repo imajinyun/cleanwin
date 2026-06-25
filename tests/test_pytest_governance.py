@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterable
+from collections.abc import Callable, Collection, Iterable, Sequence
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
+
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 
 HELPER_MODULES = {"conftest.py", "test_pytest_governance.py"}
 AD_HOC_FILESYSTEM_METHODS = {"mkdir", "write_text", "write_bytes"}
@@ -49,6 +51,9 @@ SCALAR_ASSERTION_HELPERS = {
     "assert_exact_count",
     "assert_one_of",
     "assert_text_contains_any",
+}
+GOVERNANCE_HELPER_ADOPTION_FILES = {
+    "test_pytest_governance.py",
 }
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 102
@@ -413,10 +418,13 @@ def test_direct_predicate_assertions_stay_in_migration_budget(repo_root: Path) -
     assert observed == PREDICATE_ASSERTION_ALLOWLIST
 
 
-def test_collection_and_text_assertion_helpers_are_adopted(repo_root: Path) -> None:
+def test_collection_and_text_assertion_helpers_are_adopted(
+    repo_root: Path,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
-    assert COLLECTION_ASSERTION_HELPERS <= helper_defs
+    assert_contains_all(helper_defs, COLLECTION_ASSERTION_HELPERS)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in COLLECTION_HELPER_ADOPTION_FILES}
     for module in iter_test_modules(repo_root):
@@ -425,6 +433,23 @@ def test_collection_and_text_assertion_helpers_are_adopted(repo_root: Path) -> N
         for node in ast.walk(module.tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id in COLLECTION_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert missing == []
+
+
+def test_pytest_governance_uses_shared_assertion_helpers(repo_root: Path) -> None:
+    governance_helpers = (
+        COLLECTION_ASSERTION_HELPERS | FIELD_ASSERTION_HELPERS | EXACT_ASSERTION_HELPERS | SCALAR_ASSERTION_HELPERS
+    )
+    adopted: dict[str, set[str]] = {filename: set() for filename in GOVERNANCE_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in governance_helpers:
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
