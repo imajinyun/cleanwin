@@ -21,6 +21,7 @@ AssertAnyTextContains = Callable[[Sequence[str], str], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
+AssertExactCount = Callable[[Sequence[Any], int], Sequence[Any]]
 
 
 def test_report_is_non_destructive_and_gated(
@@ -73,6 +74,7 @@ def test_appx_and_oem_findings_are_review_only(
     assert_summary_counts: AssertSummaryCounts,
     assert_any_text_contains: AssertAnyTextContains,
     assert_field_values: AssertFieldValues,
+    assert_exact_count: AssertExactCount,
 ) -> None:
     program_files = tmp_path / "Program Files"
     support_assist = program_files / "Dell" / "SupportAssistAgent"
@@ -86,10 +88,10 @@ def test_appx_and_oem_findings_are_review_only(
 
     appx_findings = [finding for finding in report["findings"] if finding["kind"] == "appx-package"]
     oem_findings = [finding for finding in report["findings"] if finding["kind"] == "oem-app-location"]
-    assert len(appx_findings) == 1
+    assert_exact_count(appx_findings, 1)
     assert_field_values(appx_findings[0], {"state": "review-recommended"})
     assert_safe_to_execute_disabled(appx_findings[0])
-    assert len(oem_findings) == 1
+    assert_exact_count(oem_findings, 1)
     assert_any_text_contains([oem_findings[0]["path"]], "SupportAssistAgent")
     assert_summary_counts(report, {"appx_review_count": 1, "oem_location_count": 1})
 
