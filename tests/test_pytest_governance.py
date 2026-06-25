@@ -43,6 +43,7 @@ FIELD_ASSERTION_HELPERS = {
     "field_value",
     "assert_field_values",
     "assert_fields_present",
+    "assert_fields_not_none",
 }
 EXACT_ASSERTION_HELPERS = {
     "assert_exact_sequence",
@@ -66,6 +67,7 @@ GOVERNANCE_HELPER_ADOPTION_FILES = {
 }
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 102
+MIN_NONNULL_FIELD_HELPER_ADOPTION_FILES = 1
 MIN_EXACT_HELPER_ADOPTION_FILES = 7
 MIN_SCALAR_HELPER_ADOPTION_FILES = 2
 MIN_PATH_HELPER_ADOPTION_FILES = 3
@@ -109,6 +111,9 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_scan_governance.py",
     "test_startup_inventory.py",
     "test_windows_smoke.py",
+}
+NONNULL_FIELD_HELPER_ADOPTION_FILES = {
+    "test_windows_integration.py",
 }
 EXACT_HELPER_ADOPTION_FILES = {
     "test_ai_contracts.py",
@@ -529,6 +534,30 @@ def test_field_assertion_helpers_are_adopted(
     missing = [filename for filename, helpers in adopted.items() if not helpers]
     assert_exact_sequence(missing, [])
     assert_at_least(helper_call_count, MIN_FIELD_HELPER_CALLS)
+
+
+def test_non_null_field_assertion_helpers_are_adopted(
+    repo_root: Path,
+    assert_at_least: AssertAtLeast,
+    assert_contains_all: AssertContainsAll,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert_contains_all(helper_defs, ["assert_fields_not_none"])
+    assert_at_least(len(NONNULL_FIELD_HELPER_ADOPTION_FILES), MIN_NONNULL_FIELD_HELPER_ADOPTION_FILES)
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in NONNULL_FIELD_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id == "assert_fields_not_none":
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert_exact_sequence(missing, [])
 
 
 def test_exact_assertion_helpers_are_adopted(
