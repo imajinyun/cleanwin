@@ -7,15 +7,16 @@ from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA, recovery_readiness_r
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_recovery_readiness_is_non_destructive_and_declares_gates() -> None:
+def test_recovery_readiness_is_non_destructive_and_declares_gates(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = recovery_readiness_report()
 
-    assert report["schema"] == RECOVERY_READINESS_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, RECOVERY_READINESS_SCHEMA)
     assert report["ready_for_recovery_planning"] is True
     assert report["ready_for_system_execution"] is False
     assert report["execution_gate"]["requires_recovery_snapshot"] is True
@@ -36,14 +37,8 @@ def test_recovery_readiness_declares_snapshot_specs() -> None:
     assert "registry-change" in specs["registry-export"]["required_before"]
 
 
-def test_cli_exposes_recovery_readiness(cleanwin_json: CleanWinJSON) -> None:
-    payload = cleanwin_json("recovery-readiness")
-
-    assert payload["schema"] == RECOVERY_READINESS_SCHEMA
-    assert payload["executes_system_commands"] is False
-
-
-def test_ai_tools_provider_exposes_recovery_readiness(cleanwin_json: CleanWinJSON) -> None:
-    payload = cleanwin_json("ai-tools", "--provider", "recovery-readiness")
-
-    assert payload["schema"] == RECOVERY_READINESS_SCHEMA
+def test_cli_and_ai_provider_expose_recovery_readiness(
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+) -> None:
+    sample = assert_cli_provider_schema_sample("recovery-readiness", RECOVERY_READINESS_SCHEMA)
+    assert sample["executes_system_commands"] is False
