@@ -59,10 +59,13 @@ COLLECTION_HELPER_ADOPTION_FILES = {
     "test_scan_governance.py",
 }
 FIELD_HELPER_ADOPTION_FILES = {
+    "test_ai_contracts.py",
+    "test_ai_readiness.py",
     "test_browser_inventory.py",
     "test_file_reports.py",
     "test_identity.py",
     "test_installed_apps.py",
+    "test_mcp_server.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {

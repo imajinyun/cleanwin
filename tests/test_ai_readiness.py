@@ -25,6 +25,7 @@ from cleanwincli.workflow_router import WORKFLOW_ROUTER_SCHEMA, workflow_router_
 
 JSONPayload = dict[str, object]
 CleanWinJSON = Callable[..., JSONPayload]
+FieldValues = dict[str, object]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[list[tuple[str, str]]], None]
@@ -37,6 +38,7 @@ AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertContainsAll = Callable[[set[str] | list[str], list[str]], None]
 AssertAnyTextContains = Callable[[list[str], str], None]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -122,30 +124,32 @@ def test_ai_self_test_passes_expected_policy_checks(
     )
 
 
-def test_ai_runbook_documents_safe_execution_gates(assert_payload_schema: AssertPayloadSchema) -> None:
+def test_ai_runbook_documents_safe_execution_gates(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
+) -> None:
     report = ai_runbook_report()
     assert_payload_schema(report, "cleanwin.ai-runbook.v1")
     tools = [step["tool"] for step in report["workflow"]]
     assert tools[0] == "cleanwin_workflow_router"
     assert tools[-1] == "cleanwin_execute_plan"
-    assert report["workflow"][-1]["destructive"]
+    assert_field_values(report["workflow"][-1], {"destructive": True})
     required_args = report["required_execution_arguments"]
-    assert required_args["delete_mode"] == "recycle"
-    assert required_args["require_plan_context"]
+    assert_field_values(required_args, {"delete_mode": "recycle", "require_plan_context": True})
 
 
 def test_workflow_router_routes_intents_without_enabling_execution(
     assert_readonly_report: AssertReadonlyReport,
     assert_readonly_payload: AssertReadonlyPayload,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = workflow_router_report()
     assert_readonly_report(report, WORKFLOW_ROUTER_SCHEMA)
     routes = {route["id"]: route for route in report["routes"]}
-    assert routes["read-only-inventory"]["auto_call_allowed"] is True
+    assert_field_values(routes["read-only-inventory"], {"auto_call_allowed": True})
     assert_readonly_payload(routes["dry-run-execution"])
-    assert routes["recycle-execution"]["destructive"] is True
-    assert routes["recycle-execution"]["auto_call_allowed"] is False
+    assert_field_values(routes["recycle-execution"], {"destructive": True, "auto_call_allowed": False})
     assert_any_text_contains(routes["recycle-execution"]["required_previous_steps"], "dry-run-execution")
     assert_any_text_contains(routes["recycle-execution"]["blocked_actions"], "permanent delete")
 
@@ -154,13 +158,14 @@ def test_environment_index_is_readonly_and_reports_fail_closed_execution(
     assert_readonly_report: AssertReadonlyReport,
     assert_contains_all: AssertContainsAll,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = environment_index_report()
     assert_readonly_report(report, ENVIRONMENT_INDEX_SCHEMA)
     capabilities = {capability["id"]: capability for capability in report["capabilities"]}
-    assert capabilities["read-only-inventory"]["available"] is True
+    assert_field_values(capabilities["read-only-inventory"], {"available": True})
     assert_contains_all(set(capabilities), ["windows-recycle-execution"])
-    assert report["operation_log"]["write_checked"] is False
+    assert_field_values(report, {"operation_log.write_checked": False})
     assert_any_text_contains(report["fail_closed"], "permanent delete route is not exposed")
 
 
@@ -195,8 +200,9 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     assert_payload_schema: AssertPayloadSchema,
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
 ) -> None:
-    assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
+    assert_field_values(cleanwin_json("ai-readiness"), {"ready_for_ai_host": True})
     assert_payload_status_true(cleanwin_json("ai-readiness", "--validate"), "valid")
     assert_payload_status_true(cleanwin_json("ai-self-test"), "passed")
     assert_payload_schema(cleanwin_json("ai-runbook"), "cleanwin.ai-runbook.v1")
@@ -219,6 +225,7 @@ def test_doctor_report_checks_static_safety_and_contracts(
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_status_true: AssertPayloadStatus,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = doctor_report()
     assert_readonly_report(report, "cleanwin.doctor.v1")
@@ -235,10 +242,15 @@ def test_doctor_report_checks_static_safety_and_contracts(
     )
     version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
     assert_payload_status_true(version_check, "passed")
-    assert version_check["evidence"]["package_version"] == __version__
-    assert version_check["evidence"]["pyproject_version"] == __version__
+    assert_field_values(
+        version_check,
+        {
+            "evidence.package_version": __version__,
+            "evidence.pyproject_version": __version__,
+            "evidence.capabilities_version": __version__,
+        },
+    )
     assert version_check["evidence"]["distribution_version"] in {None, __version__}
-    assert version_check["evidence"]["capabilities_version"] == __version__
     assert_command_sequence(report["recommended_commands"], [])
 
 

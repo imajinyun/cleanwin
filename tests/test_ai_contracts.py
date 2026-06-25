@@ -34,6 +34,8 @@ AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
     "cleanwin_environment_index",
@@ -42,13 +44,15 @@ READONLY_WORKFLOW_CONTEXT_TOOLS = [
 ]
 
 
-def test_ai_schema_validation_and_provider_parity(assert_payload_status_true: AssertPayloadStatus) -> None:
+def test_ai_schema_validation_and_provider_parity(
+    assert_payload_status_true: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
+) -> None:
     validation = validate_ai_schema()
     assert_payload_status_true(validation, "valid")
     destructive = [tool for tool in AI_TOOL_DEFINITIONS if tool["risk"] == "destructive"]
     assert [tool["name"] for tool in destructive] == ["cleanwin_execute_plan"]
-    assert destructive[0]["auto_call_allowed"] is False
-    assert destructive[0]["requires_confirmation"] is True
+    assert_field_values(destructive[0], {"auto_call_allowed": False, "requires_confirmation": True})
 
 
 def test_schema_registry_includes_ai_host_critical_schemas(
@@ -80,6 +84,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert_command_sequence: AssertCommandSequence,
     assert_payload_status_false: AssertPayloadStatus,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     samples = assert_schema_samples(
         [
@@ -90,18 +95,17 @@ def test_schema_samples_include_rule_metadata_and_review_details(
         ]
     )
     inspect_sample = samples["cleanwin.inspect.v1"]
-    assert inspect_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
-    assert inspect_sample["candidates"][0]["cache_owner"] == "npm"
+    assert_field_values(inspect_sample["candidates"][0], {"rule_id": "dev-cache.npm.cache", "cache_owner": "npm"})
     assert_contains_all(inspect_sample["candidates"][0], ["official_cleanup_command"])
     assert_contains_all(inspect_sample["findings"][0], ["review_details"])
 
     plan_sample = samples["cleanwin.plan.v1"]
-    assert plan_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
+    assert_field_values(plan_sample["candidates"][0], {"rule_id": "dev-cache.npm.cache"})
     assert_payload_schema(plan_sample["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
     execute_sample = samples["cleanwin.execute.v1"]
     assert_readonly_payload(execute_sample)
-    assert execute_sample["results"][0]["status"] == "dry-run"
+    assert_field_values(execute_sample["results"][0], {"status": "dry-run"})
     assert_contains_all(execute_sample["confirmation"], ["confirmation_token"])
 
     doctor_sample = assert_readonly_schema_sample("cleanwin.doctor.v1")
@@ -121,22 +125,28 @@ def test_ai_tools_expose_rule_id_filter_for_inspect_and_plan(assert_contains_all
     assert_contains_all(by_name["cleanwin_generate_plan"]["parameters"]["properties"], ["rule_ids"])
 
 
-def test_ai_tools_expose_readonly_workflow_router() -> None:
+def test_ai_tools_expose_readonly_workflow_router(assert_field_values: AssertFieldValues) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     router = by_name["cleanwin_workflow_router"]
-    assert router["risk"] == "readonly"
-    assert router["auto_call_allowed"] is True
-    assert router["requires_confirmation"] is False
-    assert router["parameters"]["additionalProperties"] is False
+    assert_field_values(
+        router,
+        {
+            "risk": "readonly",
+            "auto_call_allowed": True,
+            "requires_confirmation": False,
+            "parameters.additionalProperties": False,
+        },
+    )
 
 
 @pytest.mark.parametrize("tool_name", READONLY_WORKFLOW_CONTEXT_TOOLS)
-def test_ai_tools_expose_readonly_workflow_context_tools(tool_name: str) -> None:
+def test_ai_tools_expose_readonly_workflow_context_tools(
+    tool_name: str,
+    assert_field_values: AssertFieldValues,
+) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     tool = by_name[tool_name]
-    assert tool["risk"] == "readonly"
-    assert tool["auto_call_allowed"] is True
-    assert tool["requires_confirmation"] is False
+    assert_field_values(tool, {"risk": "readonly", "auto_call_allowed": True, "requires_confirmation": False})
 
 
 def test_workflow_decision_tool_requires_route_id(assert_contains_all: AssertContainsAll) -> None:
@@ -148,13 +158,15 @@ def test_workflow_router_sample_keeps_execution_non_auto_callable(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
     assert_readonly_payload: AssertReadonlyPayload,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     sample = assert_readonly_schema_sample("cleanwin.workflow-router.v1")
     assert_readonly_payload(sample)
     execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
-    assert execution_route["destructive"] is True
-    assert execution_route["auto_call_allowed"] is False
-    assert execution_route["required_arguments"]["delete_mode"] == "recycle"
+    assert_field_values(
+        execution_route,
+        {"destructive": True, "auto_call_allowed": False, "required_arguments.delete_mode": "recycle"},
+    )
     assert_any_text_contains(execution_route["blocked_actions"], "raw shell command")
 
 
@@ -163,9 +175,10 @@ def test_workflow_context_schema_samples_are_registered(
     assert_schema_samples: AssertSchemaSamples,
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
-    assert environment["operation_log"]["required_for_execution"] is True
+    assert_field_values(environment, {"operation_log.required_for_execution": True})
 
     samples = assert_schema_samples(["cleanwin.workflow-decision.v1", "cleanwin.workflow-trace.v1"])
     decision = samples["cleanwin.workflow-decision.v1"]
@@ -186,11 +199,13 @@ def test_schema_samples_cover_package_and_browser_cache_categories(
     assert_contains_all(candidate_categories, ["browser-cache", "package-cache"])
 
 
-def test_ai_tools_expose_review_plan_tool(assert_contains_all: AssertContainsAll) -> None:
+def test_ai_tools_expose_review_plan_tool(
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     assert_contains_all(by_name, ["cleanwin_review_plan"])
-    assert by_name["cleanwin_review_plan"]["risk"] == "planning"
-    assert by_name["cleanwin_review_plan"]["requires_confirmation"] is False
+    assert_field_values(by_name["cleanwin_review_plan"], {"risk": "planning", "requires_confirmation": False})
     assert_contains_all(by_name["cleanwin_review_plan"]["parameters"]["required"], ["plan_file"])
 
 

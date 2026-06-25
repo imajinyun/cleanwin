@@ -28,6 +28,8 @@ AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
@@ -244,11 +246,11 @@ def test_initialize_and_tools_list(
     cleanwin_test_env: CleanWinTestEnv,
     mcp_request_factory: MCPRequestFactory,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     env = cleanwin_test_env()
     initialized = mcp_request(mcp_request_factory("initialize", request_id=1), env)
-    assert initialized["result"]["serverInfo"]["name"] == "cleanwin-mcp"
-    assert initialized["result"]["serverInfo"]["version"] == __version__
+    assert_field_values(initialized, {"result.serverInfo.name": "cleanwin-mcp", "result.serverInfo.version": __version__})
 
     response = mcp_request(mcp_request_factory("tools/list", request_id=2), env)
     tools = response["result"]["tools"]
@@ -266,12 +268,12 @@ def test_initialize_and_tools_list(
         ],
     )
     tool_by_name = {tool["name"]: tool for tool in tools}
-    assert tool_by_name["cleanwin_capabilities"]["annotations"]["readOnlyHint"]
-    assert tool_by_name["cleanwin_workflow_router"]["annotations"]["readOnlyHint"]
-    assert tool_by_name["cleanwin_environment_index"]["annotations"]["readOnlyHint"]
-    assert tool_by_name["cleanwin_workflow_decision"]["annotations"]["readOnlyHint"]
-    assert tool_by_name["cleanwin_workflow_trace"]["annotations"]["readOnlyHint"]
-    assert tool_by_name["cleanwin_execute_plan"]["annotations"]["destructiveHint"]
+    assert_field_values(tool_by_name["cleanwin_capabilities"], {"annotations.readOnlyHint": True})
+    assert_field_values(tool_by_name["cleanwin_workflow_router"], {"annotations.readOnlyHint": True})
+    assert_field_values(tool_by_name["cleanwin_environment_index"], {"annotations.readOnlyHint": True})
+    assert_field_values(tool_by_name["cleanwin_workflow_decision"], {"annotations.readOnlyHint": True})
+    assert_field_values(tool_by_name["cleanwin_workflow_trace"], {"annotations.readOnlyHint": True})
+    assert_field_values(tool_by_name["cleanwin_execute_plan"], {"annotations.destructiveHint": True})
 
 
 def test_resources_read_responds_before_persistent_stdin_eof(
@@ -290,6 +292,7 @@ def test_tools_call_readonly_capabilities(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -301,7 +304,7 @@ def test_tools_call_readonly_capabilities(
         cleanwin_test_env(),
     )
     result = mcp_success_result(response)
-    assert result["structuredContent"]["tool"] == "cleanwin"
+    assert_field_values(result, {"structuredContent.tool": "cleanwin"})
     assert_payload_schema(result["governanceDecision"], "cleanwin.ai-host-tool-call-decision.v1")
     assert_payload_status_true(result["governanceDecision"], "allowed")
 
@@ -309,6 +312,7 @@ def test_tools_call_readonly_capabilities(
 def test_tools_call_workflow_router(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -321,7 +325,7 @@ def test_tools_call_workflow_router(
     )
     structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.workflow-router.v1")
     routes = {route["id"]: route for route in structured["routes"]}
-    assert routes["recycle-execution"]["auto_call_allowed"] is False
+    assert_field_values(routes["recycle-execution"], {"auto_call_allowed": False})
 
 
 @pytest.mark.parametrize(
@@ -358,6 +362,7 @@ def test_tools_call_workflow_context_tools(
 def test_tools_call_inspect_supports_rule_id_filter(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -372,7 +377,7 @@ def test_tools_call_inspect_supports_rule_id_filter(
         cleanwin_test_env(),
     )
     structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.inspect.v1")
-    assert structured["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
+    assert_field_values(structured, {"filters.rule_ids": ["dev-cache.npm.cache"]})
 
 
 def test_tools_call_review_plan(
@@ -409,6 +414,7 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
 def test_raw_command_argument_denied_for_readonly_tool(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -421,7 +427,7 @@ def test_raw_command_argument_denied_for_readonly_tool(
     )
     result = mcp_error_result(response)
     assert_payload_schema(result["structuredContent"], "cleanwin.mcp-tool-error.v1")
-    assert result["governanceDecision"]["blocking_reasons"][0]["code"] == "RAW_COMMAND_ARGUMENT_DENIED"
+    assert_field_values(result["governanceDecision"]["blocking_reasons"][0], {"code": "RAW_COMMAND_ARGUMENT_DENIED"})
 
 
 def test_tool_call_rejects_schema_invalid_arguments(
