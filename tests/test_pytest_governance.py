@@ -22,6 +22,43 @@ READONLY_BOOLEAN_KEYS = {
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_browser_inventory.py", "test_browser_inventory_reports_profiles_cache_layers_and_locks"): 2,
+    ("test_cli.py", "test_app_leftovers_rule_filter_review_and_dry_run"): 1,
+    ("test_cli.py", "test_app_leftovers_scans_common_uninstalled_app_cache_and_logs"): 1,
+    ("test_cli.py", "test_app_leftovers_skips_when_active_install_marker_exists"): 1,
+    ("test_cli.py", "test_browser_cache_discovers_additional_browser_profiles"): 1,
+    ("test_cli.py", "test_browser_cache_scans_cache_only_directories_without_profile_data"): 1,
+    ("test_cli.py", "test_dev_cache_candidates_include_rule_metadata_and_official_commands"): 1,
+    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
+    ("test_cli.py", "test_inspect_rule_id_filters_dev_cache_candidates"): 1,
+    ("test_cli.py", "test_inspect_temp_finds_sandbox_candidate"): 1,
+    ("test_cli.py", "test_package_cache_scans_common_windows_package_manager_caches"): 1,
+    ("test_cli.py", "test_plan_rule_id_filters_candidates_before_write"): 1,
+    ("test_cli.py", "test_read_only_categories_do_not_create_candidates"): 2,
+    ("test_cli.py", "test_read_only_findings_report_existing_path_evidence_without_candidates"): 1,
+    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
+    ("test_cli.py", "test_rule_id_precise_plan_review_and_dry_run_for_package_cache"): 1,
+    ("test_debloat_privacy.py", "test_appx_and_oem_findings_are_review_only"): 2,
+    ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 2,
+    ("test_execution_contracts.py", "test_backup_delete_contract_requires_backup_identity_and_audit_refs"): 1,
+    ("test_execution_contracts.py", "test_disable_revert_contract_is_non_executable"): 1,
+    ("test_execution_contracts.py", "test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled"): 1,
+    ("test_file_reports.py", "test_file_report_finds_large_files_duplicates_extensions_and_onedrive"): 3,
+    ("test_file_reports.py", "test_file_report_traversal_budget_stops_scanning"): 1,
+    ("test_installed_apps.py", "test_filesystem_package_sources_and_leftover_correlation"): 2,
+    ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
+    ("test_installed_apps.py", "test_report_is_non_destructive_and_supports_non_windows"): 1,
+    ("test_installed_apps.py", "test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans"): 1,
+    ("test_mcp_server.py", "test_tools_call_dry_run_plan_returns_candidate_results_and_token"): 1,
+    ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 3,
+    ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 1,
+    ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
+    ("test_startup_inventory.py", "test_registry_and_startup_folder_entries_are_inventory_only"): 2,
+    ("test_startup_inventory.py", "test_service_and_scheduled_task_fixtures_are_report_only"): 2,
+    ("test_system_health.py", "test_system_health_report_is_read_only_and_gated"): 1,
+    ("test_windows_smoke.py", "test_windows_smoke_matrix_is_non_destructive_release_gate"): 1,
+}
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
@@ -286,6 +323,26 @@ def test_direct_status_assertions_stay_in_migration_budget(repo_root: Path) -> N
     assert observed == STATUS_ASSERTION_ALLOWLIST
 
 
+def test_direct_summary_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_summary_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == SUMMARY_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -401,6 +458,10 @@ def _is_direct_status_assertion(node: ast.AST) -> bool:
     return isinstance(node, ast.Assert) and _contains_status_subscript(node.test)
 
 
+def _is_direct_summary_assertion(node: ast.AST) -> bool:
+    return isinstance(node, ast.Assert) and _contains_summary_subscript(node.test)
+
+
 def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         return _is_safe_to_execute_subscript(node.operand)
@@ -463,6 +524,16 @@ def _contains_status_subscript(node: ast.AST) -> bool:
 
 def _is_status_subscript(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and (_slice_value(node.slice) in STATUS_KEYS)
+
+
+def _contains_summary_subscript(node: ast.AST) -> bool:
+    if _is_summary_subscript(node):
+        return True
+    return any(_contains_summary_subscript(child) for child in ast.iter_child_nodes(node))
+
+
+def _is_summary_subscript(node: ast.AST) -> bool:
+    return isinstance(node, ast.Subscript) and (_slice_value(node.slice) == "summary")
 
 
 def _readonly_boolean_subscript_expected(node: ast.AST) -> bool | None:
