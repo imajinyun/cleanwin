@@ -10,14 +10,14 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 
 
-def test_scan_governance_is_read_only_and_release_gated(assert_payload_schema: AssertPayloadSchema) -> None:
+def test_scan_governance_is_read_only_and_release_gated(assert_readonly_report: AssertReadonlyReport) -> None:
     report = scan_governance_report()
 
-    assert_payload_schema(report, SCAN_GOVERNANCE_SCHEMA)
-    assert report["destructive"] is False
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, SCAN_GOVERNANCE_SCHEMA)
     assert report["release_gate"]["requires_quality"] is True
     assert "make quality" in report["release_gate"]["required_commands"]
     assert report["release_gate"]["blocks_execution_expansion"] is True
@@ -26,6 +26,7 @@ def test_scan_governance_is_read_only_and_release_gated(assert_payload_schema: A
 
 def test_scan_budgets_and_external_rule_contract_block_unsafe_imports(
     assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = scan_governance_report()
     by_id = {budget["id"]: budget for budget in report["scan_budgets"]}
@@ -38,7 +39,7 @@ def test_scan_budgets_and_external_rule_contract_block_unsafe_imports(
     contract = report["external_rule_contract"]
     assert_payload_schema(contract, "cleanwin.external-rule-review.v1")
     assert contract["default_state"] == "report-only"
-    assert contract["execution_enabled"] is False
+    assert_execution_disabled(contract)
     assert "license" in contract["required_source_evidence"]
     assert "sensitive_exclusions" in contract["required_safety_evidence"]
     assert "raw shell command strings" in contract["blocked_patterns"]

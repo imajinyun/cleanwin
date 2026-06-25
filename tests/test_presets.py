@@ -10,15 +10,13 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_preset_catalog_is_read_only_and_non_executable(assert_payload_schema: AssertPayloadSchema) -> None:
+def test_preset_catalog_is_read_only_and_non_executable(assert_readonly_report: AssertReadonlyReport) -> None:
     report = preset_catalog_report()
 
-    assert_payload_schema(report, PRESET_CATALOG_SCHEMA)
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, PRESET_CATALOG_SCHEMA)
     assert report["execution_gate"]["preset_execution_enabled"] is False
     assert report["execution_gate"]["ai_auto_call_allowed"] is False
     assert report["summary"]["execution_enabled_count"] == 0

@@ -11,6 +11,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
@@ -24,7 +25,9 @@ def test_report_is_non_destructive_and_supports_non_windows(
     assert any("does not uninstall" in item for item in report["non_goals"])
 
 
-def test_registry_entries_are_normalized_without_uninstalling() -> None:
+def test_registry_entries_are_normalized_without_uninstalling(
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
             {
@@ -49,8 +52,7 @@ def test_registry_entries_are_normalized_without_uninstalling() -> None:
     assert app["estimated_size_kb"] == 250000
     assert app["uninstall_strategy"]["schema"] == "cleanwin.uninstall-strategy.v1"
     assert app["uninstall_strategy"]["strategy_id"] == "registry-uninstall-string"
-    assert app["uninstall_strategy"]["executes_by_report"] is False
-    assert app["uninstall_strategy"]["auto_executable"] is False
+    assert_execution_disabled(app["uninstall_strategy"])
     correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
     assert correlation["state"] == "installed-application-present"
     assert correlation["recommendation"] == "skip-leftover-cleanup-until-uninstalled"
