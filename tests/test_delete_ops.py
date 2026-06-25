@@ -13,6 +13,7 @@ JSONPayload = dict[str, object]
 WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
+AssertFieldValues = Callable[[JSONPayload, dict[str, object]], JSONPayload]
 
 
 def test_recycle_fails_closed_outside_windows_without_test_mode(
@@ -36,6 +37,7 @@ def test_recycle_routes_to_test_trash_and_logs(
     monkeypatch: pytest.MonkeyPatch,
     write_text_file: WriteTextFile,
     read_jsonl_record: ReadJSONLRecord,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     trash = tmp_path / "trash"
@@ -44,11 +46,11 @@ def test_recycle_routes_to_test_trash_and_logs(
 
     result = safe_delete(str(target), dry_run=False, mode="recycle", trash_root=trash, operation_log=log)
 
-    assert result["status"] == "recycled"
+    assert_field_values(result, {"status": "recycled"})
     assert not target.exists()
     assert Path(result["destination"]).exists()
     record = read_jsonl_record(log)
-    assert record["status"] == "recycled"
+    assert_field_values(record, {"status": "recycled"})
 
 
 def test_symlinked_trash_fails_closed(
