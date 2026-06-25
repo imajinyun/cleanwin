@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_rule_catalog
+
+JSONPayload = dict[str, Any]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 @pytest.fixture
@@ -22,10 +26,13 @@ def catalog_rules(catalog: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def test_cleanup_rule_catalog_loads_versioned_rules(rule_catalog: dict[str, Any]) -> None:
+def test_cleanup_rule_catalog_loads_versioned_rules(
+    rule_catalog: dict[str, Any],
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     catalog = rule_catalog
 
-    assert catalog["schema"] == CATALOG_SCHEMA
+    assert_payload_schema(catalog, CATALOG_SCHEMA)
     assert catalog["version"] == "1"
     assert catalog["rule_count"] >= 40
     assert any(rule["rule_id"] == "dev-cache.npm.cache" for rule in catalog["dev_cache_rules"])

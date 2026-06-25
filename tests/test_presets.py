@@ -9,12 +9,13 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_preset_catalog_is_read_only_and_non_executable() -> None:
+def test_preset_catalog_is_read_only_and_non_executable(assert_payload_schema: AssertPayloadSchema) -> None:
     report = preset_catalog_report()
 
-    assert report["schema"] == PRESET_CATALOG_SCHEMA
+    assert_payload_schema(report, PRESET_CATALOG_SCHEMA)
     assert report["destructive"] is False
     assert report["dry_run"] is True
     assert report["executes_system_commands"] is False
@@ -24,7 +25,9 @@ def test_preset_catalog_is_read_only_and_non_executable() -> None:
     assert all(not preset["plan_template"]["execution_enabled"] for preset in report["presets"])
 
 
-def test_preset_catalog_contains_safe_templates_and_review_gates() -> None:
+def test_preset_catalog_contains_safe_templates_and_review_gates(
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     report = preset_catalog_report()
     by_id = {preset["id"]: preset for preset in report["presets"]}
 
@@ -34,7 +37,7 @@ def test_preset_catalog_contains_safe_templates_and_review_gates() -> None:
     browser = by_id["preset.browser-cache-only"]
     assert browser["categories"] == ["browser-cache"]
     assert "browser-cache.chrome.cache" in browser["rule_ids"]
-    assert browser["plan_template"]["schema"] == "cleanwin.preset-plan-template.v1"
+    assert_payload_schema(browser["plan_template"], "cleanwin.preset-plan-template.v1")
     assert browser["plan_template"]["destructive"] is False
     assert browser["plan_template"]["requires_validate_plan"] is True
     assert browser["plan_template"]["requires_matching_dry_run_token"] is True

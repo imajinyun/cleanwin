@@ -9,12 +9,13 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_scan_governance_is_read_only_and_release_gated() -> None:
+def test_scan_governance_is_read_only_and_release_gated(assert_payload_schema: AssertPayloadSchema) -> None:
     report = scan_governance_report()
 
-    assert report["schema"] == SCAN_GOVERNANCE_SCHEMA
+    assert_payload_schema(report, SCAN_GOVERNANCE_SCHEMA)
     assert report["destructive"] is False
     assert report["executes_system_commands"] is False
     assert report["release_gate"]["requires_quality"] is True
@@ -23,7 +24,9 @@ def test_scan_governance_is_read_only_and_release_gated() -> None:
     assert any("does not import external cleaner rules" in item for item in report["non_goals"])
 
 
-def test_scan_budgets_and_external_rule_contract_block_unsafe_imports() -> None:
+def test_scan_budgets_and_external_rule_contract_block_unsafe_imports(
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     report = scan_governance_report()
     by_id = {budget["id"]: budget for budget in report["scan_budgets"]}
 
@@ -33,7 +36,7 @@ def test_scan_budgets_and_external_rule_contract_block_unsafe_imports() -> None:
     assert by_id["file-report"]["permission_error_policy"] == "aggregate-and-continue"
 
     contract = report["external_rule_contract"]
-    assert contract["schema"] == "cleanwin.external-rule-review.v1"
+    assert_payload_schema(contract, "cleanwin.external-rule-review.v1")
     assert contract["default_state"] == "report-only"
     assert contract["execution_enabled"] is False
     assert "license" in contract["required_source_evidence"]
