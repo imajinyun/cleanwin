@@ -36,6 +36,7 @@ AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
     "cleanwin_environment_index",
@@ -278,6 +279,7 @@ def test_execute_requires_dry_run_confirmation_token(
     cleanwin_json: CleanWinJSON,
     make_temp_plan_fixture: MakeTempPlan,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_returncode: AssertReturnCode,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
@@ -300,7 +302,7 @@ def test_execute_requires_dry_run_confirmation_token(
         str(tmp_path / "trash"),
         env=env,
     )
-    assert denied.returncode == 2
+    assert_returncode(denied, 2)
     assert_text_contains_all(cleanwin_result_json(denied)["error"], ["confirmation phrase"])
     assert target.exists()
 
@@ -321,5 +323,5 @@ def test_execute_requires_dry_run_confirmation_token(
         confirmation["confirmation_token"],
         env=env,
     )
-    assert allowed.returncode == 0, allowed.stderr
+    assert_returncode(allowed)
     assert not target.exists()

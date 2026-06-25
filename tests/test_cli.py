@@ -35,6 +35,7 @@ AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]]
 AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(
@@ -138,6 +139,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     write_json_file: WriteJSONFile,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_returncode: AssertReturnCode,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     plan = Plan(
@@ -156,7 +158,7 @@ def test_review_plan_rejects_invalid_plan_exit_code(
     plan_file = tmp_path / "invalid-plan.json"
     write_json_file(plan_file, plan.to_dict())
     result = run_cleanwin("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context")
-    assert result.returncode == 2
+    assert_returncode(result, 2)
     payload = cleanwin_result_json(result)
     assert_payload_status_false(payload, "validation", "valid")
     assert_safe_to_execute_disabled(payload["execution_handoff"])
