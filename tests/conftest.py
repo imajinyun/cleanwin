@@ -53,6 +53,11 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
+AssertExactSet = Callable[[Collection[Any], Collection[Any]], set[Any]]
+AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
+AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
+AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
 AssertAnyMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Any]
 AssertAllMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
 AssertNoneMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
@@ -313,6 +318,56 @@ def assert_any_text_contains(assert_any_match: AssertAnyMatch) -> AssertAnyTextC
         assert_any_match(texts, lambda text: expected in text)
 
     return _assert_any_text_contains
+
+
+@pytest.fixture
+def assert_exact_sequence() -> AssertExactSequence:
+    def _assert_exact_sequence(actual: Sequence[Any], expected: Sequence[Any]) -> Sequence[Any]:
+        assert list(actual) == list(expected)
+        return actual
+
+    return _assert_exact_sequence
+
+
+@pytest.fixture
+def assert_exact_set() -> AssertExactSet:
+    def _assert_exact_set(actual: Collection[Any], expected: Collection[Any]) -> set[Any]:
+        actual_set = set(actual)
+        expected_set = set(expected)
+        assert actual_set == expected_set
+        return actual_set
+
+    return _assert_exact_set
+
+
+@pytest.fixture
+def assert_unique_items() -> AssertUniqueItems:
+    def _assert_unique_items(items: Sequence[Any]) -> Sequence[Any]:
+        duplicates = [item for index, item in enumerate(items) if item in items[:index]]
+        assert duplicates == []
+        return items
+
+    return _assert_unique_items
+
+
+@pytest.fixture
+def assert_non_empty() -> AssertNonEmpty:
+    def _assert_non_empty(items: Sequence[Any]) -> Sequence[Any]:
+        assert list(items) != []
+        return items
+
+    return _assert_non_empty
+
+
+@pytest.fixture
+def assert_returncode() -> AssertReturnCode:
+    def _assert_returncode(
+        result: subprocess.CompletedProcess[str], expected: int = 0
+    ) -> subprocess.CompletedProcess[str]:
+        assert result.returncode == expected, f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        return result
+
+    return _assert_returncode
 
 
 @pytest.fixture
