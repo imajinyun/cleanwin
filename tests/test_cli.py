@@ -590,6 +590,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -598,7 +599,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     ).parent
     write_text_file(chrome_cache.parent / "Cookies", "secret")
     plan_file = root / "browser-plan.json"
-    env = {"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")}
+    env = make_windows_cache_env(root)
     cleanwin_plan_file(plan_file, "--categories", "browser-cache", "--older-than-days", "0", env=env)
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
@@ -621,13 +622,14 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     assert_dry_run_result: AssertDryRunResult,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
     uv_cache = write_text_file(local / "uv" / "cache" / "wheel.whl", "uv").parent
     winget_cache = write_text_file(local / "Microsoft" / "WinGet" / "Packages" / "installer.msix", "winget").parent
     plan_file = root / "uv-plan.json"
-    env = {"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "CLEANWIN_TEST_MODE": "1"}
+    env = make_windows_cache_env(root) | {"CLEANWIN_TEST_MODE": "1"}
 
     plan_payload = cleanwin_plan_file(
         plan_file,
@@ -739,7 +741,10 @@ def test_read_only_findings_include_structured_review_details(cleanwin_json: Cle
     assert "evidence_summary" in finding["review_details"]
 
 def test_read_only_findings_report_existing_path_evidence_without_candidates(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -749,7 +754,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
         "inspect",
         "--categories",
         "docker-report",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     assert payload["summary"]["candidate_count"] == 0
 
