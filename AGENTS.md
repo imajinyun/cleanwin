@@ -72,6 +72,10 @@ Use pytest-native patterns for new or updated tests:
   sequences, schema registry samples, summary count assertions, dry-run result
   summaries, and boolean status fields such as `valid`, `ready`, `passed`, and
   `allowed`.
+- Use the collection and text assertion helpers in `tests/conftest.py` for
+  repeated expected membership, absence, and substring checks. Keep direct
+  `in`/`not in` assertions for isolated one-off checks where a helper would add
+  no diagnostic value.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
@@ -81,7 +85,8 @@ Use pytest-native patterns for new or updated tests:
   execution-disabled flag assertions; do not add new direct assertions when a
   shared helper exists. Current direct assertion budgets for those categories,
   including direct status and summary assertions, should remain empty unless a
-  migration plan explicitly reopens one.
+  migration plan explicitly reopens one. Keep the collection/text helper
+  adoption smoke updated when adding new migrated test files.
 
 Minimum verification for ordinary code or test changes:
 
