@@ -21,6 +21,28 @@ READONLY_BOOLEAN_KEYS = {
 }
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_ai_contracts.py", "test_ai_schema_validation_and_provider_parity"): 1,
+    ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 1,
+    ("test_ai_contracts.py", "test_workflow_context_schema_samples_are_registered"): 1,
+    ("test_ai_contracts.py", "test_tool_argument_validation_rejects_invalid_types_and_unknown_fields"): 2,
+    ("test_ai_contracts.py", "test_host_policy_blocks_raw_command_and_missing_destructive_gates"): 2,
+    ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"): 2,
+    ("test_ai_readiness.py", "test_ai_readiness_is_valid_and_registers_critical_schemas"): 1,
+    ("test_ai_readiness.py", "test_ai_self_test_passes_expected_policy_checks"): 1,
+    ("test_ai_readiness.py", "test_workflow_decision_blocks_destructive_route_without_artifacts"): 1,
+    ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 3,
+    ("test_ai_readiness.py", "test_doctor_report_checks_static_safety_and_contracts"): 2,
+    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
+    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
+    ("test_cli.py", "test_review_plan_rejects_invalid_plan_exit_code"): 1,
+    ("test_cli.py", "test_validate_plan_rejects_permanent_and_admin_candidates"): 2,
+    ("test_execution_contracts.py", "test_ai_host_and_execute_schema_continue_to_deny_permanent_delete"): 1,
+    ("test_identity.py", "test_generated_plan_contains_identity_and_validate_rejects_drift"): 2,
+    ("test_mcp_server.py", "test_tools_call_readonly_capabilities"): 1,
+    ("test_mcp_server.py", "test_tool_call_rejects_schema_invalid_arguments"): 1,
+}
+STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
     "auto_executable",
@@ -264,6 +286,26 @@ def test_direct_execution_disabled_assertions_stay_in_migration_budget(repo_root
     assert observed == EXECUTION_DISABLED_ASSERTION_ALLOWLIST
 
 
+def test_direct_status_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_status_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == STATUS_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -375,6 +417,10 @@ def _is_direct_execution_disabled_assertion(node: ast.AST) -> bool:
     return _contains_execution_disabled_check(node.test)
 
 
+def _is_direct_status_assertion(node: ast.AST) -> bool:
+    return isinstance(node, ast.Assert) and _contains_status_subscript(node.test)
+
+
 def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         return _is_safe_to_execute_subscript(node.operand)
@@ -427,6 +473,16 @@ def _is_safe_to_execute_subscript(node: ast.AST) -> bool:
 
 def _is_execution_disabled_subscript(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and (_slice_value(node.slice) in EXECUTION_DISABLED_KEYS)
+
+
+def _contains_status_subscript(node: ast.AST) -> bool:
+    if _is_status_subscript(node):
+        return True
+    return any(_contains_status_subscript(child) for child in ast.iter_child_nodes(node))
+
+
+def _is_status_subscript(node: ast.AST) -> bool:
+    return isinstance(node, ast.Subscript) and (_slice_value(node.slice) in STATUS_KEYS)
 
 
 def _readonly_boolean_subscript_expected(node: ast.AST) -> bool | None:
