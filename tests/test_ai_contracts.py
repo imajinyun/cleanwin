@@ -26,6 +26,7 @@ AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
+AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
@@ -69,6 +70,7 @@ def test_schema_registry_includes_ai_host_critical_schemas(
 def test_schema_samples_include_rule_metadata_and_review_details(
     assert_schema_samples: AssertSchemaSamples,
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
+    assert_readonly_payload: AssertReadonlyPayload,
     assert_payload_schema: AssertPayloadSchema,
     assert_command_sequence: AssertCommandSequence,
 ) -> None:
@@ -91,7 +93,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert_payload_schema(plan_sample["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
     execute_sample = samples["cleanwin.execute.v1"]
-    assert execute_sample["dry_run"] is True
+    assert_readonly_payload(execute_sample)
     assert execute_sample["results"][0]["status"] == "dry-run"
     assert "confirmation_token" in execute_sample["confirmation"]
 
@@ -138,9 +140,10 @@ def test_workflow_decision_tool_requires_route_id() -> None:
 
 def test_workflow_router_sample_keeps_execution_non_auto_callable(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
+    assert_readonly_payload: AssertReadonlyPayload,
 ) -> None:
     sample = assert_readonly_schema_sample("cleanwin.workflow-router.v1")
-    assert sample["destructive"] is False
+    assert_readonly_payload(sample)
     execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
     assert execution_route["destructive"] is True
     assert execution_route["auto_call_allowed"] is False

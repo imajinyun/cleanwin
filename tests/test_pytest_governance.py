@@ -14,8 +14,6 @@ PROVIDER_SCHEMA_ALLOWLIST = {
 }
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
-    ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 1,
-    ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,
     ("test_ai_readiness.py", "test_workflow_router_routes_intents_without_enabling_execution"): 1,
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 1,
     ("test_presets.py", "test_preset_catalog_contains_safe_templates_and_review_gates"): 1,
