@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA, official_command_plan_report
@@ -13,18 +13,21 @@ AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = official_command_plan_report()
 
     assert_readonly_report(report, OFFICIAL_COMMAND_PLAN_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled", "ai_auto_call_allowed")
-    assert any("does not execute DISM" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "does not execute DISM")
     assert_summary_counts(
         report,
         {
@@ -38,19 +41,28 @@ def test_report_is_non_destructive_and_blocks_auto_execution(
 
 def test_report_covers_windows_owned_cleanup_surfaces(
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = official_command_plan_report()
     by_id = {command["id"]: command for command in report["commands"]}
 
-    assert "windows.component-cleanup.dism-startcomponentcleanup" in by_id
-    assert "windows.update-cache.storage-sense" in by_id
-    assert "windows.delivery-optimization.settings" in by_id
-    assert "windows.wer.disk-cleanup" in by_id
-    assert "windows.thumbnail-cache.disk-cleanup" in by_id
-    assert "windows.defender.cleanup-settings" in by_id
-    assert "windows.memory-dumps.storage-settings" in by_id
-    assert "/StartComponentCleanup" in by_id["windows.component-cleanup.dism-startcomponentcleanup"]["command"]
-    assert "system-restore-point" in by_id["windows.component-cleanup.dism-startcomponentcleanup"]["required_snapshots"]
+    assert_contains_all(
+        by_id,
+        [
+            "windows.component-cleanup.dism-startcomponentcleanup",
+            "windows.update-cache.storage-sense",
+            "windows.delivery-optimization.settings",
+            "windows.wer.disk-cleanup",
+            "windows.thumbnail-cache.disk-cleanup",
+            "windows.defender.cleanup-settings",
+            "windows.memory-dumps.storage-settings",
+        ],
+    )
+    assert_contains_all(by_id["windows.component-cleanup.dism-startcomponentcleanup"]["command"], ["/StartComponentCleanup"])
+    assert_contains_all(
+        by_id["windows.component-cleanup.dism-startcomponentcleanup"]["required_snapshots"],
+        ["system-restore-point"],
+    )
     for command in report["commands"]:
         assert_execution_disabled(command)
 
@@ -58,6 +70,7 @@ def test_report_covers_windows_owned_cleanup_surfaces(
 def test_official_commands_include_structured_non_executable_action_contracts(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = official_command_plan_report()
 
@@ -77,8 +90,8 @@ def test_official_commands_include_structured_non_executable_action_contracts(
         command["id"]: command["action_contract"]
         for command in report["commands"]
     }["windows.component-cleanup.dism-startcomponentcleanup"]
-    assert "administrator" in dism_contract["required_privileges"]
-    assert "recovery-readiness" in dism_contract["blocked_without"]
+    assert_contains_all(dism_contract["required_privileges"], ["administrator"])
+    assert_contains_all(dism_contract["blocked_without"], ["recovery-readiness"])
 
 
 def test_cli_and_ai_provider_expose_official_command_plan(
