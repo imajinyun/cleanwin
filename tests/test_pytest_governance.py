@@ -348,7 +348,10 @@ def test_direct_safe_to_execute_assertions_stay_in_migration_budget(
     assert_exact_sequence(list(observed.items()), list(SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_execution_disabled_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_execution_disabled_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -365,10 +368,13 @@ def test_direct_execution_disabled_assertions_stay_in_migration_budget(repo_root
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == EXECUTION_DISABLED_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(EXECUTION_DISABLED_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_status_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_status_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -385,10 +391,13 @@ def test_direct_status_assertions_stay_in_migration_budget(repo_root: Path) -> N
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == STATUS_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(STATUS_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_summary_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_summary_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -405,10 +414,13 @@ def test_direct_summary_assertions_stay_in_migration_budget(repo_root: Path) -> 
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == SUMMARY_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(SUMMARY_ASSERTION_ALLOWLIST.items()))
 
 
-def test_direct_predicate_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+def test_direct_predicate_assertions_stay_in_migration_budget(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     observed: dict[tuple[str, str], int] = {}
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -425,7 +437,7 @@ def test_direct_predicate_assertions_stay_in_migration_budget(repo_root: Path) -
             key = (path.name, _enclosing_test_name(node, parents) or "<module>")
             observed[key] = observed.get(key, 0) + 1
 
-    assert observed == PREDICATE_ASSERTION_ALLOWLIST
+    assert_exact_sequence(list(observed.items()), list(PREDICATE_ASSERTION_ALLOWLIST.items()))
 
 
 def test_collection_and_text_assertion_helpers_are_adopted(
