@@ -43,6 +43,7 @@ AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 AssertCommandSequence = Callable[[CommandSequence, CommandSequence], None]
 
@@ -358,6 +359,20 @@ def assert_readonly_report() -> AssertReadonlyReport:
         return report
 
     return _assert_readonly_report
+
+
+@pytest.fixture
+def assert_readonly_payload() -> AssertReadonlyPayload:
+    def _assert_readonly_payload(payload: JSONPayload) -> JSONPayload:
+        if "destructive" in payload:
+            assert payload["destructive"] is False
+        if "dry_run" in payload:
+            assert payload["dry_run"] is True
+        if "executes_system_commands" in payload:
+            assert payload["executes_system_commands"] is False
+        return payload
+
+    return _assert_readonly_payload
 
 
 @pytest.fixture
