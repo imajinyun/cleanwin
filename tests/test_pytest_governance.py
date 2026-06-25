@@ -493,11 +493,12 @@ def test_pytest_governance_uses_shared_assertion_helpers(
 def test_field_assertion_helpers_are_adopted(
     repo_root: Path,
     assert_at_least: AssertAtLeast,
+    assert_contains_all: AssertContainsAll,
     assert_exact_sequence: AssertExactSequence,
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
-    assert FIELD_ASSERTION_HELPERS <= helper_defs
+    assert_contains_all(helper_defs, sorted(FIELD_ASSERTION_HELPERS))
     assert_at_least(len(FIELD_HELPER_ADOPTION_FILES), MIN_FIELD_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in FIELD_HELPER_ADOPTION_FILES}
@@ -519,11 +520,12 @@ def test_field_assertion_helpers_are_adopted(
 def test_exact_assertion_helpers_are_adopted(
     repo_root: Path,
     assert_at_least: AssertAtLeast,
+    assert_contains_all: AssertContainsAll,
     assert_exact_sequence: AssertExactSequence,
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
-    assert EXACT_ASSERTION_HELPERS <= helper_defs
+    assert_contains_all(helper_defs, sorted(EXACT_ASSERTION_HELPERS))
     assert_at_least(len(EXACT_HELPER_ADOPTION_FILES), MIN_EXACT_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in EXACT_HELPER_ADOPTION_FILES}
@@ -542,11 +544,12 @@ def test_exact_assertion_helpers_are_adopted(
 def test_scalar_assertion_helpers_are_adopted(
     repo_root: Path,
     assert_at_least: AssertAtLeast,
+    assert_contains_all: AssertContainsAll,
     assert_exact_sequence: AssertExactSequence,
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
-    assert SCALAR_ASSERTION_HELPERS <= helper_defs
+    assert_contains_all(helper_defs, sorted(SCALAR_ASSERTION_HELPERS))
     assert_at_least(len(SCALAR_HELPER_ADOPTION_FILES), MIN_SCALAR_HELPER_ADOPTION_FILES)
 
     adopted: dict[str, set[str]] = {filename: set() for filename in SCALAR_HELPER_ADOPTION_FILES}
