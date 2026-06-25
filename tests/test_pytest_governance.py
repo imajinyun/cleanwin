@@ -22,11 +22,6 @@ READONLY_BOOLEAN_KEYS = {
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_ai_readiness.py", "test_ai_readiness_is_valid_and_registers_critical_schemas"): 1,
-    ("test_ai_readiness.py", "test_ai_self_test_passes_expected_policy_checks"): 1,
-    ("test_ai_readiness.py", "test_workflow_decision_blocks_destructive_route_without_artifacts"): 1,
-    ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 3,
-    ("test_ai_readiness.py", "test_doctor_report_checks_static_safety_and_contracts"): 2,
     ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
     ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
     ("test_cli.py", "test_review_plan_rejects_invalid_plan_exit_code"): 1,

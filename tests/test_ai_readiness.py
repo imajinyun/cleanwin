@@ -34,6 +34,7 @@ AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -72,13 +73,14 @@ EXPECTED_READINESS_PROVIDERS = [
 def test_ai_readiness_is_valid_and_registers_critical_schemas(
     assert_schemas_registered: AssertSchemasRegistered,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     report = ai_readiness_report()
     assert_payload_schema(report, "cleanwin.ai-readiness.v1")
     assert report["ready_for_ai_host"], report
     assert report["ready_for_mcp"], report
     validation = validate_ai_readiness(report)
-    assert validation["valid"], validation
+    assert_payload_status_true(validation, "valid")
 
     assert_schemas_registered(
         [
@@ -99,10 +101,13 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
     )
 
 
-def test_ai_self_test_passes_expected_policy_checks(assert_payload_schema: AssertPayloadSchema) -> None:
+def test_ai_self_test_passes_expected_policy_checks(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
+) -> None:
     report = ai_self_test_report()
     assert_payload_schema(report, "cleanwin.ai-self-test.v1")
-    assert report["passed"], report
+    assert_payload_status_true(report, "passed")
     test_names = {test["name"] for test in report["tests"]}
     assert "raw_command_denied" in test_names
     assert "destructive_missing_gates_denied" in test_names
@@ -150,10 +155,11 @@ def test_environment_index_is_readonly_and_reports_fail_closed_execution(
 
 def test_workflow_decision_blocks_destructive_route_without_artifacts(
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     decision = workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan")
     assert_payload_schema(decision, WORKFLOW_DECISION_SCHEMA)
-    assert decision["allowed"] is False
+    assert_payload_status_false(decision, "allowed")
     codes = {reason["code"] for reason in decision["blocking_reasons"]}
     assert "MISSING_REQUIRED_ARTIFACTS" in codes
     assert "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES" in codes
@@ -178,10 +184,11 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     assert_ai_provider_schemas: AssertAIProviderSchemas,
     assert_payload_schema: AssertPayloadSchema,
     assert_readonly_report: AssertReadonlyReport,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
-    assert cleanwin_json("ai-readiness", "--validate")["valid"]
-    assert cleanwin_json("ai-self-test")["passed"]
+    assert_payload_status_true(cleanwin_json("ai-readiness", "--validate"), "valid")
+    assert_payload_status_true(cleanwin_json("ai-self-test"), "passed")
     assert_payload_schema(cleanwin_json("ai-runbook"), "cleanwin.ai-runbook.v1")
     assert_payload_schema(cleanwin_json("workflow-router"), WORKFLOW_ROUTER_SCHEMA)
     assert_payload_schema(cleanwin_json("environment-index"), ENVIRONMENT_INDEX_SCHEMA)
@@ -190,7 +197,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
 
     doctor_payload = cleanwin_json("doctor")
     assert_payload_schema(doctor_payload, "cleanwin.doctor.v1")
-    assert doctor_payload["ready"], doctor_payload
+    assert_payload_status_true(doctor_payload, "ready")
     assert_readonly_report(doctor_payload, "cleanwin.doctor.v1")
 
     assert_cli_provider_schemas(EXPECTED_READINESS_PROVIDERS[8:])
@@ -200,17 +207,18 @@ def test_cli_exposes_readiness_self_test_and_runbook(
 def test_doctor_report_checks_static_safety_and_contracts(
     assert_command_sequence: AssertCommandSequence,
     assert_readonly_report: AssertReadonlyReport,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     report = doctor_report()
     assert_readonly_report(report, "cleanwin.doctor.v1")
-    assert report["ready"], report
+    assert_payload_status_true(report, "ready")
     check_ids = {check["id"] for check in report["checks"]}
     assert "single_destructive_exit" in check_ids
     assert "delete_primitives_owned_by_delete_ops" in check_ids
     assert "ai_contracts_valid" in check_ids
     assert "version_consistency" in check_ids
     version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
-    assert version_check["passed"], version_check
+    assert_payload_status_true(version_check, "passed")
     assert version_check["evidence"]["package_version"] == __version__
     assert version_check["evidence"]["pyproject_version"] == __version__
     assert version_check["evidence"]["distribution_version"] in {None, __version__}
