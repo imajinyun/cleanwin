@@ -4,17 +4,18 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from cleanwincli.browser_inventory import BROWSER_PROFILE_INVENTORY_SCHEMA, browser_profile_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
-    tmp_path: Path, write_text_file: WriteTextFile
+    tmp_path: Path, write_text_file: WriteTextFile, assert_readonly_report: AssertReadonlyReport
 ) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
@@ -26,9 +27,7 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
 
     report = browser_profile_inventory_report(env={"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")})
 
-    assert report["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
-    assert report["destructive"] is False
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, BROWSER_PROFILE_INVENTORY_SCHEMA)
     assert report["summary"]["profile_count"] == 1
     assert report["summary"]["locked_profile_count"] == 1
     profile = report["profiles"][0]
@@ -62,28 +61,18 @@ def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path, write
     assert any("never promotes cookies" in item for item in report["non_goals"])
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("browser-profile-inventory",),
-        ("ai-tools", "--provider", "browser-profile-inventory"),
-    ],
-)
 def test_cli_ai_provider_exposes_browser_inventory(
-    args: tuple[str, ...], tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_cli_provider_schema_with_env: AssertCliProviderSchemaWithEnv,
 ) -> None:
     local = tmp_path / "LocalAppData"
     edge_default = local / "Microsoft" / "Edge" / "User Data" / "Default"
     write_text_file(edge_default / "GPUCache" / "entry", "cache")
     env = {"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")}
 
-    payload = cleanwin_json(*args, env=env)
-    assert payload["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
+    assert_cli_provider_schema_with_env("browser-profile-inventory", BROWSER_PROFILE_INVENTORY_SCHEMA, env)
 
 
-def test_schema_registry_exposes_browser_inventory(cleanwin_json: CleanWinJSON) -> None:
-    registry = cleanwin_json("schema-registry")
-
-    names = {entry["name"] for entry in registry["entries"]}
-    assert BROWSER_PROFILE_INVENTORY_SCHEMA in names
-    assert registry["samples"][BROWSER_PROFILE_INVENTORY_SCHEMA]["schema"] == BROWSER_PROFILE_INVENTORY_SCHEMA
+def test_schema_registry_exposes_browser_inventory(assert_schema_samples: AssertSchemaSamples) -> None:
+    assert_schema_samples([BROWSER_PROFILE_INVENTORY_SCHEMA])
