@@ -83,8 +83,8 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
 ) -> None:
     report = ai_readiness_report()
     assert_payload_schema(report, "cleanwin.ai-readiness.v1")
-    assert report["ready_for_ai_host"], report
-    assert report["ready_for_mcp"], report
+    assert_payload_status_true(report, "ready_for_ai_host")
+    assert_payload_status_true(report, "ready_for_mcp")
     validation = validate_ai_readiness(report)
     assert_payload_status_true(validation, "valid")
 
