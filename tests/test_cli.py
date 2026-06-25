@@ -31,6 +31,8 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
+AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(
@@ -286,6 +288,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_all_match: AssertAllMatch,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -311,8 +314,8 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_summary_counts(payload, {"candidate_count": 4})
     assert_contains_all(paths, [str(slack_cache), str(teams_logs), str(vscode_cache), str(jetbrains_logs)])
-    assert all(candidate["category"] == "app-leftovers" for candidate in payload["candidates"])
-    assert all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"])
+    assert_all_match(payload["candidates"], lambda candidate: candidate["category"] == "app-leftovers")
+    assert_all_match(payload["candidates"], lambda candidate: candidate["delete_mode"] == "recycle")
 
 def test_app_leftovers_scans_expanded_electron_gpu_caches(
     tmp_path: Path,
@@ -545,6 +548,8 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
     assert_contains_none: AssertContainsNone,
+    assert_all_match: AssertAllMatch,
+    assert_none_match: AssertNoneMatch,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -569,8 +574,8 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert_summary_counts(payload, {"candidate_count": 2})
     assert_contains_all(paths, [str(chrome_cache), str(edge_code_cache)])
     assert_contains_none(paths, [str(cookies)])
-    assert all(candidate["category"] == "browser-cache" for candidate in payload["candidates"])
-    assert all("cookies" not in candidate["path"].lower() for candidate in payload["candidates"])
+    assert_all_match(payload["candidates"], lambda candidate: candidate["category"] == "browser-cache")
+    assert_none_match(payload["candidates"], lambda candidate: "cookies" in candidate["path"].lower())
 
 def test_browser_cache_discovers_additional_browser_profiles(
     tmp_path: Path,

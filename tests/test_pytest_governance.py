@@ -24,8 +24,6 @@ EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_cli.py", "test_app_leftovers_scans_common_uninstalled_app_cache_and_logs"): 2,
-    ("test_cli.py", "test_browser_cache_scans_cache_only_directories_without_profile_data"): 2,
     ("test_recovery.py", "test_recovery_readiness_declares_snapshot_specs"): 1,
     ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
 }
