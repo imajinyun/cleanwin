@@ -24,6 +24,7 @@ AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertFieldsPresent = Callable[[JSONPayload, Sequence[str]], JSONPayload]
+AssertPathExists = Callable[[Path], Path]
 
 
 def test_capture_identity_contains_replay_fields(
@@ -107,7 +108,11 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     assert_text_contains_all("\n".join(validation["errors"]), ["Filesystem identity mismatch"])
 
 
-def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_safe_delete_fails_closed_on_identity_mismatch(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_path_exists: AssertPathExists,
+) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     planned = capture_filesystem_identity(target)
     write_text_file(target, "changed")
@@ -121,4 +126,4 @@ def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path, write_tex
             expected_identity=planned,
         )
 
-    assert target.exists()
+    assert_path_exists(target)
