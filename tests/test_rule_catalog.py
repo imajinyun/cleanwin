@@ -102,5 +102,5 @@ def test_cleanup_rule_catalog_rejects_duplicate_rule_ids() -> None:
         "app_leftover_rules": [],
     }
 
-    with pytest.raises(RuleCatalogError):
+    with pytest.raises(RuleCatalogError, match="duplicate cleanup rule_id"):
         _validate_catalog(payload)
