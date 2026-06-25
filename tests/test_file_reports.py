@@ -19,6 +19,7 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], JSONPayload]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -30,6 +31,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
     assert_contains_none: AssertContainsNone,
+    assert_any_match: AssertAnyMatch,
 ) -> None:
     downloads = make_directory(tmp_path / "Downloads")
     onedrive = make_directory(tmp_path / "OneDrive")
@@ -56,7 +58,7 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert_safe_to_execute_disabled(duplicate_group)
     assert duplicate_group["potential_reclaimable_bytes"] == duplicate_a.stat().st_size
     assert {item["path"] for item in duplicate_group["files"]} == {str(duplicate_a), str(duplicate_b)}
-    assert any(item["onedrive_or_cloud_path"] for item in duplicate_group["files"])
+    assert_any_match(duplicate_group["files"], lambda item: item["onedrive_or_cloud_path"])
     assert_contains_all({group["extension"] for group in report["extension_groups"]}, [".iso", ".zip"])
     assert_contains_none(
         {item["path"] for group in report["duplicate_groups"] for item in group["files"]},

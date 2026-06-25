@@ -27,8 +27,6 @@ PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
     ("test_browser_inventory.py", "test_browser_inventory_excludes_sensitive_profile_data"): 2,
     ("test_cli.py", "test_app_leftovers_scans_common_uninstalled_app_cache_and_logs"): 2,
     ("test_cli.py", "test_browser_cache_scans_cache_only_directories_without_profile_data"): 2,
-    ("test_file_reports.py", "test_file_report_finds_large_files_duplicates_extensions_and_onedrive"): 1,
-    ("test_identity.py", "test_compare_identity_detects_content_replacement"): 1,
     ("test_installed_apps.py", "test_report_is_non_destructive_and_supports_non_windows"): 1,
     ("test_recovery.py", "test_recovery_readiness_declares_snapshot_specs"): 1,
     ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,

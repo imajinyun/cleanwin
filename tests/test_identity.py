@@ -19,6 +19,7 @@ MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 WriteTextFile = Callable[[Path, str], Path]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
+AssertAnyMatch = Callable[[list[str], Callable[[str], bool]], str]
 
 
 def test_capture_identity_contains_replay_fields(
@@ -50,7 +51,11 @@ def test_windows_native_identity_falls_back_off_windows(tmp_path: Path) -> None:
     assert identity["volume_serial_number"] is None
 
 
-def test_compare_identity_detects_content_replacement(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_compare_identity_detects_content_replacement(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_any_match: AssertAnyMatch,
+) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     planned = capture_filesystem_identity(target)
     write_text_file(target, "changed")
@@ -58,7 +63,7 @@ def test_compare_identity_detects_content_replacement(tmp_path: Path, write_text
 
     mismatches = compare_identity(planned, current)
 
-    assert any("size_bytes" in mismatch for mismatch in mismatches), mismatches
+    assert_any_match(mismatches, lambda mismatch: "size_bytes" in mismatch)
 
 
 def test_generated_plan_contains_identity_and_validate_rejects_drift(
