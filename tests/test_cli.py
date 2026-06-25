@@ -33,6 +33,7 @@ AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
+AssertExactSet = Callable[[Collection[Any], Collection[Any]], set[Any]]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
@@ -606,6 +607,7 @@ def test_browser_cache_discovers_additional_browser_profiles(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_exact_set: AssertExactSet,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -627,7 +629,7 @@ def test_browser_cache_discovers_additional_browser_profiles(
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_summary_counts(payload, {"candidate_count": 3})
-    assert paths == {str(path) for path in cache_paths}
+    assert_exact_set(paths, {str(path) for path in cache_paths})
 
 def test_browser_cache_discovers_brave_profile_caches(
     tmp_path: Path,
