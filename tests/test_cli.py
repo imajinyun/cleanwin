@@ -632,7 +632,10 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     assert winget_cache.exists()
 
 def test_package_cache_scans_additional_developer_package_caches(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -645,14 +648,17 @@ def test_package_cache_scans_additional_developer_package_caches(
         "package-cache",
         "--older-than-days",
         "0",
-        env={"LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User"), "PROGRAMDATA": str(root / "ProgramData")},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["package-cache.vcpkg.downloads"]["path"] == str(vcpkg_downloads)
     assert by_rule["package-cache.pipx.cache"]["path"] == str(pipx_cache)
 
 def test_inspect_rule_id_filters_dev_cache_candidates(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     pip_cache = root / "LocalAppData" / "pip" / "Cache"
@@ -660,6 +666,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
 
     npm_cache = root / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "entry", "npm")
+    env = make_windows_cache_env(root) | {"NPM_CONFIG_CACHE": str(npm_cache)}
 
     payload = cleanwin_json(
         "inspect",
@@ -669,13 +676,16 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
         "0",
         "--rule-id",
         "dev-cache.npm.cache",
-        env={"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(root / "LocalAppData"), "USERPROFILE": str(root / "User")},
+        env=env,
     )
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
 
 def test_plan_rule_id_filters_candidates_before_write(
-    tmp_path: Path, cleanwin_plan_file: CleanWinPlanFile, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -684,6 +694,7 @@ def test_plan_rule_id_filters_candidates_before_write(
     pip_cache = local / "pip" / "Cache"
     write_text_file(pip_cache / "wheels" / "entry", "pip")
     plan_file = root / "plan.json"
+    env = make_windows_cache_env(root) | {"NPM_CONFIG_CACHE": str(npm_cache)}
 
     payload = cleanwin_plan_file(
         plan_file,
@@ -693,7 +704,7 @@ def test_plan_rule_id_filters_candidates_before_write(
         "0",
         "--rule-id",
         "dev-cache.pip.cache",
-        env={"NPM_CONFIG_CACHE": str(npm_cache), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=env,
     )
     assert payload["summary"]["candidate_count"] == 1
     assert payload["candidates"][0]["rule_id"] == "dev-cache.pip.cache"
