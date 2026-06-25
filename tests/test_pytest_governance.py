@@ -1,21 +1,34 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from pathlib import Path
+from typing import NamedTuple
 
 HELPER_MODULES = {"conftest.py", "test_pytest_governance.py"}
 AD_HOC_FILESYSTEM_METHODS = {"mkdir", "write_text", "write_bytes"}
+CLI_SUBPROCESS_ALLOWLIST = {"conftest.py", "test_mcp_server.py"}
 PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"),
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
 
 
+class ParsedTestModule(NamedTuple):
+    path: Path
+    tree: ast.AST
+
+
+def iter_test_modules(repo_root: Path) -> Iterable[ParsedTestModule]:
+    for path in sorted((repo_root / "tests").glob("test_*.py")):
+        yield ParsedTestModule(path=path, tree=ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
+
+
 def test_tests_remain_pytest_native(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in sorted((repo_root / "tests").glob("test_*.py")):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        for node in ast.walk(module.tree):
             if isinstance(node, ast.Import):
                 if any(alias.name == "unittest" for alias in node.names):
                     violations.append(f"{path.name}: imports unittest")
@@ -46,11 +59,11 @@ def test_tests_remain_pytest_native(repo_root: Path) -> None:
 
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in sorted((repo_root / "tests").glob("test_*.py")):
+    for module in iter_test_modules(repo_root):
+        path = module.path
         if path.name in HELPER_MODULES:
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
+        for node in ast.walk(module.tree):
             if (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
@@ -61,18 +74,31 @@ def test_tests_use_shared_filesystem_fixtures(repo_root: Path) -> None:
     assert violations == []
 
 
+def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path) -> None:
+    violations: list[str] = []
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in CLI_SUBPROCESS_ALLOWLIST:
+            continue
+        for node in ast.walk(module.tree):
+            if _is_subprocess_call(node):
+                violations.append(f"{path.name}: use shared CLI/MCP subprocess helper")
+
+    assert violations == []
+
+
 def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in sorted((repo_root / "tests").glob("test_*.py")):
+    for module in iter_test_modules(repo_root):
+        path = module.path
         if path.name in HELPER_MODULES:
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         parents: dict[ast.AST, ast.AST] = {}
-        for parent in ast.walk(tree):
+        for parent in ast.walk(module.tree):
             for child in ast.iter_child_nodes(parent):
                 parents[child] = parent
 
-        for node in ast.walk(tree):
+        for node in ast.walk(module.tree):
             if not _is_schema_subscript(node) or not _is_cleanwin_json_call(_subscript_root(node)):
                 continue
             test_name = _enclosing_test_name(node, parents)
@@ -85,17 +111,17 @@ def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
 
 def test_tests_use_shared_schema_registry_helpers(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in sorted((repo_root / "tests").glob("test_*.py")):
+    for module in iter_test_modules(repo_root):
+        path = module.path
         if path.name in HELPER_MODULES:
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        assignments = _assigned_cleanwin_json_commands(tree)
+        assignments = _assigned_cleanwin_json_commands(module.tree)
         parents: dict[ast.AST, ast.AST] = {}
-        for parent in ast.walk(tree):
+        for parent in ast.walk(module.tree):
             for child in ast.iter_child_nodes(parent):
                 parents[child] = parent
 
-        for node in ast.walk(tree):
+        for node in ast.walk(module.tree):
             if _is_schema_registry_call(node):
                 test_name = _enclosing_test_name(node, parents)
                 violations.append(f"{path.name}:{test_name or '<module>'}: use shared schema registry helper")
@@ -120,6 +146,16 @@ def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
             if isinstance(target, ast.Name):
                 assignments[target.id] = first_arg.value
     return assignments
+
+
+def _is_subprocess_call(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in {"run", "Popen"}
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+    )
 
 
 def _is_schema_registry_call(node: ast.AST) -> bool:
