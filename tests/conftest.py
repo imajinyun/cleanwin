@@ -30,6 +30,8 @@ MakeTempPlan = Callable[[Path, bool], TempPlanFixture]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[SchemaPairs], None]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertAIProviderSchema = Callable[[str, str], None]
+AssertAIProviderSchemas = Callable[[SchemaPairs], None]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
@@ -210,6 +212,23 @@ def assert_cli_provider_schema_sample(
         return assert_schema_sample(schema)
 
     return _assert_cli_provider_schema_sample
+
+
+@pytest.fixture
+def assert_ai_provider_schema(cleanwin_json: CleanWinJSON) -> AssertAIProviderSchema:
+    def _assert_ai_provider_schema(provider: str, schema: str) -> None:
+        assert cleanwin_json("ai-tools", "--provider", provider)["schema"] == schema
+
+    return _assert_ai_provider_schema
+
+
+@pytest.fixture
+def assert_ai_provider_schemas(assert_ai_provider_schema: AssertAIProviderSchema) -> AssertAIProviderSchemas:
+    def _assert_ai_provider_schemas(pairs: SchemaPairs) -> None:
+        for provider, schema in pairs:
+            assert_ai_provider_schema(provider, schema)
+
+    return _assert_ai_provider_schemas
 
 
 @pytest.fixture

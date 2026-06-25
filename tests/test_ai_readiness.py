@@ -28,6 +28,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[list[tuple[str, str]]], None]
+AssertAIProviderSchemas = Callable[[list[tuple[str, str]]], None]
 AssertNoUnittestCommands = Callable[[list[str] | list[list[str]]], None]
 
 EXPECTED_DOCTOR_COMMANDS = [
@@ -163,6 +164,7 @@ def test_workflow_trace_documents_required_artifact_chain() -> None:
 def test_cli_exposes_readiness_self_test_and_runbook(
     cleanwin_json: CleanWinJSON,
     assert_cli_provider_schemas: AssertCliProviderSchemas,
+    assert_ai_provider_schemas: AssertAIProviderSchemas,
 ) -> None:
     assert cleanwin_json("ai-readiness")["ready_for_ai_host"]
     assert cleanwin_json("ai-readiness", "--validate")["valid"]
@@ -179,6 +181,7 @@ def test_cli_exposes_readiness_self_test_and_runbook(
     assert not doctor_payload["destructive"]
 
     assert_cli_provider_schemas(EXPECTED_READINESS_PROVIDERS[8:])
+    assert_ai_provider_schemas(EXPECTED_READINESS_PROVIDERS)
 
 
 def test_doctor_report_checks_static_safety_and_contracts(
@@ -217,12 +220,3 @@ def test_ai_readiness_release_gates_use_pytest_workflow(
     assert "make type" in report["release_gate_commands"]
     assert "make quality" in report["release_gate_commands"]
     assert_no_unittest_commands(report["release_gate_commands"])
-
-
-@pytest.mark.parametrize(("provider", "schema"), EXPECTED_READINESS_PROVIDERS)
-def test_ai_tools_provider_aliases_readiness_reports(
-    provider: str,
-    schema: str,
-    cleanwin_json: CleanWinJSON,
-) -> None:
-    assert cleanwin_json("ai-tools", "--provider", provider)["schema"] == schema
