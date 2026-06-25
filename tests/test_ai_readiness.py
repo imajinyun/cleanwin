@@ -35,6 +35,8 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
+AssertContainsAll = Callable[[set[str] | list[str], list[str]], None]
+AssertAnyTextContains = Callable[[list[str], str], None]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -104,14 +106,20 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
 def test_ai_self_test_passes_expected_policy_checks(
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = ai_self_test_report()
     assert_payload_schema(report, "cleanwin.ai-self-test.v1")
     assert_payload_status_true(report, "passed")
     test_names = {test["name"] for test in report["tests"]}
-    assert "raw_command_denied" in test_names
-    assert "destructive_missing_gates_denied" in test_names
-    assert "destructive_all_gates_allowed_by_policy" in test_names
+    assert_contains_all(
+        test_names,
+        [
+            "raw_command_denied",
+            "destructive_missing_gates_denied",
+            "destructive_all_gates_allowed_by_policy",
+        ],
+    )
 
 
 def test_ai_runbook_documents_safe_execution_gates(assert_payload_schema: AssertPayloadSchema) -> None:
@@ -129,6 +137,7 @@ def test_ai_runbook_documents_safe_execution_gates(assert_payload_schema: Assert
 def test_workflow_router_routes_intents_without_enabling_execution(
     assert_readonly_report: AssertReadonlyReport,
     assert_readonly_payload: AssertReadonlyPayload,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = workflow_router_report()
     assert_readonly_report(report, WORKFLOW_ROUTER_SCHEMA)
@@ -137,44 +146,45 @@ def test_workflow_router_routes_intents_without_enabling_execution(
     assert_readonly_payload(routes["dry-run-execution"])
     assert routes["recycle-execution"]["destructive"] is True
     assert routes["recycle-execution"]["auto_call_allowed"] is False
-    assert "dry-run-execution" in routes["recycle-execution"]["required_previous_steps"]
-    assert "permanent delete" in routes["recycle-execution"]["blocked_actions"]
+    assert_any_text_contains(routes["recycle-execution"]["required_previous_steps"], "dry-run-execution")
+    assert_any_text_contains(routes["recycle-execution"]["blocked_actions"], "permanent delete")
 
 
 def test_environment_index_is_readonly_and_reports_fail_closed_execution(
     assert_readonly_report: AssertReadonlyReport,
+    assert_contains_all: AssertContainsAll,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = environment_index_report()
     assert_readonly_report(report, ENVIRONMENT_INDEX_SCHEMA)
     capabilities = {capability["id"]: capability for capability in report["capabilities"]}
     assert capabilities["read-only-inventory"]["available"] is True
-    assert "windows-recycle-execution" in capabilities
+    assert_contains_all(set(capabilities), ["windows-recycle-execution"])
     assert report["operation_log"]["write_checked"] is False
-    assert "permanent delete route is not exposed" in report["fail_closed"]
+    assert_any_text_contains(report["fail_closed"], "permanent delete route is not exposed")
 
 
 def test_workflow_decision_blocks_destructive_route_without_artifacts(
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     decision = workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan")
     assert_payload_schema(decision, WORKFLOW_DECISION_SCHEMA)
     assert_payload_status_false(decision, "allowed")
     codes = {reason["code"] for reason in decision["blocking_reasons"]}
-    assert "MISSING_REQUIRED_ARTIFACTS" in codes
-    assert "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES" in codes
+    assert_contains_all(codes, ["MISSING_REQUIRED_ARTIFACTS", "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES"])
 
 
 def test_workflow_trace_documents_required_artifact_chain(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     trace = workflow_trace_report()
     assert_readonly_report(trace, WORKFLOW_TRACE_SCHEMA)
     schemas = [item["artifact_schema"] for item in trace["artifact_chain"]]
-    assert "cleanwin.plan.v1" in schemas
-    assert "cleanwin.review.v1" in schemas
-    assert "cleanwin.ai-confirmation-summary.v1" in schemas
+    assert_contains_all(schemas, ["cleanwin.plan.v1", "cleanwin.review.v1", "cleanwin.ai-confirmation-summary.v1"])
     assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
 
 
@@ -208,15 +218,21 @@ def test_doctor_report_checks_static_safety_and_contracts(
     assert_command_sequence: AssertCommandSequence,
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = doctor_report()
     assert_readonly_report(report, "cleanwin.doctor.v1")
     assert_payload_status_true(report, "ready")
     check_ids = {check["id"] for check in report["checks"]}
-    assert "single_destructive_exit" in check_ids
-    assert "delete_primitives_owned_by_delete_ops" in check_ids
-    assert "ai_contracts_valid" in check_ids
-    assert "version_consistency" in check_ids
+    assert_contains_all(
+        check_ids,
+        [
+            "single_destructive_exit",
+            "delete_primitives_owned_by_delete_ops",
+            "ai_contracts_valid",
+            "version_consistency",
+        ],
+    )
     version_check = next(check for check in report["checks"] if check["id"] == "version_consistency")
     assert_payload_status_true(version_check, "passed")
     assert version_check["evidence"]["package_version"] == __version__
