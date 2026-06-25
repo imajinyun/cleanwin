@@ -28,6 +28,7 @@ AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
@@ -38,9 +39,9 @@ READONLY_WORKFLOW_CONTEXT_TOOLS = [
 ]
 
 
-def test_ai_schema_validation_and_provider_parity() -> None:
+def test_ai_schema_validation_and_provider_parity(assert_payload_status_true: AssertPayloadStatus) -> None:
     validation = validate_ai_schema()
-    assert validation["valid"], validation
+    assert_payload_status_true(validation, "valid")
     destructive = [tool for tool in AI_TOOL_DEFINITIONS if tool["risk"] == "destructive"]
     assert [tool["name"] for tool in destructive] == ["cleanwin_execute_plan"]
     assert destructive[0]["auto_call_allowed"] is False
@@ -74,6 +75,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert_readonly_payload: AssertReadonlyPayload,
     assert_payload_schema: AssertPayloadSchema,
     assert_command_sequence: AssertCommandSequence,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     samples = assert_schema_samples(
         [
@@ -107,7 +109,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert "sensitive_exclusions" in review_sample
 
     argument_validation_sample = samples["cleanwin.ai-tool-argument-validation.v1"]
-    assert argument_validation_sample["valid"] is False
+    assert_payload_status_false(argument_validation_sample, "valid")
 
 
 def test_ai_tools_expose_rule_id_filter_for_inspect_and_plan() -> None:
@@ -156,13 +158,14 @@ def test_workflow_context_schema_samples_are_registered(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
     assert_schema_samples: AssertSchemaSamples,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
     assert environment["operation_log"]["required_for_execution"] is True
 
     samples = assert_schema_samples(["cleanwin.workflow-decision.v1", "cleanwin.workflow-trace.v1"])
     decision = samples["cleanwin.workflow-decision.v1"]
-    assert decision["allowed"] is False
+    assert_payload_status_false(decision, "allowed")
 
     trace = samples["cleanwin.workflow-trace.v1"]
     assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
@@ -188,25 +191,31 @@ def test_ai_tools_expose_review_plan_tool() -> None:
     assert "plan_file" in by_name["cleanwin_review_plan"]["parameters"]["required"]
 
 
-def test_tool_argument_validation_rejects_invalid_types_and_unknown_fields() -> None:
+def test_tool_argument_validation_rejects_invalid_types_and_unknown_fields(
+    assert_payload_status_false: AssertPayloadStatus,
+    assert_payload_status_true: AssertPayloadStatus,
+) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     validation = validate_tool_arguments(
         by_name["cleanwin_generate_plan"],
         {"categories": "dev-cache", "older_than_days": "0", "unexpected": True},
     )
-    assert validation["valid"] is False
+    assert_payload_status_false(validation, "valid")
     assert "arguments.categories must be an array" in validation["violations"]
     assert "arguments.older_than_days must be a number" in validation["violations"]
     assert "arguments.unexpected is not allowed" in validation["violations"]
 
     valid = validate_tool_arguments(by_name["cleanwin_generate_plan"], {"categories": ["dev-cache"], "older_than_days": 0})
-    assert valid["valid"], valid
+    assert_payload_status_true(valid, "valid")
 
 
-def test_host_policy_blocks_raw_command_and_missing_destructive_gates() -> None:
+def test_host_policy_blocks_raw_command_and_missing_destructive_gates(
+    assert_payload_status_false: AssertPayloadStatus,
+    assert_payload_status_true: AssertPayloadStatus,
+) -> None:
     tool = next(tool for tool in tool_catalog()["tools"] if tool["name"] == "cleanwin_execute_plan")
     denied = evaluate_ai_host_tool_call(tool=tool, arguments={"cmd": "remove things"}, source="test")
-    assert denied["allowed"] is False
+    assert_payload_status_false(denied, "allowed")
     codes = {reason["code"] for reason in denied["blocking_reasons"]}
     assert "RAW_COMMAND_ARGUMENT_DENIED" in codes
     assert "RECYCLE_MODE_REQUIRED" in codes
@@ -223,18 +232,19 @@ def test_host_policy_blocks_raw_command_and_missing_destructive_gates() -> None:
         },
         source="test",
     )
-    assert allowed["allowed"], allowed
+    assert_payload_status_true(allowed, "allowed")
 
 
 def test_cli_ai_tools_and_host_policy_are_valid(
     cleanwin_json: CleanWinJSON,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     assert_payload_schema(cleanwin_json("ai-tools"), "cleanwin.ai-tools.v1")
 
-    assert cleanwin_json("ai-tools", "--provider", "parity")["valid"]
+    assert_payload_status_true(cleanwin_json("ai-tools", "--provider", "parity"), "valid")
 
-    assert cleanwin_json("host-policy", "--validate")["valid"]
+    assert_payload_status_true(cleanwin_json("host-policy", "--validate"), "valid")
 
 
 def test_execute_requires_dry_run_confirmation_token(
