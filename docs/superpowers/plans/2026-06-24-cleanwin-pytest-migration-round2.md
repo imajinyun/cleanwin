@@ -699,3 +699,126 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 ### Verification
 
 Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
+## Round 9 Pytest Governance Plan
+
+**Goal:** Move remaining predicate-style assertions into shared pytest helpers and govern direct `any(...)` / `all(...)` assertion drift with focused AST budgets.
+
+**Architecture:** Keep previous schema, status, summary, dry-run, and collection-helper budgets intact. Add predicate helpers for positive and negative collection matching, migrate focused assertion clusters, then close with a shrinking governance smoke budget.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.COoJSiAP8D`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared predicate assertion helpers",
+      "locator": "collection predicate helpers near existing collection/text helpers",
+      "source": "explicit",
+      "reason": "remaining tests repeat any/all predicate assertions for field, path, and text matching",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "predicate assertion governance budget",
+      "locator": "AST checks for direct any/all assertions",
+      "source": "explicit",
+      "reason": "direct predicate assertions should be governed like schema, status, summary, dry-run, and collection assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_identity.py tests/test_file_reports.py",
+      "target_type": "file",
+      "symbol": "identity and file-report predicate assertions",
+      "locator": "direct membership, text, and any/equality assertions",
+      "source": "explicit",
+      "reason": "identity and file report tests still contain helperizable predicate assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_browser_inventory.py tests/test_installed_apps.py",
+      "target_type": "file",
+      "symbol": "inventory predicate assertions",
+      "locator": "all(...) negative path checks and any(...) source checks",
+      "source": "explicit",
+      "reason": "inventory tests should express predicate expectations through shared pytest helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py",
+      "target_type": "file",
+      "symbol": "CLI candidate and path predicate assertions",
+      "locator": "candidate category/delete-mode and path equality checks",
+      "source": "explicit",
+      "reason": "CLI tests contain repeated candidate matching assertions that should be helperized",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_readiness.py tests/test_ai_contracts.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "AI and MCP field assertion clusters",
+      "locator": "repeated tool/resource field and sequence assertions",
+      "source": "explicit",
+      "reason": "AI/MCP tests should share predicate helpers for structured contract checks",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_execution_contracts.py tests/test_official_commands.py tests/test_system_health.py tests/test_recovery.py tests/test_scan_governance.py tests/test_rule_catalog.py",
+      "target_type": "file",
+      "symbol": "remaining safety and governance predicate assertions",
+      "locator": "execution gate, official command, system-health, recovery, scan, and rationale predicates",
+      "source": "explicit",
+      "reason": "remaining direct predicates should migrate or be locked by a final budget",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest workflow documentation",
+      "locator": "pytest predicate helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe when to use shared predicate helpers",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is duplicated predicate assertion style that can drift from shared pytest helper contracts.
+
+### Round 9 Tasks
+
+- `PYTEST-GOV-138`: Record this Round 9 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-139`: Add reusable predicate helpers for `any(...)` / `all(...)` style assertions.
+- `PYTEST-GOV-140`: Add governance smoke and budgets for helperized predicate assertions.
+- `PYTEST-GOV-141`: Migrate remaining identity and file-report membership/text predicate assertions.
+- `PYTEST-GOV-142`: Migrate browser inventory and installed-app predicate assertions.
+- `PYTEST-GOV-143`: Migrate CLI repeated candidate/category/delete-mode and path equality predicate assertions.
+- `PYTEST-GOV-144`: Migrate AI readiness, AI contracts, and MCP repeated field/sequence assertion clusters.
+- `PYTEST-GOV-145`: Migrate execution, official-command, system-health, recovery, scan-governance, and rule-catalog remaining predicate assertions.
+- `PYTEST-GOV-146`: Tighten pytest governance smoke for remaining direct predicate assertion budget and run focused gates.
+- `PYTEST-GOV-147`: Update docs, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
