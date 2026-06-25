@@ -87,6 +87,24 @@ def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path) -> None:
     assert violations == []
 
 
+def test_workflows_use_makefile_venv_pytest_contract(repo_root: Path) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+    workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    dockerfile = (repo_root / "Dockerfile.test").read_text(encoding="utf-8")
+
+    assert "pytest: dev-install" in makefile
+    assert "$(DEV_PYTHON) -m pytest -q" in makefile
+    assert "$(DEV_PYTHON) -m ruff check" in makefile
+    assert "$(DEV_PYTHON) -m mypy" in makefile
+    assert "make pytest" in workflow
+    assert "python -m pytest" not in workflow
+    assert "unittest" not in workflow
+    assert ".venv/bin/python -m pytest -q" in dockerfile
+    assert ".venv/bin/python -m ruff check" in dockerfile
+    assert ".venv/bin/python -m mypy" in dockerfile
+    assert "unittest discover" not in dockerfile
+
+
 def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
