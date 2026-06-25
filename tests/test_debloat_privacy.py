@@ -18,18 +18,21 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = debloat_privacy_report(raw_registry_values={}, raw_appx_packages=[], env={})
 
     assert_readonly_report(report, DEBLOAT_PRIVACY_REPORT_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
-    assert report["execution_gate"]["requires_registry_export"] is True
+    assert_field_values(report["execution_gate"], {"requires_registry_export": True})
     assert_any_text_contains(report["non_goals"], "does not remove AppX")
 
 
@@ -38,6 +41,7 @@ def test_registry_policy_values_are_classified(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = debloat_privacy_report(
         raw_registry_values={
@@ -49,13 +53,12 @@ def test_registry_policy_values_are_classified(
     )
     by_id = {finding["id"]: finding for finding in report["findings"]}
 
-    assert by_id["privacy.telemetry.allow-telemetry"]["state"] == "review-recommended"
-    assert by_id["privacy.ad-id.disabled"]["state"] == "privacy-hardened"
+    assert_field_values(by_id["privacy.telemetry.allow-telemetry"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.ad-id.disabled"], {"state": "privacy-hardened"})
     assert_safe_to_execute_disabled(by_id["privacy.telemetry.allow-telemetry"])
     evidence = by_id["privacy.telemetry.allow-telemetry"]["change_evidence"]
     assert_payload_schema(evidence, "cleanwin.registry-privacy-evidence.v1")
-    assert evidence["hive"] == "HKLM"
-    assert evidence["value_name"] == "AllowTelemetry"
+    assert_field_values(evidence, {"hive": "HKLM", "value_name": "AllowTelemetry"})
     assert evidence["required_export_command"][:2] == ["reg.exe", "export"]
     assert_contains_all(evidence["rollback_metadata_required"], ["previous_value"])
     assert_summary_counts(report, {"review_recommended_count": 1, "privacy_hardened_count": 1})
@@ -67,6 +70,7 @@ def test_appx_and_oem_findings_are_review_only(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     program_files = tmp_path / "Program Files"
     support_assist = program_files / "Dell" / "SupportAssistAgent"
@@ -81,7 +85,7 @@ def test_appx_and_oem_findings_are_review_only(
     appx_findings = [finding for finding in report["findings"] if finding["kind"] == "appx-package"]
     oem_findings = [finding for finding in report["findings"] if finding["kind"] == "oem-app-location"]
     assert len(appx_findings) == 1
-    assert appx_findings[0]["state"] == "review-recommended"
+    assert_field_values(appx_findings[0], {"state": "review-recommended"})
     assert_safe_to_execute_disabled(appx_findings[0])
     assert len(oem_findings) == 1
     assert_any_text_contains([oem_findings[0]["path"]], "SupportAssistAgent")

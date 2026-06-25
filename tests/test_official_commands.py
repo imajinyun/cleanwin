@@ -15,6 +15,8 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution(
@@ -71,18 +73,24 @@ def test_official_commands_include_structured_non_executable_action_contracts(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_schema: AssertPayloadSchema,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = official_command_plan_report()
 
     for command in report["commands"]:
         contract = command["action_contract"]
         assert_payload_schema(contract, "cleanwin.official-action-contract.v1")
-        assert contract["action_id"] == command["id"]
-        assert contract["allowlisted_command"] == command["command"]
-        assert contract["argument_policy"] == "exact-argv-only"
+        assert_field_values(
+            contract,
+            {
+                "action_id": command["id"],
+                "allowlisted_command": command["command"],
+                "argument_policy": "exact-argv-only",
+                "requires_human_review": True,
+                "requires_matching_dry_run_token": True,
+            },
+        )
         assert_execution_disabled(contract)
-        assert contract["requires_human_review"] is True
-        assert contract["requires_matching_dry_run_token"] is True
         assert contract["expected_effects"]
         assert contract["forbidden_effects"]
 

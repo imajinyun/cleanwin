@@ -17,18 +17,21 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = startup_service_inventory_report(raw_registry_values={}, raw_services=[], raw_tasks=[], env={})
 
     assert_readonly_report(report, STARTUP_SERVICE_INVENTORY_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
-    assert report["execution_gate"]["requires_service_snapshot"] is True
+    assert_field_values(report["execution_gate"], {"requires_service_snapshot": True})
     assert_any_text_contains(report["non_goals"], "does not disable startup")
 
 
@@ -38,6 +41,7 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     appdata = tmp_path / "Roaming"
     startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
@@ -57,8 +61,8 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     )
 
     entries = {entry["name"]: entry for entry in report["startup_entries"]}
-    assert entries["Example"]["target_exists"] is True
-    assert entries["MissingTarget"]["target_exists"] is False
+    assert_field_values(entries["Example"], {"target_exists": True})
+    assert_field_values(entries["MissingTarget"], {"target_exists": False})
     assert_safe_to_execute_disabled(entries["Example"])
     assert_contains_all(entries, ["Example.lnk"])
     assert_summary_counts(report, {"startup_entry_count": 3, "missing_target_count": 1})
@@ -67,6 +71,7 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
 def test_service_and_scheduled_task_fixtures_are_report_only(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = startup_service_inventory_report(
         raw_registry_values={},
@@ -76,10 +81,10 @@ def test_service_and_scheduled_task_fixtures_are_report_only(
     )
 
     assert_summary_counts(report, {"service_count": 1, "scheduled_task_count": 1})
-    assert report["services"][0]["risk"] == "high"
+    assert_field_values(report["services"][0], {"risk": "high"})
     assert_safe_to_execute_disabled(report["services"][0])
     assert_safe_to_execute_disabled(report["scheduled_tasks"][0])
-    assert report["scheduled_tasks"][0]["target_exists"] is False
+    assert_field_values(report["scheduled_tasks"][0], {"target_exists": False})
 
 
 def test_cli_and_ai_provider_expose_inventory(
