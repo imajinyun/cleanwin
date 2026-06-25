@@ -12,6 +12,35 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"),
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
+DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
+    ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 5,
+    ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,
+    ("test_ai_contracts.py", "test_workflow_context_schema_samples_are_registered"): 3,
+    ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"): 1,
+    ("test_ai_readiness.py", "test_ai_readiness_is_valid_and_registers_critical_schemas"): 1,
+    ("test_ai_readiness.py", "test_ai_self_test_passes_expected_policy_checks"): 1,
+    ("test_ai_readiness.py", "test_ai_runbook_documents_safe_execution_gates"): 1,
+    ("test_ai_readiness.py", "test_workflow_router_routes_intents_without_enabling_execution"): 1,
+    ("test_ai_readiness.py", "test_environment_index_is_readonly_and_reports_fail_closed_execution"): 1,
+    ("test_ai_readiness.py", "test_workflow_decision_blocks_destructive_route_without_artifacts"): 1,
+    ("test_ai_readiness.py", "test_workflow_trace_documents_required_artifact_chain"): 1,
+    ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"): 6,
+    ("test_ai_readiness.py", "test_doctor_report_checks_static_safety_and_contracts"): 1,
+    ("test_cli.py", "test_inspect_temp_finds_sandbox_candidate"): 1,
+    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
+    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
+    ("test_cli.py", "test_dev_cache_candidates_include_rule_metadata_and_official_commands"): 1,
+    ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 1,
+    ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
+    ("test_mcp_server.py", "<module>"): 1,
+    ("test_mcp_server.py", "test_host_policy_resource_exposes_execute_plan_denial"): 1,
+    ("test_mcp_server.py", "test_resources_readiness_self_test_and_runbook"): 1,
+    ("test_mcp_server.py", "test_resources_read_responds_before_persistent_stdin_eof"): 1,
+    ("test_mcp_server.py", "test_tools_call_readonly_capabilities"): 1,
+    ("test_mcp_server.py", "test_raw_command_argument_denied_for_readonly_tool"): 1,
+    ("test_mcp_server.py", "test_tool_call_rejects_schema_invalid_arguments"): 1,
+    ("test_official_commands.py", "test_official_commands_include_structured_non_executable_action_contracts"): 1,
+}
 
 
 class ParsedTestModule(NamedTuple):
@@ -163,6 +192,26 @@ def test_tests_use_shared_schema_registry_helpers(repo_root: Path) -> None:
     assert violations == []
 
 
+def test_direct_schema_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_schema_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == DIRECT_SCHEMA_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -230,6 +279,16 @@ def _is_cleanwin_json_call(node: ast.AST | None) -> bool:
 
 def _is_schema_subscript(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and _slice_value(node.slice) == "schema"
+
+
+def _is_direct_schema_assertion(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Assert) or not isinstance(node.test, ast.Compare):
+        return False
+    if not any(isinstance(operator, ast.Eq) for operator in node.test.ops):
+        return False
+    return _is_schema_subscript(node.test.left) or any(
+        _is_schema_subscript(comparator) for comparator in node.test.comparators
+    )
 
 
 def _slice_value(node: ast.AST) -> str | None:
