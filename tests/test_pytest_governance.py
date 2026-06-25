@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 
 HELPER_MODULES = {"conftest.py", "test_pytest_governance.py"}
 AD_HOC_FILESYSTEM_METHODS = {"mkdir", "write_text", "write_bytes"}
@@ -139,7 +140,7 @@ def iter_test_modules(repo_root: Path) -> Iterable[ParsedTestModule]:
         yield ParsedTestModule(path=path, tree=ast.parse(path.read_text(encoding="utf-8"), filename=str(path)))
 
 
-def test_tests_remain_pytest_native(repo_root: Path) -> None:
+def test_tests_remain_pytest_native(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -169,10 +170,10 @@ def test_tests_remain_pytest_native(repo_root: Path) -> None:
                 ):
                     violations.append(f"{path.name}: uses self.{node.attr}")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
-def test_tests_use_shared_filesystem_fixtures(repo_root: Path) -> None:
+def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -186,10 +187,10 @@ def test_tests_use_shared_filesystem_fixtures(repo_root: Path) -> None:
             ):
                 violations.append(f"{path.name}: uses {node.func.attr} instead of shared fixture")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
-def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path) -> None:
+def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -199,7 +200,7 @@ def test_cli_subprocess_calls_stay_in_shared_helpers(repo_root: Path) -> None:
             if _is_subprocess_call(node):
                 violations.append(f"{path.name}: use shared CLI/MCP subprocess helper")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
 def test_workflows_use_makefile_venv_pytest_contract(repo_root: Path) -> None:
@@ -220,7 +221,7 @@ def test_workflows_use_makefile_venv_pytest_contract(repo_root: Path) -> None:
     assert "unittest discover" not in dockerfile
 
 
-def test_pytest_raises_assertions_match_messages(repo_root: Path) -> None:
+def test_pytest_raises_assertions_match_messages(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
         path = module.path
@@ -230,7 +231,7 @@ def test_pytest_raises_assertions_match_messages(repo_root: Path) -> None:
             if _is_pytest_raises_call(node) and not _has_keyword(node, "match"):
                 violations.append(f"{path.name}: pytest.raises must assert match=")
 
-    assert violations == []
+    assert_exact_sequence(violations, [])
 
 
 def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
