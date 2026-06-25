@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +24,7 @@ CleanWinPlanFile = Callable[..., JSONPayload]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
-AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertNoUnittestCommands = Callable[[list[list[str]]], None]
 
@@ -66,21 +66,29 @@ def test_schema_registry_includes_ai_host_critical_schemas(
 
 
 def test_schema_samples_include_rule_metadata_and_review_details(
-    assert_schema_sample: AssertSchemaSample,
+    assert_schema_samples: AssertSchemaSamples,
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
     assert_no_unittest_commands: AssertNoUnittestCommands,
 ) -> None:
-    inspect_sample = assert_schema_sample("cleanwin.inspect.v1")
+    samples = assert_schema_samples(
+        [
+            "cleanwin.inspect.v1",
+            "cleanwin.plan.v1",
+            "cleanwin.execute.v1",
+            "cleanwin.ai-tool-argument-validation.v1",
+        ]
+    )
+    inspect_sample = samples["cleanwin.inspect.v1"]
     assert inspect_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
     assert inspect_sample["candidates"][0]["cache_owner"] == "npm"
     assert "official_cleanup_command" in inspect_sample["candidates"][0]
     assert "review_details" in inspect_sample["findings"][0]
 
-    plan_sample = assert_schema_sample("cleanwin.plan.v1")
+    plan_sample = samples["cleanwin.plan.v1"]
     assert plan_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
     assert plan_sample["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
 
-    execute_sample = assert_schema_sample("cleanwin.execute.v1")
+    execute_sample = samples["cleanwin.execute.v1"]
     assert execute_sample["schema"] == "cleanwin.execute.v1"
     assert execute_sample["dry_run"] is True
     assert execute_sample["results"][0]["status"] == "dry-run"
@@ -98,7 +106,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert "execution_handoff" in review_sample
     assert "sensitive_exclusions" in review_sample
 
-    argument_validation_sample = assert_schema_sample("cleanwin.ai-tool-argument-validation.v1")
+    argument_validation_sample = samples["cleanwin.ai-tool-argument-validation.v1"]
     assert argument_validation_sample["schema"] == "cleanwin.ai-tool-argument-validation.v1"
     assert argument_validation_sample["valid"] is False
 
@@ -132,8 +140,10 @@ def test_workflow_decision_tool_requires_route_id() -> None:
     assert "route_id" in by_name["cleanwin_workflow_decision"]["parameters"]["required"]
 
 
-def test_workflow_router_sample_keeps_execution_non_auto_callable(assert_schema_sample: AssertSchemaSample) -> None:
-    sample = assert_schema_sample("cleanwin.workflow-router.v1")
+def test_workflow_router_sample_keeps_execution_non_auto_callable(
+    assert_readonly_schema_sample: AssertReadonlySchemaSample,
+) -> None:
+    sample = assert_readonly_schema_sample("cleanwin.workflow-router.v1")
     assert sample["schema"] == "cleanwin.workflow-router.v1"
     assert sample["destructive"] is False
     execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
@@ -161,8 +171,11 @@ def test_workflow_context_schema_samples_are_registered(
     assert trace["execution_gate"]["ai_auto_call_allowed"] is False
 
 
-def test_schema_samples_cover_package_and_browser_cache_categories(assert_schema_sample: AssertSchemaSample) -> None:
-    inspect_sample = assert_schema_sample("cleanwin.inspect.v1")
+def test_schema_samples_cover_package_and_browser_cache_categories(
+    assert_schema_samples: AssertSchemaSamples,
+) -> None:
+    samples = assert_schema_samples(["cleanwin.inspect.v1"])
+    inspect_sample = samples["cleanwin.inspect.v1"]
     assert "browser-cache" in inspect_sample["categories"]
     assert "package-cache" in inspect_sample["categories"]
     candidate_categories = {candidate["category"] for candidate in inspect_sample["candidates"]}
