@@ -185,22 +185,22 @@ def mcp_tool_result(response: MCPResponse) -> JSONPayload:
     return result
 
 
-def mcp_success_result(response: MCPResponse) -> JSONPayload:
+def mcp_success_result(response: MCPResponse, assert_field_values: AssertFieldValues) -> JSONPayload:
     result = mcp_tool_result(response)
-    assert not result["isError"], result
+    assert_field_values(result, {"isError": False})
     return result
 
 
-def mcp_structured_content(response: MCPResponse) -> JSONPayload:
-    result = mcp_success_result(response)
+def mcp_structured_content(response: MCPResponse, assert_field_values: AssertFieldValues) -> JSONPayload:
+    result = mcp_success_result(response, assert_field_values)
     structured = result["structuredContent"]
     assert isinstance(structured, dict)
     return structured
 
 
-def mcp_error_result(response: MCPResponse) -> JSONPayload:
+def mcp_error_result(response: MCPResponse, assert_field_values: AssertFieldValues) -> JSONPayload:
     result = mcp_tool_result(response)
-    assert result["isError"]
+    assert_field_values(result, {"isError": True})
     return result
 
 
@@ -303,7 +303,7 @@ def test_tools_call_readonly_capabilities(
         },
         cleanwin_test_env(),
     )
-    result = mcp_success_result(response)
+    result = mcp_success_result(response, assert_field_values)
     assert_field_values(result, {"structuredContent.tool": "cleanwin"})
     assert_payload_schema(result["governanceDecision"], "cleanwin.ai-host-tool-call-decision.v1")
     assert_payload_status_true(result["governanceDecision"], "allowed")
@@ -323,7 +323,7 @@ def test_tools_call_workflow_router(
         },
         cleanwin_test_env(),
     )
-    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.workflow-router.v1")
+    structured = assert_payload_schema(mcp_structured_content(response, assert_field_values), "cleanwin.workflow-router.v1")
     routes = {route["id"]: route for route in structured["routes"]}
     assert_field_values(routes["recycle-execution"], {"auto_call_allowed": False})
 
@@ -346,6 +346,7 @@ def test_tools_call_workflow_context_tools(
     schema: str,
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -356,7 +357,7 @@ def test_tools_call_workflow_context_tools(
         },
         cleanwin_test_env(),
     )
-    assert_payload_schema(mcp_structured_content(response), schema)
+    assert_payload_schema(mcp_structured_content(response, assert_field_values), schema)
 
 
 def test_tools_call_inspect_supports_rule_id_filter(
@@ -376,7 +377,7 @@ def test_tools_call_inspect_supports_rule_id_filter(
         },
         cleanwin_test_env(),
     )
-    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.inspect.v1")
+    structured = assert_payload_schema(mcp_structured_content(response, assert_field_values), "cleanwin.inspect.v1")
     assert_field_values(structured, {"filters.rule_ids": ["dev-cache.npm.cache"]})
 
 
@@ -385,6 +386,7 @@ def test_tools_call_review_plan(
     make_mcp_temp_plan: MakeMCPTempPlan,
     assert_payload_schema: AssertPayloadSchema,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     plan_file, _, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool(
@@ -393,7 +395,7 @@ def test_tools_call_review_plan(
         env=env,
         request_id=52,
     )
-    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.review.v1")
+    structured = assert_payload_schema(mcp_structured_content(response, assert_field_values), "cleanwin.review.v1")
     assert_contains_all(structured, ["execution_handoff"])
 
 
@@ -403,10 +405,11 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     assert_payload_schema: AssertPayloadSchema,
     assert_dry_run_summary: AssertDryRunSummary,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     plan_file, stale_file, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
-    structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.execute.v1")
+    structured = assert_payload_schema(mcp_structured_content(response, assert_field_values), "cleanwin.execute.v1")
     assert_dry_run_summary(structured, stale_file)
     assert_contains_all(structured["confirmation"], ["confirmation_token"])
 
@@ -425,7 +428,7 @@ def test_raw_command_argument_denied_for_readonly_tool(
         },
         cleanwin_test_env(),
     )
-    result = mcp_error_result(response)
+    result = mcp_error_result(response, assert_field_values)
     assert_payload_schema(result["structuredContent"], "cleanwin.mcp-tool-error.v1")
     assert_field_values(result["governanceDecision"]["blocking_reasons"][0], {"code": "RAW_COMMAND_ARGUMENT_DENIED"})
 
@@ -435,6 +438,7 @@ def test_tool_call_rejects_schema_invalid_arguments(
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -445,7 +449,7 @@ def test_tool_call_rejects_schema_invalid_arguments(
         },
         cleanwin_test_env(),
     )
-    result = mcp_error_result(response)
+    result = mcp_error_result(response, assert_field_values)
     validation = result["structuredContent"]["argument_validation"]
     assert_payload_schema(validation, "cleanwin.ai-tool-argument-validation.v1")
     assert_contains_all(
@@ -458,6 +462,7 @@ def test_tool_call_rejects_schema_invalid_arguments(
 def test_tool_call_rejects_unknown_non_raw_arguments(
     cleanwin_test_env: CleanWinTestEnv,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -468,7 +473,7 @@ def test_tool_call_rejects_unknown_non_raw_arguments(
         },
         cleanwin_test_env(),
     )
-    result = mcp_error_result(response)
+    result = mcp_error_result(response, assert_field_values)
     validation = result["structuredContent"]["argument_validation"]
     assert_contains_all(validation["violations"], ["arguments.unexpected is not allowed"])
 
@@ -476,6 +481,7 @@ def test_tool_call_rejects_unknown_non_raw_arguments(
 def test_tool_call_rejects_missing_required_arguments(
     cleanwin_test_env: CleanWinTestEnv,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -486,7 +492,7 @@ def test_tool_call_rejects_missing_required_arguments(
         },
         cleanwin_test_env(),
     )
-    result = mcp_error_result(response)
+    result = mcp_error_result(response, assert_field_values)
     validation = result["structuredContent"]["argument_validation"]
     assert_contains_all(validation["violations"], ["arguments.plan_file is required"])
 
@@ -494,6 +500,7 @@ def test_tool_call_rejects_missing_required_arguments(
 def test_destructive_tool_missing_gates_denied(
     cleanwin_test_env: CleanWinTestEnv,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(
         {
@@ -504,7 +511,7 @@ def test_destructive_tool_missing_gates_denied(
         },
         cleanwin_test_env(),
     )
-    result = mcp_error_result(response)
+    result = mcp_error_result(response, assert_field_values)
     codes = {reason["code"] for reason in result["governanceDecision"]["blocking_reasons"]}
     assert_contains_all(
         codes,
