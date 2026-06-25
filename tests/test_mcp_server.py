@@ -181,6 +181,15 @@ def mcp_success_result(response: MCPResponse) -> JSONPayload:
     return result
 
 
+def mcp_structured_content(response: MCPResponse, *, schema: str | None = None) -> JSONPayload:
+    result = mcp_success_result(response)
+    structured = result["structuredContent"]
+    assert isinstance(structured, dict)
+    if schema is not None:
+        assert structured["schema"] == schema
+    return structured
+
+
 def mcp_error_result(response: MCPResponse) -> JSONPayload:
     result = mcp_tool_result(response)
     assert result["isError"]
@@ -276,9 +285,8 @@ def test_tools_call_workflow_router(cleanwin_test_env: CleanWinTestEnv) -> None:
         },
         cleanwin_test_env(),
     )
-    result = mcp_success_result(response)
-    assert result["structuredContent"]["schema"] == "cleanwin.workflow-router.v1"
-    routes = {route["id"]: route for route in result["structuredContent"]["routes"]}
+    structured = mcp_structured_content(response, schema="cleanwin.workflow-router.v1")
+    routes = {route["id"]: route for route in structured["routes"]}
     assert routes["recycle-execution"]["auto_call_allowed"] is False
 
 
@@ -306,8 +314,7 @@ def test_tools_call_workflow_context_tools(
         },
         cleanwin_test_env(),
     )
-    result = mcp_success_result(response)
-    assert result["structuredContent"]["schema"] == schema
+    mcp_structured_content(response, schema=schema)
 
 
 def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinTestEnv) -> None:
@@ -323,9 +330,8 @@ def test_tools_call_inspect_supports_rule_id_filter(cleanwin_test_env: CleanWinT
         },
         cleanwin_test_env(),
     )
-    result = mcp_success_result(response)
-    assert result["structuredContent"]["schema"] == "cleanwin.inspect.v1"
-    assert result["structuredContent"]["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
+    structured = mcp_structured_content(response, schema="cleanwin.inspect.v1")
+    assert structured["filters"]["rule_ids"] == ["dev-cache.npm.cache"]
 
 
 def test_tools_call_review_plan(
@@ -344,9 +350,8 @@ def test_tools_call_review_plan(
         env=env,
         request_id=52,
     )
-    result = mcp_success_result(response)
-    assert result["structuredContent"]["schema"] == "cleanwin.review.v1"
-    assert "execution_handoff" in result["structuredContent"]
+    structured = mcp_structured_content(response, schema="cleanwin.review.v1")
+    assert "execution_handoff" in structured
 
 
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
@@ -360,9 +365,7 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
         tmp_path, cleanwin_plan_file, cleanwin_test_env, write_text_file, make_directory
     )
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
-    result = mcp_success_result(response)
-    structured = result["structuredContent"]
-    assert structured["schema"] == "cleanwin.execute.v1"
+    structured = mcp_structured_content(response, schema="cleanwin.execute.v1")
     assert not structured["executed"]
     assert structured["results"][0]["status"] == "dry-run"
     assert structured["results"][0]["path"] == str(stale_file)
