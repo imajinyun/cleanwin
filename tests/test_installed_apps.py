@@ -103,7 +103,9 @@ def test_filesystem_package_sources_and_leftover_correlation(
     assert report["summary"]["manual_review_strategy_count"] == 1
 
 
-def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans() -> None:
+def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
             {
@@ -148,7 +150,8 @@ def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans() -> N
     assert by_name["Steam Game"]["strategy_id"] == "steam-library-review"
     assert by_name["Orphaned Entry"]["strategy_id"] == "orphaned-entry-review"
     assert by_name["System Component"]["strategy_id"] == "system-component-review-only"
-    assert all(strategy["auto_executable"] is False for strategy in by_name.values())
+    for strategy in by_name.values():
+        assert_execution_disabled(strategy)
     assert report["summary"]["uninstall_strategy_counts"]["winget-uninstall"] == 1
 
 def test_cli_and_ai_provider_expose_inventory(

@@ -12,6 +12,7 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
@@ -47,7 +48,11 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
         assert_safe_to_execute_disabled(layer)
 
 
-def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_browser_inventory_excludes_sensitive_profile_data(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     roaming = tmp_path / "Roaming"
     firefox_profile = roaming / "Mozilla" / "Firefox" / "Profiles" / "abc.default-release"
     write_text_file(firefox_profile / "cache2" / "entry", "cache")
@@ -62,7 +67,7 @@ def test_browser_inventory_excludes_sensitive_profile_data(tmp_path: Path, write
     layer_paths = [layer["path"] for layer in profile["cache_layers"]]
     assert all("cookies.sqlite" not in path for path in layer_paths)
     assert all("logins.json" not in path for path in layer_paths)
-    assert report["execution_gate"]["cache_execution_enabled"] is False
+    assert_execution_disabled(report["execution_gate"], "cache_execution_enabled")
     assert any("never promotes cookies" in item for item in report["non_goals"])
 
 

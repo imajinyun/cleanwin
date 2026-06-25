@@ -10,10 +10,12 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates(
     assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = recovery_readiness_report()
 
@@ -21,7 +23,7 @@ def test_recovery_readiness_is_non_destructive_and_declares_gates(
     assert report["ready_for_recovery_planning"] is True
     assert report["ready_for_system_execution"] is False
     assert report["execution_gate"]["requires_recovery_snapshot"] is True
-    assert report["execution_gate"]["system_execution_enabled"] is False
+    assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
 
 
 def test_recovery_readiness_declares_snapshot_specs() -> None:

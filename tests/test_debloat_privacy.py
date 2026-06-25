@@ -12,14 +12,18 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 
 
-def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
+def test_report_is_non_destructive_and_gated(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = debloat_privacy_report(raw_registry_values={}, raw_appx_packages=[], env={})
 
     assert_readonly_report(report, DEBLOAT_PRIVACY_REPORT_SCHEMA)
-    assert report["execution_gate"]["system_execution_enabled"] is False
+    assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
     assert report["execution_gate"]["requires_registry_export"] is True
     assert any("does not remove AppX" in item for item in report["non_goals"])
 
