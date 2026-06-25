@@ -518,7 +518,9 @@ def test_destructive_tool_missing_gates_denied(
 
 
 def test_unknown_method_returns_jsonrpc_error(
-    cleanwin_test_env: CleanWinTestEnv, mcp_request_factory: MCPRequestFactory
+    cleanwin_test_env: CleanWinTestEnv,
+    mcp_request_factory: MCPRequestFactory,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     response = mcp_request(mcp_request_factory("unknown/method", request_id=8), cleanwin_test_env())
-    assert response["error"]["code"] == -32601
+    assert_field_values(response, {"error.code": -32601})

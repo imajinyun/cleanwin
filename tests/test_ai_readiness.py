@@ -39,6 +39,7 @@ AssertPayloadStatus = Callable[..., JSONPayload]
 AssertContainsAll = Callable[[set[str] | list[str], list[str]], None]
 AssertAnyTextContains = Callable[[list[str], str], None]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertExactSequence = Callable[[list[str], list[str]], list[str]]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -127,12 +128,12 @@ def test_ai_self_test_passes_expected_policy_checks(
 def test_ai_runbook_documents_safe_execution_gates(
     assert_payload_schema: AssertPayloadSchema,
     assert_field_values: AssertFieldValues,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     report = ai_runbook_report()
     assert_payload_schema(report, "cleanwin.ai-runbook.v1")
     tools = [step["tool"] for step in report["workflow"]]
-    assert tools[0] == "cleanwin_workflow_router"
-    assert tools[-1] == "cleanwin_execute_plan"
+    assert_exact_sequence([tools[0], tools[-1]], ["cleanwin_workflow_router", "cleanwin_execute_plan"])
     assert_field_values(report["workflow"][-1], {"destructive": True})
     required_args = report["required_execution_arguments"]
     assert_field_values(required_args, {"delete_mode": "recycle", "require_plan_context": True})
