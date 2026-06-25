@@ -18,6 +18,7 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertNoneMatch = Callable[[Sequence[str], Callable[[str], bool]], Sequence[str]]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
@@ -58,6 +59,7 @@ def test_browser_inventory_excludes_sensitive_profile_data(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_contains_all: AssertContainsAll,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_none_match: AssertNoneMatch,
 ) -> None:
     roaming = tmp_path / "Roaming"
     firefox_profile = roaming / "Mozilla" / "Firefox" / "Profiles" / "abc.default-release"
@@ -70,8 +72,8 @@ def test_browser_inventory_excludes_sensitive_profile_data(
     profile = next(profile for profile in report["profiles"] if profile["browser"] == "firefox")
     assert_contains_all(profile["sensitive_exclusions"], ["cookies.sqlite", "logins.json"])
     layer_paths = [layer["path"] for layer in profile["cache_layers"]]
-    assert all("cookies.sqlite" not in path for path in layer_paths)
-    assert all("logins.json" not in path for path in layer_paths)
+    assert_none_match(layer_paths, lambda path: "cookies.sqlite" in path)
+    assert_none_match(layer_paths, lambda path: "logins.json" in path)
     assert_execution_disabled(report["execution_gate"], "cache_execution_enabled")
     assert_any_text_contains(report["non_goals"], "never promotes cookies")
 

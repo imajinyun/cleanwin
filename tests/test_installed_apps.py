@@ -17,18 +17,20 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+AssertAnyMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
     assert_readonly_report: AssertReadonlyReport,
     assert_summary_counts: AssertSummaryCounts,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_any_match: AssertAnyMatch,
 ) -> None:
     report = installed_app_inventory_report(raw_registry_entries=[], env={})
 
     assert_readonly_report(report, INSTALLED_APP_INVENTORY_SCHEMA)
     assert_summary_counts(report, {"application_count": 0})
-    assert any(source["id"] == "winget" and not source["available"] for source in report["sources"])
+    assert_any_match(report["sources"], lambda source: source["id"] == "winget" and not source["available"])
     assert_any_text_contains(report["non_goals"], "does not uninstall")
 
 
