@@ -69,7 +69,8 @@ Use pytest-native patterns for new or updated tests:
 - Prefer plain `assert` and `pytest.raises`.
 - Reuse shared helpers from `tests/conftest.py` for CLI JSON calls, schema
   assertions, read-only report assertions, execution-disabled contracts, command
-  sequences, and schema registry samples.
+  sequences, schema registry samples, and boolean status fields such as
+  `valid`, `ready`, `passed`, and `allowed`.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
@@ -77,8 +78,9 @@ Use pytest-native patterns for new or updated tests:
 - Keep pytest governance budgets in `tests/test_pytest_governance.py` aligned
   when retiring legacy direct schema, read-only boolean, `safe_to_execute`, or
   execution-disabled flag assertions; do not add new direct assertions when a
-  shared helper exists. Current direct assertion budgets for those categories
-  should remain empty unless a migration plan explicitly reopens one.
+  shared helper exists. Current direct assertion budgets for those categories,
+  including direct status assertions, should remain empty unless a migration
+  plan explicitly reopens one.
 
 Minimum verification for ordinary code or test changes:
 
