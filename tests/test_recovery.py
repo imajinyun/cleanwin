@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA, recovery_readiness_report
@@ -11,6 +11,7 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates(
@@ -26,18 +27,23 @@ def test_recovery_readiness_is_non_destructive_and_declares_gates(
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
 
 
-def test_recovery_readiness_declares_snapshot_specs() -> None:
+def test_recovery_readiness_declares_snapshot_specs(assert_contains_all: AssertContainsAll) -> None:
     report = recovery_readiness_report()
     specs = {item["id"]: item for item in report["snapshot_specs"]}
 
-    assert "system-restore-point" in specs
-    assert "registry-export" in specs
-    assert "service-state" in specs
-    assert "scheduled-task-state" in specs
-    assert "appx-inventory" in specs
-    assert "installed-app-inventory" in specs
+    assert_contains_all(
+        specs,
+        [
+            "system-restore-point",
+            "registry-export",
+            "service-state",
+            "scheduled-task-state",
+            "appx-inventory",
+            "installed-app-inventory",
+        ],
+    )
     assert all(not spec["executed_by_report"] for spec in specs.values())
-    assert "registry-change" in specs["registry-export"]["required_before"]
+    assert_contains_all(specs["registry-export"]["required_before"], ["registry-change"])
 
 
 def test_cli_and_ai_provider_expose_recovery_readiness(

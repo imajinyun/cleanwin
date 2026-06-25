@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,8 @@ AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
@@ -54,6 +56,8 @@ def test_browser_inventory_excludes_sensitive_profile_data(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     roaming = tmp_path / "Roaming"
     firefox_profile = roaming / "Mozilla" / "Firefox" / "Profiles" / "abc.default-release"
@@ -64,13 +68,12 @@ def test_browser_inventory_excludes_sensitive_profile_data(
     report = browser_profile_inventory_report(env={"APPDATA": str(roaming), "LOCALAPPDATA": str(tmp_path / "Local")})
 
     profile = next(profile for profile in report["profiles"] if profile["browser"] == "firefox")
-    assert "cookies.sqlite" in profile["sensitive_exclusions"]
-    assert "logins.json" in profile["sensitive_exclusions"]
+    assert_contains_all(profile["sensitive_exclusions"], ["cookies.sqlite", "logins.json"])
     layer_paths = [layer["path"] for layer in profile["cache_layers"]]
     assert all("cookies.sqlite" not in path for path in layer_paths)
     assert all("logins.json" not in path for path in layer_paths)
     assert_execution_disabled(report["execution_gate"], "cache_execution_enabled")
-    assert any("never promotes cookies" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "never promotes cookies")
 
 
 def test_cli_ai_provider_exposes_browser_inventory(

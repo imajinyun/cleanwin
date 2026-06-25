@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -15,18 +15,21 @@ AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_report_is_non_destructive_and_gated(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = startup_service_inventory_report(raw_registry_values={}, raw_services=[], raw_tasks=[], env={})
 
     assert_readonly_report(report, STARTUP_SERVICE_INVENTORY_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
     assert report["execution_gate"]["requires_service_snapshot"] is True
-    assert any("does not disable startup" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "does not disable startup")
 
 
 def test_registry_and_startup_folder_entries_are_inventory_only(
@@ -34,6 +37,7 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     write_text_file: WriteTextFile,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     appdata = tmp_path / "Roaming"
     startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
@@ -56,7 +60,7 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     assert entries["Example"]["target_exists"] is True
     assert entries["MissingTarget"]["target_exists"] is False
     assert_safe_to_execute_disabled(entries["Example"])
-    assert "Example.lnk" in entries
+    assert_contains_all(entries, ["Example.lnk"])
     assert_summary_counts(report, {"startup_entry_count": 3, "missing_target_count": 1})
 
 

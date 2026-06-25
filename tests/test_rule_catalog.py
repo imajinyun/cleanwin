@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 import pytest
@@ -9,6 +9,7 @@ from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_r
 
 JSONPayload = dict[str, Any]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 
 
 @pytest.fixture
@@ -29,15 +30,21 @@ def catalog_rules(catalog: dict[str, Any]) -> list[dict[str, Any]]:
 def test_cleanup_rule_catalog_loads_versioned_rules(
     rule_catalog: dict[str, Any],
     assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     catalog = rule_catalog
 
     assert_payload_schema(catalog, CATALOG_SCHEMA)
     assert catalog["version"] == "1"
     assert catalog["rule_count"] >= 40
-    assert any(rule["rule_id"] == "dev-cache.npm.cache" for rule in catalog["dev_cache_rules"])
-    assert any(rule["rule_id"] == "dev-cache.poetry.cache" for rule in catalog["dev_cache_rules"])
-    assert any(rule["rule_id"] == "app-leftovers.vscode.cached-data" for rule in catalog["app_leftover_rules"])
+    assert_contains_all(
+        {rule["rule_id"] for rule in catalog["dev_cache_rules"]},
+        ["dev-cache.npm.cache", "dev-cache.poetry.cache"],
+    )
+    assert_contains_all(
+        {rule["rule_id"] for rule in catalog["app_leftover_rules"]},
+        ["app-leftovers.vscode.cached-data"],
+    )
 
 
 @pytest.mark.parametrize(

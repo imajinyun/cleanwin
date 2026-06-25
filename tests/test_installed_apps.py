@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -15,18 +15,21 @@ AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
     assert_readonly_report: AssertReadonlyReport,
     assert_summary_counts: AssertSummaryCounts,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     report = installed_app_inventory_report(raw_registry_entries=[], env={})
 
     assert_readonly_report(report, INSTALLED_APP_INVENTORY_SCHEMA)
     assert_summary_counts(report, {"application_count": 0})
     assert any(source["id"] == "winget" and not source["available"] for source in report["sources"])
-    assert any("does not uninstall" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "does not uninstall")
 
 
 def test_registry_entries_are_normalized_without_uninstalling(
@@ -68,6 +71,7 @@ def test_filesystem_package_sources_and_leftover_correlation(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     local = tmp_path / "Local"
     profile = tmp_path / "Profile"
@@ -95,9 +99,7 @@ def test_filesystem_package_sources_and_leftover_correlation(
     )
 
     apps = {(app["source"], app["display_name"]) for app in report["applications"]}
-    assert ("scoop", "git") in apps
-    assert ("chocolatey", "nodejs") in apps
-    assert ("portable-location", "PortableTool") in apps
+    assert_contains_all(apps, [("scoop", "git"), ("chocolatey", "nodejs"), ("portable-location", "PortableTool")])
     by_source_name = {(app["source"], app["display_name"]): app for app in report["applications"]}
     assert by_source_name[("scoop", "git")]["uninstall_strategy"]["strategy_id"] == "scoop-uninstall"
     assert by_source_name[("chocolatey", "nodejs")]["uninstall_strategy"]["strategy_id"] == "chocolatey-uninstall"

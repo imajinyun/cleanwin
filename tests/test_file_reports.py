@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +17,8 @@ AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -26,6 +28,8 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert_readonly_report: AssertReadonlyReport,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     downloads = make_directory(tmp_path / "Downloads")
     onedrive = make_directory(tmp_path / "OneDrive")
@@ -53,8 +57,11 @@ def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
     assert duplicate_group["potential_reclaimable_bytes"] == duplicate_a.stat().st_size
     assert {item["path"] for item in duplicate_group["files"]} == {str(duplicate_a), str(duplicate_b)}
     assert any(item["onedrive_or_cloud_path"] for item in duplicate_group["files"])
-    assert {group["extension"] for group in report["extension_groups"]} >= {".iso", ".zip"}
-    assert str(ignored) not in {item["path"] for group in report["duplicate_groups"] for item in group["files"]}
+    assert_contains_all({group["extension"] for group in report["extension_groups"]}, [".iso", ".zip"])
+    assert_contains_none(
+        {item["path"] for group in report["duplicate_groups"] for item in group["files"]},
+        [str(ignored)],
+    )
 
 
 def test_file_report_traversal_budget_stops_scanning(

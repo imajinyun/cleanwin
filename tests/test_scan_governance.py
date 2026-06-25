@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
 from cleanwincli.scan_governance import SCAN_GOVERNANCE_SCHEMA, scan_governance_report
@@ -12,21 +12,28 @@ AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
-def test_scan_governance_is_read_only_and_release_gated(assert_readonly_report: AssertReadonlyReport) -> None:
+def test_scan_governance_is_read_only_and_release_gated(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_contains_all: AssertContainsAll,
+    assert_any_text_contains: AssertAnyTextContains,
+) -> None:
     report = scan_governance_report()
 
     assert_readonly_report(report, SCAN_GOVERNANCE_SCHEMA)
     assert report["release_gate"]["requires_quality"] is True
-    assert "make quality" in report["release_gate"]["required_commands"]
+    assert_contains_all(report["release_gate"]["required_commands"], ["make quality"])
     assert report["release_gate"]["blocks_execution_expansion"] is True
-    assert any("does not import external cleaner rules" in item for item in report["non_goals"])
+    assert_any_text_contains(report["non_goals"], "does not import external cleaner rules")
 
 
 def test_scan_budgets_and_external_rule_contract_block_unsafe_imports(
     assert_payload_schema: AssertPayloadSchema,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = scan_governance_report()
     by_id = {budget["id"]: budget for budget in report["scan_budgets"]}
@@ -40,10 +47,10 @@ def test_scan_budgets_and_external_rule_contract_block_unsafe_imports(
     assert_payload_schema(contract, "cleanwin.external-rule-review.v1")
     assert contract["default_state"] == "report-only"
     assert_execution_disabled(contract)
-    assert "license" in contract["required_source_evidence"]
-    assert "sensitive_exclusions" in contract["required_safety_evidence"]
-    assert "raw shell command strings" in contract["blocked_patterns"]
-    assert "promotion-gate approval" in contract["promotion_requirements"]
+    assert_contains_all(contract["required_source_evidence"], ["license"])
+    assert_contains_all(contract["required_safety_evidence"], ["sensitive_exclusions"])
+    assert_contains_all(contract["blocked_patterns"], ["raw shell command strings"])
+    assert_contains_all(contract["promotion_requirements"], ["promotion-gate approval"])
 
 
 def test_cli_provider_and_schema_registry_expose_scan_governance(
