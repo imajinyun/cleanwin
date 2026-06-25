@@ -4,22 +4,19 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA, startup_service_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_report_is_non_destructive_and_gated() -> None:
+def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
     report = startup_service_inventory_report(raw_registry_values={}, raw_services=[], raw_tasks=[], env={})
 
-    assert report["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, STARTUP_SERVICE_INVENTORY_SCHEMA)
     assert report["execution_gate"]["system_execution_enabled"] is False
     assert report["execution_gate"]["requires_service_snapshot"] is True
     assert any("does not disable startup" in item for item in report["non_goals"])
@@ -70,12 +67,7 @@ def test_service_and_scheduled_task_fixtures_are_report_only() -> None:
     assert report["scheduled_tasks"][0]["target_exists"] is False
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("startup-service-inventory",),
-        ("ai-tools", "--provider", "startup-service-inventory"),
-    ],
-)
-def test_cli_and_ai_provider_expose_inventory(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
-    assert cleanwin_json(*args)["schema"] == STARTUP_SERVICE_INVENTORY_SCHEMA
+def test_cli_and_ai_provider_expose_inventory(
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+) -> None:
+    assert_cli_provider_schema_sample("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA)
