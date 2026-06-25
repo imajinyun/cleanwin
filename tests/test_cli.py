@@ -241,7 +241,10 @@ def test_package_cache_scans_common_windows_package_manager_caches(
     assert by_rule["package-cache.uv.cache"]["cache_owner"] == "uv"
 
 def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -262,7 +265,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert payload["summary"]["candidate_count"] == 4
@@ -274,11 +277,13 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     assert all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"])
 
 def test_app_leftovers_scans_expanded_electron_gpu_caches(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
-    local = root / "LocalAppData"
     cache_files = [
         (roaming / "Microsoft" / "Teams" / "GPUCache" / "shader.bin", "teams"),
         (roaming / "discord" / "GPUCache" / "shader.bin", "discord"),
@@ -295,7 +300,7 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["app-leftovers.teams-classic.gpu-cache"]["path"] == str(teams_gpu_cache)
@@ -304,7 +309,10 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
     assert str(vscode_user_data) not in {candidate["path"] for candidate in payload["candidates"]}
 
 def test_app_leftovers_skips_when_active_install_marker_exists(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -318,12 +326,15 @@ def test_app_leftovers_skips_when_active_install_marker_exists(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={"APPDATA": str(roaming), "LOCALAPPDATA": str(local), "USERPROFILE": str(root / "User")},
+        env=make_windows_cache_env(root),
     )
     assert payload["summary"]["candidate_count"] == 0
 
 def test_app_leftovers_skips_globbed_active_install_markers(
-    tmp_path: Path, cleanwin_json: CleanWinJSON, write_text_file: WriteTextFile
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -346,12 +357,7 @@ def test_app_leftovers_skips_globbed_active_install_markers(
         "app-leftovers",
         "--older-than-days",
         "0",
-        env={
-            "APPDATA": str(roaming),
-            "LOCALAPPDATA": str(local),
-            "PROGRAMFILES": str(program_files),
-            "USERPROFILE": str(root / "User"),
-        },
+        env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert str(discord_cache) not in paths
