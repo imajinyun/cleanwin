@@ -34,9 +34,12 @@ AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 AssertExactSet = Callable[[Collection[Any], Collection[Any]], set[Any]]
+AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
+AssertAtLeast = Callable[[int, int], int]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
+AssertPathExists = Callable[[Path], Path]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(
@@ -532,6 +535,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     assert_summary_counts: AssertSummaryCounts,
     assert_any_text_contains: AssertAnyTextContains,
     assert_field_values: AssertFieldValues,
+    assert_path_exists: AssertPathExists,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -562,7 +566,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_dry_run_summary(dry_run_payload, vscode_cache)
-    assert slack_cache.exists()
+    assert_path_exists(slack_cache)
 
 def test_browser_cache_scans_cache_only_directories_without_profile_data(
     tmp_path: Path,
@@ -672,6 +676,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     assert_text_contains_all: AssertTextContainsAll,
     assert_contains_all: AssertContainsAll,
     assert_field_values: AssertFieldValues,
+    assert_non_empty: AssertNonEmpty,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -685,7 +690,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     exclusions = review["sensitive_exclusions"]
-    assert exclusions
+    assert_non_empty(exclusions)
     assert_field_values(exclusions[0], {"category": "browser-cache"})
     excluded_patterns = "\n".join(item["pattern"] for item in exclusions[0]["excluded_patterns"])
     assert_text_contains_all(excluded_patterns, ["Cookies", "Login Data", "Extensions"])
@@ -706,6 +711,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
     assert_field_values: AssertFieldValues,
+    assert_path_exists: AssertPathExists,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -733,7 +739,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_dry_run_summary(dry_run_payload, uv_cache)
-    assert winget_cache.exists()
+    assert_path_exists(winget_cache)
 
 def test_package_cache_scans_additional_developer_package_caches(
     tmp_path: Path,
@@ -837,6 +843,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
     assert_field_values: AssertFieldValues,
+    assert_at_least: AssertAtLeast,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -853,7 +860,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
     details = payload["findings"][0]["review_details"]
     evidence = {item["path"]: item for item in details["path_evidence"]}
     assert_field_values(evidence[str(docker_log)], {"kind": "directory", "exists": True, "child_count": 1})
-    assert details["evidence_summary"]["existing_path_count"] >= 1
+    assert_at_least(details["evidence_summary"]["existing_path_count"], 1)
 
 def test_validate_plan_rejects_permanent_and_admin_candidates(
     tmp_path: Path,
