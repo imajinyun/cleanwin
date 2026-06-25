@@ -24,6 +24,7 @@ WriteBytesFile = Callable[[Path, bytes], Path]
 MakeDirectory = Callable[[Path], Path]
 MakeWindowsCacheEnv = Callable[[Path], dict[str, str]]
 AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
+AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
 ReadJSONFile = Callable[[Path], JSONPayload]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
@@ -210,6 +211,16 @@ def assert_plan_file_valid(cleanwin_json: CleanWinJSON) -> AssertPlanFileValid:
         return payload
 
     return _assert_plan_file_valid
+
+
+@pytest.fixture
+def assert_dry_run_result() -> AssertDryRunResult:
+    def _assert_dry_run_result(payload: JSONPayload, target: Path) -> JSONPayload:
+        assert payload["results"] == [{"status": "dry-run", "path": str(target), "mode": "recycle"}]
+        assert target.exists()
+        return payload
+
+    return _assert_dry_run_result
 
 
 @pytest.fixture
