@@ -14,6 +14,7 @@ RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
 CleanWinResultJSON = Callable[[subprocess.CompletedProcess[str]], JSONPayload]
 CleanWinJSON = Callable[..., JSONPayload]
 CleanWinPlanFile = Callable[..., JSONPayload]
+AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
@@ -40,13 +41,13 @@ def test_inspect_temp_finds_sandbox_candidate(
 def test_plan_validate_round_trip(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
-    cleanwin_json: CleanWinJSON,
+    assert_plan_file_valid: AssertPlanFileValid,
     make_temp_plan_fixture: MakeTempPlan,
 ) -> None:
     _, _, env = make_temp_plan_fixture(tmp_path, False)
     plan_file = tmp_path / "plan.json"
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
-    assert cleanwin_json("validate-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)["valid"]
+    assert_plan_file_valid(plan_file, env)
 
 def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     tmp_path: Path,

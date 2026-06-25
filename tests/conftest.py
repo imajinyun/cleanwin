@@ -23,6 +23,7 @@ WriteTextFile = Callable[[Path, str], Path]
 WriteBytesFile = Callable[[Path, bytes], Path]
 MakeDirectory = Callable[[Path], Path]
 MakeWindowsCacheEnv = Callable[[Path], dict[str, str]]
+AssertPlanFileValid = Callable[[Path, dict[str, str]], JSONPayload]
 ReadJSONFile = Callable[[Path], JSONPayload]
 ReadJSONLRecord = Callable[[Path], JSONPayload]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
@@ -199,6 +200,16 @@ def cleanwin_plan_file(run_cleanwin: RunCleanWin) -> CleanWinPlanFile:
         return load_json_file(plan_file)
 
     return _cleanwin_plan_file
+
+
+@pytest.fixture
+def assert_plan_file_valid(cleanwin_json: CleanWinJSON) -> AssertPlanFileValid:
+    def _assert_plan_file_valid(plan_file: Path, env: dict[str, str]) -> JSONPayload:
+        payload = cleanwin_json("validate-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
+        assert payload["valid"]
+        return payload
+
+    return _assert_plan_file_valid
 
 
 @pytest.fixture
