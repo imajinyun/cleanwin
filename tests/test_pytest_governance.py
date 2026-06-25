@@ -70,7 +70,7 @@ MIN_FIELD_HELPER_CALLS = 102
 MIN_NONNULL_FIELD_HELPER_ADOPTION_FILES = 1
 MIN_EXACT_HELPER_ADOPTION_FILES = 7
 MIN_SCALAR_HELPER_ADOPTION_FILES = 2
-MIN_PATH_HELPER_ADOPTION_FILES = 3
+MIN_PATH_HELPER_ADOPTION_FILES = 5
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -133,6 +133,8 @@ PATH_HELPER_ADOPTION_FILES = {
     "test_ai_contracts.py",
     "test_cli.py",
     "test_delete_ops.py",
+    "test_identity.py",
+    "test_windows_integration.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
