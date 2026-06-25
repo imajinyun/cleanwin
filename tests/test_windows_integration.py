@@ -18,17 +18,23 @@ pytestmark = pytest.mark.skipif(os.name != "nt", reason=WINDOWS_ONLY_REASON)
 JSONPayload = dict[str, Any]
 WriteTextFile = Callable[[Path, str], Path]
 AssertFieldValues = Callable[[JSONPayload, dict[str, object]], JSONPayload]
+AssertFieldsNotNone = Callable[[JSONPayload, list[str]], JSONPayload]
 AssertPathMissing = Callable[[Path], Path]
 
 
-def test_native_identity_reports_windows_fields(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_native_identity_reports_windows_fields(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_fields_not_none: AssertFieldsNotNone,
+) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
     assert identity["windows_native_available"], identity
-    assert identity["volume_serial_number"] is not None
-    assert identity["windows_file_index"] is not None
-    assert identity["windows_volume_serial_from_handle"] is not None
+    assert_fields_not_none(
+        identity,
+        ["volume_serial_number", "windows_file_index", "windows_volume_serial_from_handle"],
+    )
 
 
 @pytest.mark.skipif(
