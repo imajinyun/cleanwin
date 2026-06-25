@@ -360,7 +360,7 @@ Pytest 治理 smoke：
 make pytest-governance-smoke
 ```
 
-该检查会保持测试 pytest-native，约束直接 CLI subprocess 调用收敛到共享 helper，要求 `pytest.raises` 校验错误信息，对遗留的直接 schema 和只读布尔断言执行迁移预算，并防止 CI 和 Docker 沙箱重新引入 `unittest discover` 或绕过项目 `.venv`。
+该检查会保持测试 pytest-native，约束直接 CLI subprocess 调用收敛到共享 helper，要求 `pytest.raises` 校验错误信息，对遗留的直接 schema、只读布尔、`safe_to_execute` 和 execution-disabled flag 断言执行迁移预算，并防止 CI 和 Docker 沙箱重新引入 `unittest discover` 或绕过项目 `.venv`。
 
 可选 Docker 沙箱：
 

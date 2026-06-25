@@ -27,6 +27,34 @@ READONLY_BOOLEAN_KEYS = {
     "executes_system_commands": False,
 }
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+EXECUTION_DISABLED_ASSERTION_ALLOWLIST = {
+    ("test_ai_contracts.py", "test_workflow_context_schema_samples_are_registered"): 1,
+    ("test_ai_readiness.py", "test_workflow_trace_documents_required_artifact_chain"): 1,
+    ("test_browser_inventory.py", "test_browser_inventory_excludes_sensitive_profile_data"): 1,
+    ("test_debloat_privacy.py", "test_report_is_non_destructive_and_gated"): 1,
+    ("test_installed_apps.py", "test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans"): 1,
+    ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 2,
+    ("test_official_commands.py", "test_report_covers_windows_owned_cleanup_surfaces"): 2,
+    ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 3,
+    ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
+    ("test_promotion_gates.py", "test_promotion_gates_cover_high_risk_report_surfaces"): 1,
+    ("test_recovery.py", "test_recovery_readiness_is_non_destructive_and_declares_gates"): 1,
+    ("test_startup_inventory.py", "test_report_is_non_destructive_and_gated"): 1,
+    ("test_system_health.py", "test_system_health_report_is_read_only_and_gated"): 2,
+    ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
+}
+EXECUTION_DISABLED_KEYS = {
+    "ai_auto_call_allowed",
+    "auto_executable",
+    "backup_delete_execution_enabled",
+    "cache_execution_enabled",
+    "disable_revert_execution_enabled",
+    "execution_enabled",
+    "executes_by_report",
+    "preset_execution_enabled",
+    "system_execution_enabled",
+    "system_repair_execution_enabled",
+}
 
 
 class ParsedTestModule(NamedTuple):
@@ -238,6 +266,26 @@ def test_direct_safe_to_execute_assertions_stay_in_migration_budget(repo_root: P
     assert observed == SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST
 
 
+def test_direct_execution_disabled_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_execution_disabled_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == EXECUTION_DISABLED_ASSERTION_ALLOWLIST
+
+
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
     assignments: dict[str, str] = {}
     for node in ast.walk(tree):
@@ -343,6 +391,12 @@ def _is_direct_safe_to_execute_assertion(node: ast.AST) -> bool:
     return _contains_safe_to_execute_disabled_check(node.test)
 
 
+def _is_direct_execution_disabled_assertion(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Assert):
+        return False
+    return _contains_execution_disabled_check(node.test)
+
+
 def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
         return _is_safe_to_execute_subscript(node.operand)
@@ -366,8 +420,35 @@ def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
     return False
 
 
+def _contains_execution_disabled_check(node: ast.AST) -> bool:
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return _is_execution_disabled_subscript(node.operand)
+    if isinstance(node, ast.Compare):
+        left_is_disabled_flag = _is_execution_disabled_subscript(node.left)
+        for operator, comparator in zip(node.ops, node.comparators, strict=False):
+            if isinstance(operator, ast.Is):
+                if left_is_disabled_flag and _constant_bool(comparator) is False:
+                    return True
+                if _is_execution_disabled_subscript(comparator) and _constant_bool(node.left) is False:
+                    return True
+            if isinstance(operator, ast.Eq):
+                if left_is_disabled_flag and _constant_bool(comparator) is False:
+                    return True
+                if _is_execution_disabled_subscript(comparator) and _constant_bool(node.left) is False:
+                    return True
+    if isinstance(node, ast.Call):
+        return any(_contains_execution_disabled_check(child) for child in ast.iter_child_nodes(node))
+    if isinstance(node, (ast.BoolOp, ast.GeneratorExp, ast.ListComp, ast.SetComp, ast.DictComp)):
+        return any(_contains_execution_disabled_check(child) for child in ast.iter_child_nodes(node))
+    return False
+
+
 def _is_safe_to_execute_subscript(node: ast.AST) -> bool:
     return isinstance(node, ast.Subscript) and _slice_value(node.slice) == "safe_to_execute"
+
+
+def _is_execution_disabled_subscript(node: ast.AST) -> bool:
+    return isinstance(node, ast.Subscript) and (_slice_value(node.slice) in EXECUTION_DISABLED_KEYS)
 
 
 def _readonly_boolean_subscript_expected(node: ast.AST) -> bool | None:

@@ -75,8 +75,9 @@ Use pytest-native patterns for new or updated tests:
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
   mode.
 - Keep pytest governance budgets in `tests/test_pytest_governance.py` aligned
-  when retiring legacy direct schema or read-only boolean assertions; do not add
-  new direct assertions when a shared helper exists.
+  when retiring legacy direct schema, read-only boolean, `safe_to_execute`, or
+  execution-disabled flag assertions; do not add new direct assertions when a
+  shared helper exists.
 
 Minimum verification for ordinary code or test changes:
 

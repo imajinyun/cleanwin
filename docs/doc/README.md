@@ -361,7 +361,7 @@ Pytest governance smoke:
 make pytest-governance-smoke
 ```
 
-This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, enforces migration budgets for legacy direct schema and read-only boolean assertions, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
+This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, enforces migration budgets for legacy direct schema, read-only boolean, `safe_to_execute`, and execution-disabled flag assertions, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
 
 Optional Docker sandbox:
 
