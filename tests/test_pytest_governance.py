@@ -23,11 +23,24 @@ SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_browser_inventory.py", "test_browser_inventory_excludes_sensitive_profile_data"): 2,
+    ("test_cli.py", "test_app_leftovers_scans_common_uninstalled_app_cache_and_logs"): 2,
+    ("test_cli.py", "test_browser_cache_scans_cache_only_directories_without_profile_data"): 2,
+    ("test_file_reports.py", "test_file_report_finds_large_files_duplicates_extensions_and_onedrive"): 1,
+    ("test_identity.py", "test_compare_identity_detects_content_replacement"): 1,
+    ("test_installed_apps.py", "test_report_is_non_destructive_and_supports_non_windows"): 1,
+    ("test_recovery.py", "test_recovery_readiness_declares_snapshot_specs"): 1,
+    ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
+}
 COLLECTION_ASSERTION_HELPERS = {
     "assert_contains_all",
     "assert_contains_none",
     "assert_text_contains_all",
     "assert_any_text_contains",
+    "assert_any_match",
+    "assert_all_match",
+    "assert_none_match",
 }
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
@@ -333,6 +346,26 @@ def test_direct_summary_assertions_stay_in_migration_budget(repo_root: Path) -> 
     assert observed == SUMMARY_ASSERTION_ALLOWLIST
 
 
+def test_direct_predicate_assertions_stay_in_migration_budget(repo_root: Path) -> None:
+    observed: dict[tuple[str, str], int] = {}
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(module.tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+
+        for node in ast.walk(module.tree):
+            if not _is_direct_predicate_assertion(node):
+                continue
+            key = (path.name, _enclosing_test_name(node, parents) or "<module>")
+            observed[key] = observed.get(key, 0) + 1
+
+    assert observed == PREDICATE_ASSERTION_ALLOWLIST
+
+
 def test_collection_and_text_assertion_helpers_are_adopted(repo_root: Path) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
@@ -468,6 +501,18 @@ def _is_direct_status_assertion(node: ast.AST) -> bool:
 
 def _is_direct_summary_assertion(node: ast.AST) -> bool:
     return isinstance(node, ast.Assert) and _contains_summary_subscript(node.test)
+
+
+def _is_direct_predicate_assertion(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Assert):
+        return False
+    return _contains_any_all_call(node.test)
+
+
+def _contains_any_all_call(node: ast.AST) -> bool:
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"any", "all"}:
+        return True
+    return any(_contains_any_all_call(child) for child in ast.iter_child_nodes(node))
 
 
 def _contains_safe_to_execute_disabled_check(node: ast.AST) -> bool:
