@@ -88,7 +88,7 @@ def test_safe_delete_fails_closed_on_identity_mismatch(tmp_path: Path, write_tex
     planned = capture_filesystem_identity(target)
     write_text_file(target, "changed")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Filesystem identity mismatch"):
         safe_delete(
             str(target),
             dry_run=False,
