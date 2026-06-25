@@ -11,6 +11,7 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 
 
 def test_preset_catalog_is_read_only_and_non_executable(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -25,6 +26,7 @@ def test_preset_catalog_is_read_only_and_non_executable(assert_readonly_report: 
 
 def test_preset_catalog_contains_safe_templates_and_review_gates(
     assert_payload_schema: AssertPayloadSchema,
+    assert_readonly_payload: AssertReadonlyPayload,
 ) -> None:
     report = preset_catalog_report()
     by_id = {preset["id"]: preset for preset in report["presets"]}
@@ -36,7 +38,7 @@ def test_preset_catalog_contains_safe_templates_and_review_gates(
     assert browser["categories"] == ["browser-cache"]
     assert "browser-cache.chrome.cache" in browser["rule_ids"]
     assert_payload_schema(browser["plan_template"], "cleanwin.preset-plan-template.v1")
-    assert browser["plan_template"]["destructive"] is False
+    assert_readonly_payload(browser["plan_template"])
     assert browser["plan_template"]["requires_validate_plan"] is True
     assert browser["plan_template"]["requires_matching_dry_run_token"] is True
     assert any("cookies" in step.lower() for step in browser["review_steps"])

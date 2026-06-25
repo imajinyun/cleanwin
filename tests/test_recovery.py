@@ -9,6 +9,7 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates(
@@ -39,6 +40,7 @@ def test_recovery_readiness_declares_snapshot_specs() -> None:
 
 def test_cli_and_ai_provider_expose_recovery_readiness(
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+    assert_readonly_payload: AssertReadonlyPayload,
 ) -> None:
     sample = assert_cli_provider_schema_sample("recovery-readiness", RECOVERY_READINESS_SCHEMA)
-    assert sample["executes_system_commands"] is False
+    assert_readonly_payload(sample)

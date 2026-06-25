@@ -13,10 +13,7 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
-    ("test_presets.py", "test_preset_catalog_contains_safe_templates_and_review_gates"): 1,
-    ("test_recovery.py", "test_cli_and_ai_provider_expose_recovery_readiness"): 1,
-}
+READONLY_BOOLEAN_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 READONLY_BOOLEAN_KEYS = {
     "destructive": False,
     "dry_run": True,
