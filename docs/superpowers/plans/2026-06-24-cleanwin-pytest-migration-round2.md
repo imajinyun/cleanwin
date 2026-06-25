@@ -1037,6 +1037,115 @@ through the repository `.venv`.
   pytest governance smoke reported `21 passed`, and wheel/sdist install smoke
   passed.
 
+## Round 15 Pytest Governance Plan
+
+**Goal:** Continue shrinking the remaining direct pytest assertions by extending
+path, non-null field, and helper-adoption governance in focused test modules.
+
+**Architecture:** Keep all changes test/doc/governance-only. Prefer existing
+fixtures in `tests/conftest.py`, add only narrow helper surface for repeated
+patterns, and close each migration with focused pytest plus governance smoke.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests,
+Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed.
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.IEHG9P7iwf`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty. Project
+conventions require pytest-native tests, shared helpers, and Makefile-backed
+`.venv` tooling. The active project workflow also requires avoiding system
+Python and keeping local `.aiflow`, `.harness`, `.venv`, caches, and build
+outputs out of commits.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared assertion helper support layer",
+      "locator": "existing field, path, scalar, exact, predicate, and returncode fixtures",
+      "source": "explicit",
+      "reason": "remaining repeated non-null and path assertions should use shared helpers with consistent diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_identity.py",
+      "target_type": "file",
+      "symbol": "identity path assertion cluster",
+      "locator": "safe-delete identity mismatch path preservation assertion",
+      "source": "explicit",
+      "reason": "the test still has a direct path existence assertion that can migrate to the path helper",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_windows_integration.py",
+      "target_type": "file",
+      "symbol": "Windows identity and recycle smoke assertions",
+      "locator": "native identity field presence and recycle target missing checks",
+      "source": "explicit",
+      "reason": "Windows-only tests still have direct non-null and path-missing assertions that can migrate without changing runtime behavior",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest governance helper adoption checks",
+      "locator": "helper family definitions, adoption files, and AST budget checks",
+      "source": "explicit",
+      "reason": "new helper adoption should be tracked by machine-readable governance smoke",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/doc/README.md docs/doc/README.CN.md AGENTS.md",
+      "target_type": "file",
+      "symbol": "pytest helper workflow documentation",
+      "locator": "test workflow helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should stay aligned when shared helper guidance changes",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is
+duplicated pytest assertions that can drift from shared helper contracts.
+
+### Round 15 Tasks
+
+- `PYTEST-GOV-198`: Record this Round 15 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-199`: Migrate identity safe-delete path preservation assertions to shared path helpers.
+- `PYTEST-GOV-200`: Migrate Windows recycle integration path-missing assertions to shared path helpers.
+- `PYTEST-GOV-201`: Add reusable non-null field assertion helper for repeated structured payload checks.
+- `PYTEST-GOV-202`: Migrate Windows native identity non-null field assertions to the shared non-null field helper.
+- `PYTEST-GOV-203`: Add pytest governance smoke coverage for non-null field helper availability and adoption.
+- `PYTEST-GOV-204`: Tighten path helper adoption evidence to include identity and Windows integration tests.
+- `PYTEST-GOV-205`: Tighten helper workflow documentation for path and non-null field assertions.
+- `PYTEST-GOV-206`: Run focused pytest governance gates and tighten helper adoption budgets.
+- `PYTEST-GOV-207`: Run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest check before
+committing. The final task must run `make quality` so lint, pytest, type
+checking, compile, packaging, smoke tests, and pytest governance all execute
+through the repository `.venv`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
