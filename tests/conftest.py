@@ -30,7 +30,9 @@ MakeTempPlan = Callable[[Path, bool], TempPlanFixture]
 AssertCliProviderSchema = Callable[[str, str], None]
 AssertCliProviderSchemas = Callable[[SchemaPairs], None]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertAIProviderSchema = Callable[[str, str], None]
+AssertAIProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertAIProviderSchemas = Callable[[SchemaPairs], None]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
@@ -194,6 +196,15 @@ def assert_cli_provider_schema(cleanwin_json: CleanWinJSON) -> AssertCliProvider
 
 
 @pytest.fixture
+def assert_cli_provider_schema_with_env(cleanwin_json: CleanWinJSON) -> AssertCliProviderSchemaWithEnv:
+    def _assert_cli_provider_schema_with_env(command: str, schema: str, env: dict[str, str]) -> None:
+        assert cleanwin_json(command, env=env)["schema"] == schema
+        assert cleanwin_json("ai-tools", "--provider", command, env=env)["schema"] == schema
+
+    return _assert_cli_provider_schema_with_env
+
+
+@pytest.fixture
 def assert_cli_provider_schemas(assert_cli_provider_schema: AssertCliProviderSchema) -> AssertCliProviderSchemas:
     def _assert_cli_provider_schemas(pairs: SchemaPairs) -> None:
         for command, schema in pairs:
@@ -220,6 +231,14 @@ def assert_ai_provider_schema(cleanwin_json: CleanWinJSON) -> AssertAIProviderSc
         assert cleanwin_json("ai-tools", "--provider", provider)["schema"] == schema
 
     return _assert_ai_provider_schema
+
+
+@pytest.fixture
+def assert_ai_provider_schema_with_env(cleanwin_json: CleanWinJSON) -> AssertAIProviderSchemaWithEnv:
+    def _assert_ai_provider_schema_with_env(provider: str, schema: str, env: dict[str, str]) -> None:
+        assert cleanwin_json("ai-tools", "--provider", provider, env=env)["schema"] == schema
+
+    return _assert_ai_provider_schema_with_env
 
 
 @pytest.fixture

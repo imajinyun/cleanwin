@@ -5,8 +5,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from cleanwincli.file_reports import FILE_REPORT_SCHEMA, file_report
 
 JSONPayload = dict[str, Any]
@@ -15,6 +13,7 @@ WriteBytesFile = Callable[[Path, bytes], Path]
 MakeDirectory = Callable[[Path], Path]
 AssertSchemaSamples = Callable[[list[str]], dict[str, JSONPayload]]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 
 
 def test_file_report_finds_large_files_duplicates_extensions_and_onedrive(
@@ -66,21 +65,16 @@ def test_file_report_traversal_budget_stops_scanning(tmp_path: Path, write_bytes
     assert report["traversal_budget"]["limit_reached"] is True
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("file-report",),
-        ("ai-tools", "--provider", "file-report"),
-    ],
-)
 def test_cli_provider_exposes_file_report(
-    args: tuple[str, ...], tmp_path: Path, cleanwin_json: CleanWinJSON, write_bytes_file: WriteBytesFile
+    tmp_path: Path,
+    write_bytes_file: WriteBytesFile,
+    assert_cli_provider_schema_with_env: AssertCliProviderSchemaWithEnv,
 ) -> None:
     root = tmp_path / "Downloads"
     write_bytes_file(root / "large.bin", b"x" * 128)
     env = {"CLEANWIN_FILE_REPORT_ROOTS": str(root)}
 
-    assert cleanwin_json(*args, env=env)["schema"] == FILE_REPORT_SCHEMA
+    assert_cli_provider_schema_with_env("file-report", FILE_REPORT_SCHEMA, env)
 
 
 def test_schema_registry_exposes_file_report(assert_schema_samples: AssertSchemaSamples) -> None:
