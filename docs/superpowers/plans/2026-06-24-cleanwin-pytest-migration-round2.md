@@ -823,6 +823,138 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 
 Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
 
+## Round 12 Pytest Governance Plan
+
+**Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
+
+**Architecture:** Keep all changes test-only and documentation-only. Extend `tests/conftest.py` with narrowly scoped helper fixtures, make the helper family visible in `tests/test_pytest_governance.py`, migrate one small assertion cluster per commit, and use Makefile-backed `.venv` validation throughout.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.pDG1KJ56sM`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared scalar and count assertion helpers",
+      "locator": "near existing exact, field, collection, and predicate helpers",
+      "source": "explicit",
+      "reason": "remaining tests repeat scalar membership, exact count, and text any-of checks",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "scalar helper adoption governance smoke",
+      "locator": "helper registration and adoption checks",
+      "source": "explicit",
+      "reason": "new scalar/count helpers should be machine-visible and adopted by migrated files",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_debloat_privacy.py",
+      "target_type": "file",
+      "symbol": "finding count assertions",
+      "locator": "direct len(appx_findings) and len(oem_findings) checks",
+      "source": "explicit",
+      "reason": "read-only finding tests should use shared exact-count diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_rule_catalog.py",
+      "target_type": "file",
+      "symbol": "rationale any-of text assertion",
+      "locator": "direct regenerated or recreated rationale check",
+      "source": "explicit",
+      "reason": "any-of text checks should be expressed through a shared helper",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_identity.py",
+      "target_type": "file",
+      "symbol": "identity error text assertion",
+      "locator": "direct substring assertion over validation errors",
+      "source": "explicit",
+      "reason": "error text checks should reuse shared text helper diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_contracts.py",
+      "target_type": "file",
+      "symbol": "AI destructive tool sequence assertion",
+      "locator": "direct destructive tool name list equality",
+      "source": "explicit",
+      "reason": "tool ordering contract should use shared exact sequence helper",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_readiness.py",
+      "target_type": "file",
+      "symbol": "AI readiness scalar membership assertions",
+      "locator": "distribution version and recommended command membership checks",
+      "source": "explicit",
+      "reason": "scalar/list membership checks should use shared helper diagnostics",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py",
+      "target_type": "file",
+      "symbol": "CLI exact path set assertion",
+      "locator": "direct path set equality check",
+      "source": "explicit",
+      "reason": "path set equality should use shared exact set helper",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest scalar helper workflow documentation",
+      "locator": "pytest governance helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe when to use count, one-of, and text any-of helpers",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is repeated compact assertion style that can drift from shared pytest diagnostics.
+
+### Round 12 Tasks
+
+- `PYTEST-GOV-168`: Record this Round 12 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-169`: Add reusable exact-count, scalar one-of, and any-of text assertion helpers.
+- `PYTEST-GOV-170`: Add pytest governance smoke coverage for the scalar helper family and adoption evidence.
+- `PYTEST-GOV-171`: Migrate debloat/privacy finding count assertions.
+- `PYTEST-GOV-172`: Migrate rule-catalog rationale any-of text assertions.
+- `PYTEST-GOV-173`: Migrate identity validation error text assertions.
+- `PYTEST-GOV-174`: Migrate AI contract destructive tool sequence assertions.
+- `PYTEST-GOV-175`: Migrate AI readiness scalar membership assertions.
+- `PYTEST-GOV-176`: Migrate CLI exact path set assertions and run focused governance gates.
+- `PYTEST-GOV-177`: Update pytest workflow docs, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
 ## Round 11 Pytest Governance Plan
 
 **Goal:** Continue shrinking repeated low-level assertions by introducing focused helpers for exact collection equality, subprocess return-code contracts, and non-empty collection expectations, then migrate the remaining compact assertion clusters.
