@@ -178,6 +178,131 @@ Filtered candidates: this is a test maintainability migration. No production def
   as local aiflow evidence and confirmed the queue had 136 completed runs with no pending,
   failed, canceled, or leased runs.
 
+## Round 4 Pytest Governance Plan
+
+Step1 status: completed. `bits-unit-test-gen` preparation produced
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.vaAI47e5IH`.
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty; project convention
+is pytest-first, venv-first, and shared-helper-first.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared pytest helper layer",
+      "locator": "tests/conftest.py fixtures",
+      "source": "explicit",
+      "reason": "remaining tests need shared helpers for schema samples, execution-disabled contracts, safe-to-execute checks, and command sequence assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest governance AST checks",
+      "locator": "tests/test_pytest_governance.py",
+      "source": "explicit",
+      "reason": "governance budgets must shrink as direct schema/read-only assertions are migrated",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_contracts.py",
+      "target_type": "file",
+      "symbol": "AI contract schema sample assertions",
+      "locator": "tests/test_ai_contracts.py direct schema assertions",
+      "source": "explicit",
+      "reason": "largest remaining cluster of direct schema and read-only sample assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py",
+      "target_type": "file",
+      "symbol": "CLI scenario schema assertions",
+      "locator": "tests/test_cli.py direct schema assertions",
+      "source": "explicit",
+      "reason": "CLI scenario suite still has direct payload schema assertions that can reuse helpers without restructuring the suite",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "MCP resource and tool schema assertions",
+      "locator": "tests/test_mcp_server.py direct schema assertions",
+      "source": "explicit",
+      "reason": "MCP helpers already centralize structured content; remaining direct schema checks should share payload helper behavior",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_debloat_privacy.py",
+      "target_type": "file",
+      "symbol": "debloat privacy safety assertions",
+      "locator": "tests/test_debloat_privacy.py safe_to_execute and evidence schema assertions",
+      "source": "explicit",
+      "reason": "read-only inventory tests can share schema and safe-to-execute helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_installed_apps.py",
+      "target_type": "file",
+      "symbol": "installed app safety assertions",
+      "locator": "tests/test_installed_apps.py uninstall strategy assertions",
+      "source": "explicit",
+      "reason": "nested uninstall strategy schema and auto-executable assertions should use shared helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_execution_contracts.py",
+      "target_type": "file",
+      "symbol": "execution contract disabled assertions",
+      "locator": "tests/test_execution_contracts.py execution_enabled assertions",
+      "source": "explicit",
+      "reason": "execution contract tests repeat disabled flag checks and should use shared helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_file_reports.py tests/test_browser_inventory.py tests/test_startup_inventory.py tests/test_system_health.py",
+      "target_type": "file",
+      "symbol": "inventory safe_to_execute assertions",
+      "locator": "safe_to_execute false assertions across inventory tests",
+      "source": "explicit",
+      "reason": "read-only inventory tests repeat safe_to_execute false checks",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This round is a pytest governance debt-reduction pass. It does not add cleanup execution paths or production behavior changes."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: this round targets test maintainability and governance
+coverage. No production defect was proven by the remaining assertion style.
+
+### Round 4 Tasks
+
+- `PYTEST-GOV-88`: Record the Round 4 pytest governance plan and queue the next 10 tasks.
+- `PYTEST-GOV-89`: Migrate AI contract schema sample assertions to shared helpers and shrink the direct schema budget.
+- `PYTEST-GOV-90`: Migrate CLI scenario schema assertions to shared helpers and shrink the direct schema budget.
+- `PYTEST-GOV-91`: Migrate MCP resource/tool schema assertions to shared helpers and shrink the direct schema budget.
+- `PYTEST-GOV-92`: Migrate nested report schema assertions in debloat, installed app, and official command tests.
+- `PYTEST-GOV-93`: Add shared safe-to-execute assertions and migrate read-only inventory tests.
+- `PYTEST-GOV-94`: Govern direct safe-to-execute false assertions with an AST migration budget.
+- `PYTEST-GOV-95`: Extend execution-disabled helpers for named gate flags and migrate execution contract tests.
+- `PYTEST-GOV-96`: Govern direct execution-disabled flag assertions and update pytest workflow docs.
+- `PYTEST-GOV-97`: Run the final quality gate, generate the aiflow governance report, and record Round 4 evidence.
+
 ## Explicit Non-Goal
 
 Do not rewrite `tests/test_cli.py` in this round. It remains a dedicated future task because it should first get scenario-level fixtures before class removal.
