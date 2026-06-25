@@ -18,6 +18,7 @@ CleanWinPlanFile = Callable[..., JSONPayload]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 WriteTextFile = Callable[[Path, str], Path]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 
 
 def test_capture_identity_contains_replay_fields(
@@ -66,6 +67,8 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     make_temp_plan_fixture: MakeTempPlan,
     write_text_file: WriteTextFile,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
+    assert_payload_status_false: AssertPayloadStatus,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, False)
     plan_file = tmp_path / "plan.json"
@@ -81,11 +84,11 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
 
     assert_payload_schema(raw["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
     plan = plan_from_dict(raw)
-    assert validate_plan_payload(plan, raw, require_context=False)["valid"] is True
+    assert_payload_status_true(validate_plan_payload(plan, raw, require_context=False), "valid")
 
     write_text_file(target, "changed")
     validation = validate_plan_payload(plan, raw, require_context=False)
-    assert validation["valid"] is False
+    assert_payload_status_false(validation, "valid")
     assert "Filesystem identity mismatch" in "\n".join(validation["errors"])
 
 

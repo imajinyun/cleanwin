@@ -21,6 +21,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 
 
 def test_disable_revert_contract_is_non_executable(
@@ -116,7 +117,9 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
         assert_execution_disabled(sample["capability"])
 
 
-def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete() -> None:
+def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete(
+    assert_payload_status_false: AssertPayloadStatus,
+) -> None:
     tool = next(tool for tool in tool_catalog()["tools"] if tool["name"] == "cleanwin_execute_plan")
 
     delete_mode = tool["parameters"]["properties"]["delete_mode"]
@@ -133,5 +136,5 @@ def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete() -> None:
         },
         source="test",
     )
-    assert denied["allowed"] is False
+    assert_payload_status_false(denied, "allowed")
     assert "RECYCLE_MODE_REQUIRED" in {reason["code"] for reason in denied["blocking_reasons"]}
