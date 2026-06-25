@@ -353,7 +353,7 @@ The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that envir
 .venv/bin/python cleanwin.py --json doctor
 ```
 
-New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` instead of repeating `unittest.TestCase` setup methods.
+New tests should prefer pytest function style with native `assert`, `tmp_path`, `monkeypatch`, `pytest.raises`, and `pytest.mark.parametrize`. Put reusable subprocess or JSON helpers in `tests/conftest.py` or focused MCP helpers instead of repeating `unittest.TestCase` setup methods. Exception-path tests should assert the error contract with `pytest.raises(..., match=...)`.
 
 Pytest governance smoke:
 
@@ -361,7 +361,7 @@ Pytest governance smoke:
 make pytest-governance-smoke
 ```
 
-This guard keeps test updates pytest-native and checks that CI and Docker sandbox paths do not reintroduce `unittest discover`.
+This guard keeps test updates pytest-native, keeps direct CLI subprocess calls in shared helpers, requires `pytest.raises` message checks, and checks that CI and Docker sandbox paths do not reintroduce `unittest discover` or bypass the project `.venv`.
 
 Optional Docker sandbox:
 
