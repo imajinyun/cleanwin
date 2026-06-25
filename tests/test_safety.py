@@ -13,6 +13,8 @@ from cleanwincli.protection import (
 )
 
 WriteTextFile = Callable[[Path, str], Path]
+JSONPayload = dict[str, object]
+AssertFieldValues = Callable[[JSONPayload, dict[str, object]], JSONPayload]
 
 
 def dangerous_windows_paths() -> list[str]:
@@ -39,10 +41,18 @@ def test_relative_traversal_and_control_paths_are_rejected(path: str, message: s
         validate_path_text(path)
 
 
-def test_registry_protected_prefixes_are_report_only() -> None:
-    assert is_protected_registry_key(r"HKLM\SYSTEM\CurrentControlSet\Services") is True
-    assert is_protected_registry_key(r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run") is True
-    assert is_protected_registry_key(r"HKCU\Software\ExampleVendor\Cache") is False
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        (r"HKLM\SYSTEM\CurrentControlSet\Services", True),
+        (r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run", True),
+        (r"HKCU\Software\ExampleVendor\Cache", False),
+    ],
+)
+def test_registry_protected_prefixes_are_report_only(
+    key: str, expected: bool, assert_field_values: AssertFieldValues
+) -> None:
+    assert_field_values({"protected": is_protected_registry_key(key)}, {"protected": expected})
 
 
 def test_symlink_candidate_is_rejected(tmp_path: Path, write_text_file: WriteTextFile) -> None:
@@ -57,24 +67,17 @@ def test_symlink_candidate_is_rejected(tmp_path: Path, write_text_file: WriteTex
 
 
 @pytest.mark.parametrize(
-    "path",
+    ("path", "expected"),
     [
-        r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cache",
-        r"C:\Users\alice\AppData\Local\Microsoft\Edge\User Data\Profile 1\Code Cache",
-        r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Profile 2\Cache",
-        r"C:\Users\alice\AppData\Local\Mozilla\Firefox\Profiles\abcd1234.work\cache2",
+        (r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cache", False),
+        (r"C:\Users\alice\AppData\Local\Microsoft\Edge\User Data\Profile 1\Code Cache", False),
+        (r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Profile 2\Cache", False),
+        (r"C:\Users\alice\AppData\Local\Mozilla\Firefox\Profiles\abcd1234.work\cache2", False),
+        (r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cookies", True),
+        (r"C:\Users\alice\AppData\Roaming\Mozilla\Firefox\Profiles", True),
     ],
 )
-def test_browser_cache_suffix_is_allowed(path: str) -> None:
-    assert is_sensitive_user_data(path) is False
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cookies",
-        r"C:\Users\alice\AppData\Roaming\Mozilla\Firefox\Profiles",
-    ],
-)
-def test_browser_profile_data_remains_sensitive(path: str) -> None:
-    assert is_sensitive_user_data(path) is True
+def test_browser_profile_sensitivity_is_classified(
+    path: str, expected: bool, assert_field_values: AssertFieldValues
+) -> None:
+    assert_field_values({"sensitive": is_sensitive_user_data(path)}, {"sensitive": expected})

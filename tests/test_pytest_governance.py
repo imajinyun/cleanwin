@@ -46,7 +46,7 @@ EXACT_ASSERTION_HELPERS = {
     "assert_returncode",
 }
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
-MIN_FIELD_HELPER_CALLS = 100
+MIN_FIELD_HELPER_CALLS = 102
 MIN_EXACT_HELPER_ADOPTION_FILES = 7
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
@@ -84,6 +84,7 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_promotion_gates.py",
     "test_recovery.py",
     "test_rule_catalog.py",
+    "test_safety.py",
     "test_scan_governance.py",
     "test_startup_inventory.py",
     "test_windows_smoke.py",
