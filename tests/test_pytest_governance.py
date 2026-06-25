@@ -38,6 +38,8 @@ FIELD_ASSERTION_HELPERS = {
     "assert_field_values",
     "assert_fields_present",
 }
+MIN_FIELD_HELPER_ADOPTION_FILES = 18
+MIN_FIELD_HELPER_CALLS = 100
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -62,6 +64,7 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_ai_contracts.py",
     "test_ai_readiness.py",
     "test_browser_inventory.py",
+    "test_cli.py",
     "test_debloat_privacy.py",
     "test_execution_contracts.py",
     "test_file_reports.py",
@@ -403,8 +406,10 @@ def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert FIELD_ASSERTION_HELPERS <= helper_defs
+    assert len(FIELD_HELPER_ADOPTION_FILES) >= MIN_FIELD_HELPER_ADOPTION_FILES
 
     adopted: dict[str, set[str]] = {filename: set() for filename in FIELD_HELPER_ADOPTION_FILES}
+    helper_call_count = 0
     for module in iter_test_modules(repo_root):
         if module.path.name not in adopted:
             continue
@@ -412,9 +417,11 @@ def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id in FIELD_ASSERTION_HELPERS:
                     adopted[module.path.name].add(node.func.id)
+                    helper_call_count += 1
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
     assert missing == []
+    assert helper_call_count >= MIN_FIELD_HELPER_CALLS
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
