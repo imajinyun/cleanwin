@@ -455,7 +455,7 @@ def test_collection_and_text_assertion_helpers_are_adopted(
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
-    assert_contains_all(helper_defs, COLLECTION_ASSERTION_HELPERS)
+    assert_contains_all(helper_defs, sorted(COLLECTION_ASSERTION_HELPERS))
 
     adopted: dict[str, set[str]] = {filename: set() for filename in COLLECTION_HELPER_ADOPTION_FILES}
     for module in iter_test_modules(repo_root):
