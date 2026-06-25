@@ -17,13 +17,18 @@ JSONPayload = dict[str, Any]
 CleanWinPlanFile = Callable[..., JSONPayload]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 WriteTextFile = Callable[[Path, str], Path]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_capture_identity_contains_replay_fields(tmp_path: Path, write_text_file: WriteTextFile) -> None:
+def test_capture_identity_contains_replay_fields(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     identity = capture_filesystem_identity(target)
 
-    assert identity["schema"] == "cleanwin.filesystem-identity.v1"
+    assert_payload_schema(identity, "cleanwin.filesystem-identity.v1")
     assert identity["exists"] is True
     assert identity["file_type"] == "file"
     assert identity["size_bytes"] == 1
@@ -60,6 +65,7 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
     cleanwin_plan_file: CleanWinPlanFile,
     make_temp_plan_fixture: MakeTempPlan,
     write_text_file: WriteTextFile,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, False)
     plan_file = tmp_path / "plan.json"
@@ -73,7 +79,7 @@ def test_generated_plan_contains_identity_and_validate_rejects_drift(
         env=env,
     )
 
-    assert raw["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
+    assert_payload_schema(raw["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
     plan = plan_from_dict(raw)
     assert validate_plan_payload(plan, raw, require_context=False)["valid"] is True
 
