@@ -87,6 +87,8 @@ Use pytest-native patterns for new or updated tests:
   `assert_exact_set`, `assert_unique_items`, `assert_non_empty`, and
   `assert_returncode` for repeated strict sequence, set, uniqueness,
   non-empty, and subprocess return-code checks.
+- Use path assertion helpers such as `assert_path_exists` and
+  `assert_path_missing` for repeated filesystem existence checks.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test

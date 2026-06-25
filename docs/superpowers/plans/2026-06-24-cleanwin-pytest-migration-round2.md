@@ -1023,6 +1023,20 @@ committing. The final task must run `make quality` so lint, pytest, type
 checking, compile, packaging, smoke tests, and pytest governance all execute
 through the repository `.venv`.
 
+### Round 14 Completion
+
+- Path assertion helpers are available in `tests/conftest.py` and adopted by
+  `tests/test_ai_contracts.py`, `tests/test_cli.py`, and
+  `tests/test_delete_ops.py`.
+- Pytest governance now tracks path helper adoption with
+  `MIN_PATH_HELPER_ADOPTION_FILES = 3`.
+- Workflow docs mention `assert_path_exists` and `assert_path_missing` for
+  repeated filesystem existence checks.
+- Final gate passed with `make quality`: Ruff passed, pytest reported
+  `236 passed, 2 skipped`, mypy passed, compile passed, AI/doctor smoke passed,
+  pytest governance smoke reported `21 passed`, and wheel/sdist install smoke
+  passed.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
