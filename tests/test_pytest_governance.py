@@ -47,7 +47,7 @@ EXACT_ASSERTION_HELPERS = {
 }
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 100
-MIN_EXACT_HELPER_ADOPTION_FILES = 2
+MIN_EXACT_HELPER_ADOPTION_FILES = 4
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -90,6 +90,8 @@ FIELD_HELPER_ADOPTION_FILES = {
 }
 EXACT_HELPER_ADOPTION_FILES = {
     "test_debloat_privacy.py",
+    "test_file_reports.py",
+    "test_rule_catalog.py",
     "test_system_health.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}

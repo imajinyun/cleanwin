@@ -12,6 +12,7 @@ AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
 
 
 @pytest.fixture
@@ -79,14 +80,16 @@ def test_cleanup_rule_catalog_expanded_rules_avoid_unsafe_default_segments(rule_
         assert not (default_segments & unsafe_segments), rule["rule_id"]
 
 
-def test_cleanup_rule_catalog_rule_ids_are_unique(rule_catalog: dict[str, Any]) -> None:
+def test_cleanup_rule_catalog_rule_ids_are_unique(
+    rule_catalog: dict[str, Any], assert_unique_items: AssertUniqueItems
+) -> None:
     catalog = rule_catalog
     rule_ids: list[str] = []
     for section in ("dev_cache_rules", "package_cache_rules", "browser_cache_rules", "app_leftover_rules"):
         rule_ids.extend(rule["rule_id"] for rule in catalog[section])
     rule_ids.extend(rule["rule_id"] for rule in catalog["browser_profile_cache_rules"].values())
 
-    assert len(rule_ids) == len(set(rule_ids))
+    assert_unique_items(rule_ids)
 
 
 def test_cleanup_rule_catalog_rejects_duplicate_rule_ids() -> None:
