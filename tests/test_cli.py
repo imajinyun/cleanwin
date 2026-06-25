@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -27,15 +27,21 @@ WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
 MakeWindowsCacheEnv = Callable[[Path], dict[str, str]]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
+AssertTextContainsAll = Callable[[str, Sequence[str]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 
-def test_capabilities_reports_dry_run_and_single_exit(cleanwin_json: CleanWinJSON) -> None:
+def test_capabilities_reports_dry_run_and_single_exit(
+    cleanwin_json: CleanWinJSON,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     payload = cleanwin_json("capabilities")
     assert payload["default_dry_run"]
     assert payload["deletion_exit"] == "cleanwincli.delete_ops.safe_delete"
-    assert "browser-cache" in payload["safe_categories"]
-    assert "package-cache" in payload["safe_categories"]
-    assert "registry-clean" in payload["never_auto_execute"]
+    assert_contains_all(payload["safe_categories"], ["browser-cache", "package-cache"])
+    assert_contains_all(payload["never_auto_execute"], ["registry-clean"])
 
 def test_inspect_temp_finds_sandbox_candidate(
     tmp_path: Path,
@@ -69,6 +75,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     assert_dry_run_summary: AssertDryRunSummary,
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
@@ -78,7 +85,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     assert_payload_schema(payload, "cleanwin.execute.v1")
     assert_payload_status_true(payload, "validation", "valid")
     assert_dry_run_summary(payload, stale_file)
-    assert "confirmation_token" in payload["confirmation"]
+    assert_contains_all(payload["confirmation"], ["confirmation_token"])
 
 def test_review_plan_summarizes_execution_handoff(
     tmp_path: Path,
@@ -89,6 +96,7 @@ def test_review_plan_summarizes_execution_handoff(
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_status_true: AssertPayloadStatus,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
@@ -112,7 +120,7 @@ def test_review_plan_summarizes_execution_handoff(
     assert_summary_counts(review, {"candidate_count": 1})
     assert review["rule_summary"][0]["rule_id"] == "dev-cache.npm.cache"
     assert review["official_cleanup_commands"] == ["npm cache clean --force"]
-    assert "cleanwin_dry_run_plan" in review["execution_handoff"]["required_predecessor_tools"]
+    assert_contains_all(review["execution_handoff"]["required_predecessor_tools"], ["cleanwin_dry_run_plan"])
 
 def test_review_plan_rejects_invalid_plan_exit_code(
     tmp_path: Path,
@@ -149,6 +157,7 @@ def test_read_only_categories_do_not_create_candidates(
     cleanwin_json: CleanWinJSON,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     payload = cleanwin_json(
         "inspect",
@@ -161,7 +170,7 @@ def test_read_only_categories_do_not_create_candidates(
     by_category = {finding["category"]: finding for finding in payload["findings"]}
     assert by_category["docker-report"]["rule_id"] == "report.docker.manual-cleanup"
     assert by_category["wsl-report"]["owner"] == "WSL"
-    assert "browser profiles" in by_category["browser-cache-report"]["detail"].lower()
+    assert_text_contains_all(by_category["browser-cache-report"]["detail"].lower(), ["browser profiles"])
 
 def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     tmp_path: Path,
@@ -170,6 +179,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_payload_schema: AssertPayloadSchema,
     assert_summary_counts: AssertSummaryCounts,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
@@ -190,7 +200,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     assert candidate["rule_id"] == "dev-cache.npm.cache"
     assert candidate["cache_owner"] == "npm"
     assert candidate["official_cleanup_command"] == "npm cache clean --force"
-    assert "regenerated" in candidate["safe_to_delete_rationale"].lower()
+    assert_text_contains_all(candidate["safe_to_delete_rationale"].lower(), ["regenerated"])
     assert_payload_schema(candidate["identity"], "cleanwin.filesystem-identity.v1")
 
 def test_dev_cache_scans_expanded_python_and_node_tool_caches(
@@ -198,6 +208,7 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -223,7 +234,7 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
     assert by_rule["dev-cache.pipenv.cache"]["cache_owner"] == "Pipenv"
     assert by_rule["dev-cache.pre-commit.cache"]["cache_owner"] == "pre-commit"
     assert by_rule["dev-cache.node-gyp.cache"]["cache_owner"] == "node-gyp"
-    assert "poetry cache clear" in by_rule["dev-cache.poetry.cache"]["official_cleanup_command"]
+    assert_text_contains_all(by_rule["dev-cache.poetry.cache"]["official_cleanup_command"], ["poetry cache clear"])
 
 def test_package_cache_scans_common_windows_package_manager_caches(
     tmp_path: Path,
@@ -231,6 +242,8 @@ def test_package_cache_scans_common_windows_package_manager_caches(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -252,13 +265,18 @@ def test_package_cache_scans_common_windows_package_manager_caches(
     )
     rule_ids = {candidate["rule_id"] for candidate in payload["candidates"]}
     assert_summary_counts(payload, {"candidate_count": 4})
-    assert "package-cache.winget.packages" in rule_ids
-    assert "package-cache.scoop.cache" in rule_ids
-    assert "package-cache.chocolatey.cache" in rule_ids
-    assert "package-cache.uv.cache" in rule_ids
+    assert_contains_all(
+        rule_ids,
+        [
+            "package-cache.winget.packages",
+            "package-cache.scoop.cache",
+            "package-cache.chocolatey.cache",
+            "package-cache.uv.cache",
+        ],
+    )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["package-cache.winget.packages"]["cache_owner"] == "WinGet"
-    assert "winget" in by_rule["package-cache.winget.packages"]["official_cleanup_command"].lower()
+    assert_text_contains_all(by_rule["package-cache.winget.packages"]["official_cleanup_command"].lower(), ["winget"])
     assert by_rule["package-cache.uv.cache"]["cache_owner"] == "uv"
 
 def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
@@ -267,6 +285,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -291,10 +310,7 @@ def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_summary_counts(payload, {"candidate_count": 4})
-    assert str(slack_cache) in paths
-    assert str(teams_logs) in paths
-    assert str(vscode_cache) in paths
-    assert str(jetbrains_logs) in paths
+    assert_contains_all(paths, [str(slack_cache), str(teams_logs), str(vscode_cache), str(jetbrains_logs)])
     assert all(candidate["category"] == "app-leftovers" for candidate in payload["candidates"])
     assert all(candidate["delete_mode"] == "recycle" for candidate in payload["candidates"])
 
@@ -303,6 +319,7 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -328,7 +345,7 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
     assert by_rule["app-leftovers.teams-classic.gpu-cache"]["path"] == str(teams_gpu_cache)
     assert by_rule["app-leftovers.discord.gpu-cache"]["path"] == str(discord_gpu_cache)
     assert by_rule["app-leftovers.vscode.gpu-cache"]["path"] == str(vscode_gpu_cache)
-    assert str(vscode_user_data) not in {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(vscode_user_data)])
 
 def test_app_leftovers_skips_when_active_install_marker_exists(
     tmp_path: Path,
@@ -358,6 +375,7 @@ def test_app_leftovers_skips_globbed_active_install_markers(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -383,8 +401,7 @@ def test_app_leftovers_skips_globbed_active_install_markers(
         env=make_windows_cache_env(root),
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
-    assert str(discord_cache) not in paths
-    assert str(jetbrains_log) not in paths
+    assert_contains_none(paths, [str(discord_cache), str(jetbrains_log)])
 
 def test_app_leftovers_scans_more_common_app_cache_and_logs(
     tmp_path: Path,
@@ -461,6 +478,7 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -478,7 +496,7 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
         "0",
         env=make_windows_cache_env(root),
     )
-    assert "app-leftovers.steam.htmlcache" not in {candidate["rule_id"] for candidate in payload["candidates"]}
+    assert_contains_none({candidate["rule_id"] for candidate in payload["candidates"]}, ["app-leftovers.steam.htmlcache"])
 
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
@@ -488,6 +506,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -512,7 +531,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert review["rule_ids"] == ["app-leftovers.vscode.cached-data"]
-    assert any("Uninstall Visual Studio Code" in command for command in review["cleanup_strategy"]["official_cleanup_commands"])
+    assert_any_text_contains(review["cleanup_strategy"]["official_cleanup_commands"], "Uninstall Visual Studio Code")
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_dry_run_summary(dry_run_payload, vscode_cache)
@@ -524,6 +543,8 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -546,9 +567,8 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     )
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_summary_counts(payload, {"candidate_count": 2})
-    assert str(chrome_cache) in paths
-    assert str(edge_code_cache) in paths
-    assert str(cookies) not in paths
+    assert_contains_all(paths, [str(chrome_cache), str(edge_code_cache)])
+    assert_contains_none(paths, [str(cookies)])
     assert all(candidate["category"] == "browser-cache" for candidate in payload["candidates"])
     assert all("cookies" not in candidate["path"].lower() for candidate in payload["candidates"])
 
@@ -586,6 +606,7 @@ def test_browser_cache_discovers_brave_profile_caches(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -609,7 +630,7 @@ def test_browser_cache_discovers_brave_profile_caches(
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert by_rule["browser-cache.brave.cache"]["path"] == str(brave_cache)
     assert by_rule["browser-cache.brave.code-cache"]["path"] == str(brave_code_cache)
-    assert str(cookies) not in {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(cookies)])
 
 def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     tmp_path: Path,
@@ -617,6 +638,8 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_text_contains_all: AssertTextContainsAll,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -633,14 +656,12 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     assert exclusions
     assert exclusions[0]["category"] == "browser-cache"
     excluded_patterns = "\n".join(item["pattern"] for item in exclusions[0]["excluded_patterns"])
-    assert "Cookies" in excluded_patterns
-    assert "Login Data" in excluded_patterns
-    assert "Extensions" in excluded_patterns
+    assert_text_contains_all(excluded_patterns, ["Cookies", "Login Data", "Extensions"])
     strategy = review["cleanup_strategy"]
     assert strategy["preferred"] == "official-tool-or-app-ui"
     assert strategy["fallback"] == "cleanwin-recycle-execution"
     assert strategy["requires_review"]
-    assert "Use Chrome > Clear browsing data" in strategy["official_cleanup_commands"]
+    assert_contains_all(strategy["official_cleanup_commands"], ["Use Chrome > Clear browsing data"])
 
 def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     tmp_path: Path,
@@ -650,6 +671,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     assert_dry_run_summary: AssertDryRunSummary,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -673,7 +695,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert review["rule_ids"] == ["package-cache.uv.cache"]
-    assert "uv cache clean" in review["cleanup_strategy"]["official_cleanup_commands"]
+    assert_contains_all(review["cleanup_strategy"]["official_cleanup_commands"], ["uv cache clean"])
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_dry_run_summary(dry_run_payload, uv_cache)
@@ -759,15 +781,17 @@ def test_plan_rule_id_filters_candidates_before_write(
     assert_summary_counts(payload, {"candidate_count": 1})
     assert payload["candidates"][0]["rule_id"] == "dev-cache.pip.cache"
 
-def test_read_only_findings_include_structured_review_details(cleanwin_json: CleanWinJSON) -> None:
+def test_read_only_findings_include_structured_review_details(
+    cleanwin_json: CleanWinJSON,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     payload = cleanwin_json("inspect", "--categories", "docker-report")
     finding = payload["findings"][0]
-    assert "review_details" in finding
-    assert "suggested_paths" in finding["review_details"]
-    assert "risk_notes" in finding["review_details"]
-    assert "manual_review_steps" in finding["review_details"]
-    assert "path_evidence" in finding["review_details"]
-    assert "evidence_summary" in finding["review_details"]
+    assert_contains_all(finding, ["review_details"])
+    assert_contains_all(
+        finding["review_details"],
+        ["suggested_paths", "risk_notes", "manual_review_steps", "path_evidence", "evidence_summary"],
+    )
 
 def test_read_only_findings_report_existing_path_evidence_without_candidates(
     tmp_path: Path,
@@ -800,6 +824,7 @@ def test_validate_plan_rejects_permanent_and_admin_candidates(
     run_cleanwin: RunCleanWin,
     write_text_file: WriteTextFile,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     permanent_plan = Plan(
@@ -818,7 +843,7 @@ def test_validate_plan_rejects_permanent_and_admin_candidates(
     permanent_raw = permanent_plan.to_dict()
     permanent_validation = validate_plan_payload(permanent_plan, permanent_raw, require_context=False)
     assert_payload_status_false(permanent_validation, "valid")
-    assert "Unsupported plan delete_mode" in "\n".join(permanent_validation["errors"])
+    assert_text_contains_all("\n".join(permanent_validation["errors"]), ["Unsupported plan delete_mode"])
 
     admin_plan = Plan(
         candidates=[replace(permanent_plan.candidates[0], delete_mode="recycle", requires_admin=True)],
@@ -827,4 +852,4 @@ def test_validate_plan_rejects_permanent_and_admin_candidates(
     admin_raw = admin_plan.to_dict()
     admin_validation = validate_plan_payload(admin_plan, admin_raw, require_context=False)
     assert_payload_status_false(admin_validation, "valid")
-    assert "Admin-scoped candidate" in "\n".join(admin_validation["errors"])
+    assert_text_contains_all("\n".join(admin_validation["errors"]), ["Admin-scoped candidate"])
