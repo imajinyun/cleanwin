@@ -443,6 +443,7 @@ def test_direct_predicate_assertions_stay_in_migration_budget(
 def test_collection_and_text_assertion_helpers_are_adopted(
     repo_root: Path,
     assert_contains_all: AssertContainsAll,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
@@ -458,10 +459,13 @@ def test_collection_and_text_assertion_helpers_are_adopted(
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
-    assert missing == []
+    assert_exact_sequence(missing, [])
 
 
-def test_pytest_governance_uses_shared_assertion_helpers(repo_root: Path) -> None:
+def test_pytest_governance_uses_shared_assertion_helpers(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
     governance_helpers = (
         COLLECTION_ASSERTION_HELPERS | FIELD_ASSERTION_HELPERS | EXACT_ASSERTION_HELPERS | SCALAR_ASSERTION_HELPERS
     )
@@ -475,10 +479,10 @@ def test_pytest_governance_uses_shared_assertion_helpers(repo_root: Path) -> Non
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
-    assert missing == []
+    assert_exact_sequence(missing, [])
 
 
-def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
+def test_field_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert FIELD_ASSERTION_HELPERS <= helper_defs
@@ -496,11 +500,11 @@ def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
                     helper_call_count += 1
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
-    assert missing == []
+    assert_exact_sequence(missing, [])
     assert helper_call_count >= MIN_FIELD_HELPER_CALLS
 
 
-def test_exact_assertion_helpers_are_adopted(repo_root: Path) -> None:
+def test_exact_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert EXACT_ASSERTION_HELPERS <= helper_defs
@@ -516,10 +520,10 @@ def test_exact_assertion_helpers_are_adopted(repo_root: Path) -> None:
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
-    assert missing == []
+    assert_exact_sequence(missing, [])
 
 
-def test_scalar_assertion_helpers_are_adopted(repo_root: Path) -> None:
+def test_scalar_assertion_helpers_are_adopted(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert SCALAR_ASSERTION_HELPERS <= helper_defs
@@ -535,7 +539,7 @@ def test_scalar_assertion_helpers_are_adopted(repo_root: Path) -> None:
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
-    assert missing == []
+    assert_exact_sequence(missing, [])
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
