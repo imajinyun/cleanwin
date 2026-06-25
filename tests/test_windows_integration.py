@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -14,7 +15,7 @@ RECYCLE_INTEGRATION_ENV = "CLEANWIN_RUN_WINDOWS_RECYCLE_INTEGRATION"
 RECYCLE_INTEGRATION_REASON = "real Windows recycle integration is opt-in"
 
 pytestmark = pytest.mark.skipif(os.name != "nt", reason=WINDOWS_ONLY_REASON)
-JSONPayload = dict[str, object]
+JSONPayload = dict[str, Any]
 WriteTextFile = Callable[[Path, str], Path]
 AssertFieldValues = Callable[[JSONPayload, dict[str, object]], JSONPayload]
 

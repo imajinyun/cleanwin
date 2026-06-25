@@ -83,6 +83,10 @@ Use pytest-native patterns for new or updated tests:
   `assert_fields_present`, and `field_value` for repeated structured payload
   field checks. Dot paths may target nested dictionaries and numeric path
   segments may target list indexes, for example `rule_summary.0.rule_id`.
+- Use exact assertion helpers such as `assert_exact_sequence`,
+  `assert_exact_set`, `assert_unique_items`, `assert_non_empty`, and
+  `assert_returncode` for repeated strict sequence, set, uniqueness,
+  non-empty, and subprocess return-code checks.
 - Keep subprocess tests diagnostic: include stderr/stdout details when a helper
   fails.
 - Keep Windows-only behavior behind explicit skip conditions or injectable test
@@ -93,8 +97,8 @@ Use pytest-native patterns for new or updated tests:
   shared helper exists. Current direct assertion budgets for those categories,
   including direct status, summary, predicate, and migrated field assertions,
   should remain empty unless a migration plan explicitly reopens one. Keep the
-  collection/text/predicate/field helper adoption smoke updated when adding new
-  migrated test files.
+  collection/text/predicate/field/exact helper adoption smoke updated when
+  adding new migrated test files.
 
 Minimum verification for ordinary code or test changes:
 

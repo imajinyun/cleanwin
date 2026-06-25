@@ -3,13 +3,14 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.identity import capture_filesystem_identity
 
-JSONPayload = dict[str, object]
+JSONPayload = dict[str, Any]
 WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
 ReadJSONLRecord = Callable[[Path], JSONPayload]

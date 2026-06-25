@@ -323,5 +323,5 @@ def test_execute_requires_dry_run_confirmation_token(
         confirmation["confirmation_token"],
         env=env,
     )
-    assert_returncode(allowed)
+    assert_returncode(allowed, 0)
     assert not target.exists()
