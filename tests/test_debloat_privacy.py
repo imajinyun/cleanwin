@@ -11,6 +11,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -22,7 +23,7 @@ def test_report_is_non_destructive_and_gated(assert_readonly_report: AssertReado
     assert any("does not remove AppX" in item for item in report["non_goals"])
 
 
-def test_registry_policy_values_are_classified() -> None:
+def test_registry_policy_values_are_classified(assert_payload_schema: AssertPayloadSchema) -> None:
     report = debloat_privacy_report(
         raw_registry_values={
             r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowTelemetry": 3,
@@ -37,7 +38,7 @@ def test_registry_policy_values_are_classified() -> None:
     assert by_id["privacy.ad-id.disabled"]["state"] == "privacy-hardened"
     assert by_id["privacy.telemetry.allow-telemetry"]["safe_to_execute"] is False
     evidence = by_id["privacy.telemetry.allow-telemetry"]["change_evidence"]
-    assert evidence["schema"] == "cleanwin.registry-privacy-evidence.v1"
+    assert_payload_schema(evidence, "cleanwin.registry-privacy-evidence.v1")
     assert evidence["hive"] == "HKLM"
     assert evidence["value_name"] == "AllowTelemetry"
     assert evidence["required_export_command"][:2] == ["reg.exe", "export"]

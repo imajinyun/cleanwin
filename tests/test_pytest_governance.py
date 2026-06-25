@@ -12,11 +12,7 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"),
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
-DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
-    ("test_debloat_privacy.py", "test_registry_policy_values_are_classified"): 1,
-    ("test_installed_apps.py", "test_registry_entries_are_normalized_without_uninstalling"): 1,
-    ("test_official_commands.py", "test_official_commands_include_structured_non_executable_action_contracts"): 1,
-}
+DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 READONLY_BOOLEAN_ASSERTION_ALLOWLIST = {
     ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 1,
     ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,

@@ -10,6 +10,7 @@ CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution(assert_readonly_report: AssertReadonlyReport) -> None:
@@ -43,12 +44,13 @@ def test_report_covers_windows_owned_cleanup_surfaces() -> None:
 
 def test_official_commands_include_structured_non_executable_action_contracts(
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     report = official_command_plan_report()
 
     for command in report["commands"]:
         contract = command["action_contract"]
-        assert contract["schema"] == "cleanwin.official-action-contract.v1"
+        assert_payload_schema(contract, "cleanwin.official-action-contract.v1")
         assert contract["action_id"] == command["id"]
         assert contract["allowlisted_command"] == command["command"]
         assert contract["argument_policy"] == "exact-argv-only"

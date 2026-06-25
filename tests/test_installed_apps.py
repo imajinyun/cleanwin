@@ -12,6 +12,7 @@ WriteTextFile = Callable[[Path, str], Path]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
@@ -27,6 +28,7 @@ def test_report_is_non_destructive_and_supports_non_windows(
 
 def test_registry_entries_are_normalized_without_uninstalling(
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -50,7 +52,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
     assert app["publisher"] == "Slack Technologies LLC"
     assert app["uninstall_string_present"] is True
     assert app["estimated_size_kb"] == 250000
-    assert app["uninstall_strategy"]["schema"] == "cleanwin.uninstall-strategy.v1"
+    assert_payload_schema(app["uninstall_strategy"], "cleanwin.uninstall-strategy.v1")
     assert app["uninstall_strategy"]["strategy_id"] == "registry-uninstall-string"
     assert_execution_disabled(app["uninstall_strategy"])
     correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
