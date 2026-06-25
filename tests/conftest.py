@@ -37,6 +37,7 @@ AssertCliProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertAIProviderSchema = Callable[[str, str], None]
 AssertAIProviderSchemaWithEnv = Callable[[str, str, dict[str, str]], None]
 AssertAIProviderSchemas = Callable[[SchemaPairs], None]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
@@ -285,6 +286,15 @@ def assert_ai_provider_schemas(assert_ai_provider_schema: AssertAIProviderSchema
             assert_ai_provider_schema(provider, schema)
 
     return _assert_ai_provider_schemas
+
+
+@pytest.fixture
+def assert_payload_schema() -> AssertPayloadSchema:
+    def _assert_payload_schema(payload: JSONPayload, schema: str) -> JSONPayload:
+        assert payload["schema"] == schema
+        return payload
+
+    return _assert_payload_schema
 
 
 @pytest.fixture
