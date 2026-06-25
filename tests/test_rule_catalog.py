@@ -13,6 +13,7 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
+AssertTextContainsAny = Callable[[str, Sequence[str]], str]
 
 
 @pytest.fixture
@@ -66,10 +67,11 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
     rule_id: str,
     rule_catalog: dict[str, Any],
+    assert_text_contains_any: AssertTextContainsAny,
 ) -> None:
     rule = {rule["rule_id"]: rule for rule in catalog_rules(rule_catalog)}[rule_id]
     assert rule["official_cleanup_command"]
-    assert "regenerated" in rule["rationale"].lower() or "recreated" in rule["rationale"].lower()
+    assert_text_contains_any(rule["rationale"].lower(), ["regenerated", "recreated"])
 
 
 def test_cleanup_rule_catalog_expanded_rules_avoid_unsafe_default_segments(rule_catalog: dict[str, Any]) -> None:
