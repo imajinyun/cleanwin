@@ -18,6 +18,8 @@ AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAnyMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], JSONPayload]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_report_is_non_destructive_and_supports_non_windows(
@@ -38,6 +40,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_schema: AssertPayloadSchema,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -57,16 +60,26 @@ def test_registry_entries_are_normalized_without_uninstalling(
 
     assert_summary_counts(report, {"registry_application_count": 1})
     app = report["applications"][0]
-    assert app["display_name"] == "Slack"
-    assert app["publisher"] == "Slack Technologies LLC"
-    assert app["uninstall_string_present"] is True
-    assert app["estimated_size_kb"] == 250000
+    assert_field_values(
+        app,
+        {
+            "display_name": "Slack",
+            "publisher": "Slack Technologies LLC",
+            "uninstall_string_present": True,
+            "estimated_size_kb": 250000,
+        },
+    )
     assert_payload_schema(app["uninstall_strategy"], "cleanwin.uninstall-strategy.v1")
-    assert app["uninstall_strategy"]["strategy_id"] == "registry-uninstall-string"
+    assert_field_values(app["uninstall_strategy"], {"strategy_id": "registry-uninstall-string"})
     assert_execution_disabled(app["uninstall_strategy"])
     correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
-    assert correlation["state"] == "installed-application-present"
-    assert correlation["recommendation"] == "skip-leftover-cleanup-until-uninstalled"
+    assert_field_values(
+        correlation,
+        {
+            "state": "installed-application-present",
+            "recommendation": "skip-leftover-cleanup-until-uninstalled",
+        },
+    )
 
 
 def test_filesystem_package_sources_and_leftover_correlation(
@@ -74,6 +87,7 @@ def test_filesystem_package_sources_and_leftover_correlation(
     write_text_file: WriteTextFile,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     local = tmp_path / "Local"
     profile = tmp_path / "Profile"
@@ -103,12 +117,20 @@ def test_filesystem_package_sources_and_leftover_correlation(
     apps = {(app["source"], app["display_name"]) for app in report["applications"]}
     assert_contains_all(apps, [("scoop", "git"), ("chocolatey", "nodejs"), ("portable-location", "PortableTool")])
     by_source_name = {(app["source"], app["display_name"]): app for app in report["applications"]}
-    assert by_source_name[("scoop", "git")]["uninstall_strategy"]["strategy_id"] == "scoop-uninstall"
-    assert by_source_name[("chocolatey", "nodejs")]["uninstall_strategy"]["strategy_id"] == "chocolatey-uninstall"
-    assert by_source_name[("portable-location", "PortableTool")]["uninstall_strategy"]["strategy_id"] == "portable-manual-review"
+    assert_field_values(by_source_name[("scoop", "git")], {"uninstall_strategy.strategy_id": "scoop-uninstall"})
+    assert_field_values(
+        by_source_name[("chocolatey", "nodejs")],
+        {"uninstall_strategy.strategy_id": "chocolatey-uninstall"},
+    )
+    assert_field_values(
+        by_source_name[("portable-location", "PortableTool")],
+        {"uninstall_strategy.strategy_id": "portable-manual-review"},
+    )
     slack_correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.cache")
-    assert slack_correlation["state"] == "potential-uninstall-leftover"
-    assert slack_correlation["leftover_path"] == str(slack_cache)
+    assert_field_values(
+        slack_correlation,
+        {"state": "potential-uninstall-leftover", "leftover_path": str(slack_cache)},
+    )
     assert_summary_counts(
         report,
         {"uninstall_strategy_counts.scoop-uninstall": 1, "manual_review_strategy_count": 1},
@@ -118,6 +140,7 @@ def test_filesystem_package_sources_and_leftover_correlation(
 def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -157,12 +180,12 @@ def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(
     )
 
     by_name = {app["display_name"]: app["uninstall_strategy"] for app in report["applications"]}
-    assert by_name["MSI Tool"]["strategy_id"] == "msi-uninstall"
-    assert by_name["Store App"]["strategy_id"] == "store-app-review-only"
-    assert by_name["WinGet Tool"]["strategy_id"] == "winget-uninstall"
-    assert by_name["Steam Game"]["strategy_id"] == "steam-library-review"
-    assert by_name["Orphaned Entry"]["strategy_id"] == "orphaned-entry-review"
-    assert by_name["System Component"]["strategy_id"] == "system-component-review-only"
+    assert_field_values(by_name["MSI Tool"], {"strategy_id": "msi-uninstall"})
+    assert_field_values(by_name["Store App"], {"strategy_id": "store-app-review-only"})
+    assert_field_values(by_name["WinGet Tool"], {"strategy_id": "winget-uninstall"})
+    assert_field_values(by_name["Steam Game"], {"strategy_id": "steam-library-review"})
+    assert_field_values(by_name["Orphaned Entry"], {"strategy_id": "orphaned-entry-review"})
+    assert_field_values(by_name["System Component"], {"strategy_id": "system-component-review-only"})
     for strategy in by_name.values():
         assert_execution_disabled(strategy)
     assert_summary_counts(report, {"uninstall_strategy_counts.winget-uninstall": 1})

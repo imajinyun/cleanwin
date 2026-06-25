@@ -62,6 +62,7 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_browser_inventory.py",
     "test_file_reports.py",
     "test_identity.py",
+    "test_installed_apps.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
