@@ -68,6 +68,7 @@ MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 102
 MIN_EXACT_HELPER_ADOPTION_FILES = 7
 MIN_SCALAR_HELPER_ADOPTION_FILES = 2
+MIN_PATH_HELPER_ADOPTION_FILES = 3
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -122,6 +123,11 @@ SCALAR_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_debloat_privacy.py",
     "test_rule_catalog.py",
+}
+PATH_HELPER_ADOPTION_FILES = {
+    "test_ai_contracts.py",
+    "test_cli.py",
+    "test_delete_ops.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
@@ -573,13 +579,28 @@ def test_scalar_assertion_helpers_are_adopted(
     assert_exact_sequence(missing, [])
 
 
-def test_path_assertion_helpers_are_available(
+def test_path_assertion_helpers_are_adopted(
     repo_root: Path,
+    assert_at_least: AssertAtLeast,
     assert_contains_all: AssertContainsAll,
+    assert_exact_sequence: AssertExactSequence,
 ) -> None:
     conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
     helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
     assert_contains_all(helper_defs, sorted(PATH_ASSERTION_HELPERS))
+    assert_at_least(len(PATH_HELPER_ADOPTION_FILES), MIN_PATH_HELPER_ADOPTION_FILES)
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in PATH_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in PATH_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert_exact_sequence(missing, [])
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
