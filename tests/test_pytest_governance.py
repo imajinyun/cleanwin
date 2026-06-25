@@ -22,8 +22,6 @@ READONLY_BOOLEAN_KEYS = {
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
-    ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,
     ("test_cli.py", "test_review_plan_rejects_invalid_plan_exit_code"): 1,
     ("test_cli.py", "test_validate_plan_rejects_permanent_and_admin_candidates"): 2,
     ("test_execution_contracts.py", "test_ai_host_and_execute_schema_continue_to_deny_permanent_delete"): 1,

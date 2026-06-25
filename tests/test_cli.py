@@ -19,6 +19,7 @@ AssertDryRunResult = Callable[[JSONPayload, Path], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
 WriteJSONFile = Callable[[Path, JSONPayload], Path]
 MakeTempPlan = Callable[[Path, bool], tuple[Path, Path, dict[str, str]]]
@@ -63,6 +64,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     make_temp_plan_fixture: MakeTempPlan,
     assert_dry_run_result: AssertDryRunResult,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
@@ -72,7 +74,7 @@ def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     assert_payload_schema(payload, "cleanwin.execute.v1")
     assert not payload["executed"]
     assert payload["dry_run"]
-    assert payload["validation"]["valid"]
+    assert_payload_status_true(payload, "validation", "valid")
     assert_dry_run_result(payload, stale_file)
     assert payload["summary"] == {"result_count": 1, "status_counts": {"dry-run": 1}}
     assert "confirmation_token" in payload["confirmation"]
@@ -84,6 +86,7 @@ def test_review_plan_summarizes_execution_handoff(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_readonly_report: AssertReadonlyReport,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
@@ -102,7 +105,7 @@ def test_review_plan_summarizes_execution_handoff(
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_readonly_report(review, "cleanwin.review.v1")
-    assert review["validation"]["valid"]
+    assert_payload_status_true(review, "validation", "valid")
     assert review["execution_handoff"]["requires_human_confirmation"]
     assert review["summary"]["candidate_count"] == 1
     assert review["rule_summary"][0]["rule_id"] == "dev-cache.npm.cache"
