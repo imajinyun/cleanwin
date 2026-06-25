@@ -33,6 +33,7 @@ AssertCommandSequence = Callable[[list[str] | list[list[str]], list[str] | list[
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -158,14 +159,17 @@ def test_workflow_decision_blocks_destructive_route_without_artifacts(
     assert "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES" in codes
 
 
-def test_workflow_trace_documents_required_artifact_chain(assert_readonly_report: AssertReadonlyReport) -> None:
+def test_workflow_trace_documents_required_artifact_chain(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     trace = workflow_trace_report()
     assert_readonly_report(trace, WORKFLOW_TRACE_SCHEMA)
     schemas = [item["artifact_schema"] for item in trace["artifact_chain"]]
     assert "cleanwin.plan.v1" in schemas
     assert "cleanwin.review.v1" in schemas
     assert "cleanwin.ai-confirmation-summary.v1" in schemas
-    assert trace["execution_gate"]["ai_auto_call_allowed"] is False
+    assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
 
 
 def test_cli_exposes_readiness_self_test_and_runbook(

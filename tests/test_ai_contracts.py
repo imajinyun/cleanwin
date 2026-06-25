@@ -28,6 +28,7 @@ AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
@@ -154,6 +155,7 @@ def test_workflow_router_sample_keeps_execution_non_auto_callable(
 def test_workflow_context_schema_samples_are_registered(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
     assert_schema_samples: AssertSchemaSamples,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
     assert environment["operation_log"]["required_for_execution"] is True
@@ -163,7 +165,7 @@ def test_workflow_context_schema_samples_are_registered(
     assert decision["allowed"] is False
 
     trace = samples["cleanwin.workflow-trace.v1"]
-    assert trace["execution_gate"]["ai_auto_call_allowed"] is False
+    assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
 
 
 def test_schema_samples_cover_package_and_browser_cache_categories(

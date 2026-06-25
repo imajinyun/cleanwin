@@ -20,14 +20,7 @@ READONLY_BOOLEAN_KEYS = {
     "executes_system_commands": False,
 }
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-EXECUTION_DISABLED_ASSERTION_ALLOWLIST = {
-    ("test_ai_contracts.py", "test_workflow_context_schema_samples_are_registered"): 1,
-    ("test_ai_readiness.py", "test_workflow_trace_documents_required_artifact_chain"): 1,
-    ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 3,
-    ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
-    ("test_promotion_gates.py", "test_promotion_gates_cover_high_risk_report_surfaces"): 1,
-    ("test_system_health.py", "test_system_health_recommendations_use_official_tools_without_execution"): 1,
-}
+EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
     "auto_executable",

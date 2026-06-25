@@ -9,20 +9,24 @@ JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertExecutionDisabled = Callable[[JSONPayload], JSONPayload]
 
 
 def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
     assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
 ) -> None:
     report = promotion_gates_report()
 
     assert_readonly_report(report, PROMOTION_GATES_SCHEMA)
-    assert report["execution_enabled"] is False
+    assert_execution_disabled(report)
     assert report["summary"]["report_only_gate_count"] >= 4
     assert any("does not enable registry" in item for item in report["non_goals"])
 
 
-def test_promotion_gates_cover_high_risk_report_surfaces() -> None:
+def test_promotion_gates_cover_high_risk_report_surfaces(
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
     report = promotion_gates_report()
     by_id = {gate["id"]: gate for gate in report["gates"]}
 
@@ -34,7 +38,7 @@ def test_promotion_gates_cover_high_risk_report_surfaces() -> None:
 
     registry_gate = by_id["registry-privacy-to-registry-change"]
     assert registry_gate["default_state"] == "report-only"
-    assert registry_gate["ai_auto_call_allowed"] is False
+    assert_execution_disabled(registry_gate, "ai_auto_call_allowed")
     assert "registry-export" in registry_gate["required_snapshots"]
     assert "rollback-metadata-validation" in registry_gate["required_tests"]
 
