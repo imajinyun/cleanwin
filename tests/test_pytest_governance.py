@@ -38,8 +38,16 @@ FIELD_ASSERTION_HELPERS = {
     "assert_field_values",
     "assert_fields_present",
 }
+EXACT_ASSERTION_HELPERS = {
+    "assert_exact_sequence",
+    "assert_exact_set",
+    "assert_unique_items",
+    "assert_non_empty",
+    "assert_returncode",
+}
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 100
+MIN_EXACT_HELPER_ADOPTION_FILES = 0
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -79,6 +87,8 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_scan_governance.py",
     "test_startup_inventory.py",
     "test_windows_smoke.py",
+}
+EXACT_HELPER_ADOPTION_FILES = {
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
@@ -422,6 +432,25 @@ def test_field_assertion_helpers_are_adopted(repo_root: Path) -> None:
     missing = [filename for filename, helpers in adopted.items() if not helpers]
     assert missing == []
     assert helper_call_count >= MIN_FIELD_HELPER_CALLS
+
+
+def test_exact_assertion_helpers_are_adopted(repo_root: Path) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert EXACT_ASSERTION_HELPERS <= helper_defs
+    assert len(EXACT_HELPER_ADOPTION_FILES) >= MIN_EXACT_HELPER_ADOPTION_FILES
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in EXACT_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in EXACT_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert missing == []
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
