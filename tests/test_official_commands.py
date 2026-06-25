@@ -11,20 +11,29 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_report_is_non_destructive_and_blocks_auto_execution(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = official_command_plan_report()
 
     assert_readonly_report(report, OFFICIAL_COMMAND_PLAN_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled", "ai_auto_call_allowed")
     assert any("does not execute DISM" in item for item in report["non_goals"])
-    assert report["summary"]["auto_executable_count"] == 0
-    assert report["summary"]["action_contract_count"] == report["summary"]["command_count"]
-    assert report["summary"]["execution_enabled_action_count"] == 0
+    assert_summary_counts(
+        report,
+        {
+            "auto_executable_count": 0,
+            "action_contract_count": len(report["commands"]),
+            "command_count": len(report["commands"]),
+            "execution_enabled_action_count": 0,
+        },
+    )
 
 
 def test_report_covers_windows_owned_cleanup_surfaces(

@@ -22,16 +22,19 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_disable_revert_contract_is_non_executable(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = disable_revert_contract_report()
 
     assert_readonly_report(report, DISABLE_REVERT_CONTRACT_SCHEMA)
-    assert report["summary"]["execution_enabled_count"] == 0
+    assert_summary_counts(report, {"execution_enabled_count": 0})
     assert_execution_disabled(report["execution_gate"], "disable_revert_execution_enabled", "ai_auto_call_allowed")
     assert any("does not disable startup" in item for item in report["non_goals"])
 
@@ -57,11 +60,12 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata(
 def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = backup_delete_contract_report()
 
     assert_readonly_report(report, BACKUP_DELETE_CONTRACT_SCHEMA)
-    assert report["summary"]["execution_enabled_count"] == 0
+    assert_summary_counts(report, {"execution_enabled_count": 0})
     assert_execution_disabled(report["execution_gate"], "backup_delete_execution_enabled")
     assert report["execution_gate"]["requires_pre_delete_backup"] is True
     assert report["execution_gate"]["requires_backup_verification"] is True
@@ -80,6 +84,7 @@ def test_backup_delete_contract_requires_backup_identity_and_audit_refs(
 def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = permanent_delete_denial_report()
 
@@ -90,7 +95,7 @@ def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
     assert report["capability"]["mcp_tool_exposed"] is False
     assert report["capability"]["allowed_delete_modes"] == ["recycle"]
     assert report["capability"]["denied_delete_modes"] == ["permanent"]
-    assert report["summary"]["execution_enabled_count"] == 0
+    assert_summary_counts(report, {"execution_enabled_count": 0})
     assert report["current_enforcement"]["plan_validation_rejects_permanent"] is True
     assert report["current_enforcement"]["execute_plan_passes_allow_permanent_false"] is True
     assert report["current_enforcement"]["ai_host_policy_requires_recycle"] is True

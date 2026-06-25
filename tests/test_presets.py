@@ -13,17 +13,20 @@ AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_preset_catalog_is_read_only_and_non_executable(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = preset_catalog_report()
 
     assert_readonly_report(report, PRESET_CATALOG_SCHEMA)
     assert_execution_disabled(report["execution_gate"], "preset_execution_enabled", "ai_auto_call_allowed")
-    assert report["summary"]["execution_enabled_count"] == 0
+    assert_summary_counts(report, {"execution_enabled_count": 0})
     for preset in report["presets"]:
         assert_execution_disabled(preset["plan_template"])
 

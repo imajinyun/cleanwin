@@ -22,16 +22,7 @@ READONLY_BOOLEAN_KEYS = {
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_execution_contracts.py", "test_backup_delete_contract_requires_backup_identity_and_audit_refs"): 1,
-    ("test_execution_contracts.py", "test_disable_revert_contract_is_non_executable"): 1,
-    ("test_execution_contracts.py", "test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled"): 1,
-    ("test_official_commands.py", "test_report_is_non_destructive_and_blocks_auto_execution"): 3,
-    ("test_presets.py", "test_preset_catalog_is_read_only_and_non_executable"): 1,
-    ("test_promotion_gates.py", "test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled"): 1,
-    ("test_system_health.py", "test_system_health_report_is_read_only_and_gated"): 1,
-    ("test_windows_smoke.py", "test_windows_smoke_matrix_is_non_destructive_release_gate"): 1,
-}
+SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
