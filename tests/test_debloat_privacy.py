@@ -14,6 +14,8 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(
@@ -31,6 +33,7 @@ def test_report_is_non_destructive_and_gated(
 def test_registry_policy_values_are_classified(
     assert_payload_schema: AssertPayloadSchema,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = debloat_privacy_report(
         raw_registry_values={
@@ -51,14 +54,14 @@ def test_registry_policy_values_are_classified(
     assert evidence["value_name"] == "AllowTelemetry"
     assert evidence["required_export_command"][:2] == ["reg.exe", "export"]
     assert "previous_value" in evidence["rollback_metadata_required"]
-    assert report["summary"]["review_recommended_count"] == 1
-    assert report["summary"]["privacy_hardened_count"] == 1
+    assert_summary_counts(report, {"review_recommended_count": 1, "privacy_hardened_count": 1})
 
 
 def test_appx_and_oem_findings_are_review_only(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     program_files = tmp_path / "Program Files"
     support_assist = program_files / "Dell" / "SupportAssistAgent"
@@ -77,8 +80,7 @@ def test_appx_and_oem_findings_are_review_only(
     assert_safe_to_execute_disabled(appx_findings[0])
     assert len(oem_findings) == 1
     assert "SupportAssistAgent" in oem_findings[0]["path"]
-    assert report["summary"]["appx_review_count"] == 1
-    assert report["summary"]["oem_location_count"] == 1
+    assert_summary_counts(report, {"appx_review_count": 1, "oem_location_count": 1})
 
 
 def test_cli_and_ai_provider_expose_report(

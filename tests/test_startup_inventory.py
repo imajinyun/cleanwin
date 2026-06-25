@@ -13,6 +13,8 @@ AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
 AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertSafeToExecuteDisabled = Callable[[JSONPayload], JSONPayload]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 def test_report_is_non_destructive_and_gated(
@@ -31,6 +33,7 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     tmp_path: Path,
     write_text_file: WriteTextFile,
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     appdata = tmp_path / "Roaming"
     startup = appdata / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
@@ -54,12 +57,12 @@ def test_registry_and_startup_folder_entries_are_inventory_only(
     assert entries["MissingTarget"]["target_exists"] is False
     assert_safe_to_execute_disabled(entries["Example"])
     assert "Example.lnk" in entries
-    assert report["summary"]["startup_entry_count"] == 3
-    assert report["summary"]["missing_target_count"] == 1
+    assert_summary_counts(report, {"startup_entry_count": 3, "missing_target_count": 1})
 
 
 def test_service_and_scheduled_task_fixtures_are_report_only(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
 ) -> None:
     report = startup_service_inventory_report(
         raw_registry_values={},
@@ -68,8 +71,7 @@ def test_service_and_scheduled_task_fixtures_are_report_only(
         env={},
     )
 
-    assert report["summary"]["service_count"] == 1
-    assert report["summary"]["scheduled_task_count"] == 1
+    assert_summary_counts(report, {"service_count": 1, "scheduled_task_count": 1})
     assert report["services"][0]["risk"] == "high"
     assert_safe_to_execute_disabled(report["services"][0])
     assert_safe_to_execute_disabled(report["scheduled_tasks"][0])
