@@ -13,10 +13,6 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST = {
-    ("test_ai_contracts.py", "test_schema_samples_include_rule_metadata_and_review_details"): 5,
-    ("test_ai_contracts.py", "test_workflow_router_sample_keeps_execution_non_auto_callable"): 1,
-    ("test_ai_contracts.py", "test_workflow_context_schema_samples_are_registered"): 3,
-    ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"): 1,
     ("test_cli.py", "test_inspect_temp_finds_sandbox_candidate"): 1,
     ("test_cli.py", "test_execute_plan_dry_run_reports_candidate_results_without_deleting"): 1,
     ("test_cli.py", "test_review_plan_summarizes_execution_handoff"): 1,

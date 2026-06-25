@@ -26,6 +26,7 @@ AssertSchemasRegistered = Callable[[list[str]], None]
 AssertSchemaSample = Callable[[str], JSONPayload]
 AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 AssertReadonlySchemaSample = Callable[[str], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
@@ -68,6 +69,7 @@ def test_schema_registry_includes_ai_host_critical_schemas(
 def test_schema_samples_include_rule_metadata_and_review_details(
     assert_schema_samples: AssertSchemaSamples,
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
+    assert_payload_schema: AssertPayloadSchema,
     assert_command_sequence: AssertCommandSequence,
 ) -> None:
     samples = assert_schema_samples(
@@ -86,26 +88,22 @@ def test_schema_samples_include_rule_metadata_and_review_details(
 
     plan_sample = samples["cleanwin.plan.v1"]
     assert plan_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
-    assert plan_sample["candidates"][0]["identity"]["schema"] == "cleanwin.filesystem-identity.v1"
+    assert_payload_schema(plan_sample["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
     execute_sample = samples["cleanwin.execute.v1"]
-    assert execute_sample["schema"] == "cleanwin.execute.v1"
     assert execute_sample["dry_run"] is True
     assert execute_sample["results"][0]["status"] == "dry-run"
     assert "confirmation_token" in execute_sample["confirmation"]
 
     doctor_sample = assert_readonly_schema_sample("cleanwin.doctor.v1")
-    assert doctor_sample["schema"] == "cleanwin.doctor.v1"
     assert "recommended_commands" in doctor_sample
     assert_command_sequence(doctor_sample["recommended_commands"], [["make", "pytest"], ["make", "quality"]])
 
     review_sample = assert_readonly_schema_sample("cleanwin.review.v1")
-    assert review_sample["schema"] == "cleanwin.review.v1"
     assert "execution_handoff" in review_sample
     assert "sensitive_exclusions" in review_sample
 
     argument_validation_sample = samples["cleanwin.ai-tool-argument-validation.v1"]
-    assert argument_validation_sample["schema"] == "cleanwin.ai-tool-argument-validation.v1"
     assert argument_validation_sample["valid"] is False
 
 
@@ -142,7 +140,6 @@ def test_workflow_router_sample_keeps_execution_non_auto_callable(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
 ) -> None:
     sample = assert_readonly_schema_sample("cleanwin.workflow-router.v1")
-    assert sample["schema"] == "cleanwin.workflow-router.v1"
     assert sample["destructive"] is False
     execution_route = next(route for route in sample["routes"] if route["id"] == "recycle-execution")
     assert execution_route["destructive"] is True
@@ -156,16 +153,13 @@ def test_workflow_context_schema_samples_are_registered(
     assert_schema_samples: AssertSchemaSamples,
 ) -> None:
     environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
-    assert environment["schema"] == "cleanwin.environment-index.v1"
     assert environment["operation_log"]["required_for_execution"] is True
 
     samples = assert_schema_samples(["cleanwin.workflow-decision.v1", "cleanwin.workflow-trace.v1"])
     decision = samples["cleanwin.workflow-decision.v1"]
-    assert decision["schema"] == "cleanwin.workflow-decision.v1"
     assert decision["allowed"] is False
 
     trace = samples["cleanwin.workflow-trace.v1"]
-    assert trace["schema"] == "cleanwin.workflow-trace.v1"
     assert trace["execution_gate"]["ai_auto_call_allowed"] is False
 
 
@@ -227,8 +221,11 @@ def test_host_policy_blocks_raw_command_and_missing_destructive_gates() -> None:
     assert allowed["allowed"], allowed
 
 
-def test_cli_ai_tools_and_host_policy_are_valid(cleanwin_json: CleanWinJSON) -> None:
-    assert cleanwin_json("ai-tools")["schema"] == "cleanwin.ai-tools.v1"
+def test_cli_ai_tools_and_host_policy_are_valid(
+    cleanwin_json: CleanWinJSON,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    assert_payload_schema(cleanwin_json("ai-tools"), "cleanwin.ai-tools.v1")
 
     assert cleanwin_json("ai-tools", "--provider", "parity")["valid"]
 
