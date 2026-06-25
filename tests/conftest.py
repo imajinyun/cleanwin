@@ -70,6 +70,7 @@ AssertNoneMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertFieldsPresent = Callable[[JSONPayload, Sequence[str]], JSONPayload]
+AssertFieldsNotNone = Callable[[JSONPayload, Sequence[str]], JSONPayload]
 
 
 class AssertPayloadStatus(Protocol):
@@ -499,6 +500,16 @@ def assert_fields_present() -> AssertFieldsPresent:
         return payload
 
     return _assert_fields_present
+
+
+@pytest.fixture
+def assert_fields_not_none() -> AssertFieldsNotNone:
+    def _assert_fields_not_none(payload: JSONPayload, fields: Sequence[str]) -> JSONPayload:
+        null_fields = [field_path for field_path in fields if field_value(payload, field_path) is None]
+        assert null_fields == []
+        return payload
+
+    return _assert_fields_not_none
 
 
 @pytest.fixture
