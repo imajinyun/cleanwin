@@ -45,9 +45,15 @@ EXACT_ASSERTION_HELPERS = {
     "assert_non_empty",
     "assert_returncode",
 }
+SCALAR_ASSERTION_HELPERS = {
+    "assert_exact_count",
+    "assert_one_of",
+    "assert_text_contains_any",
+}
 MIN_FIELD_HELPER_ADOPTION_FILES = 18
 MIN_FIELD_HELPER_CALLS = 102
 MIN_EXACT_HELPER_ADOPTION_FILES = 7
+MIN_SCALAR_HELPER_ADOPTION_FILES = 0
 COLLECTION_HELPER_ADOPTION_FILES = {
     "test_ai_readiness.py",
     "test_ai_contracts.py",
@@ -97,6 +103,8 @@ EXACT_HELPER_ADOPTION_FILES = {
     "test_file_reports.py",
     "test_rule_catalog.py",
     "test_system_health.py",
+}
+SCALAR_HELPER_ADOPTION_FILES = {
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
@@ -455,6 +463,25 @@ def test_exact_assertion_helpers_are_adopted(repo_root: Path) -> None:
         for node in ast.walk(module.tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 if node.func.id in EXACT_ASSERTION_HELPERS:
+                    adopted[module.path.name].add(node.func.id)
+
+    missing = [filename for filename, helpers in adopted.items() if not helpers]
+    assert missing == []
+
+
+def test_scalar_assertion_helpers_are_adopted(repo_root: Path) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert SCALAR_ASSERTION_HELPERS <= helper_defs
+    assert len(SCALAR_HELPER_ADOPTION_FILES) >= MIN_SCALAR_HELPER_ADOPTION_FILES
+
+    adopted: dict[str, set[str]] = {filename: set() for filename in SCALAR_HELPER_ADOPTION_FILES}
+    for module in iter_test_modules(repo_root):
+        if module.path.name not in adopted:
+            continue
+        for node in ast.walk(module.tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                if node.func.id in SCALAR_ASSERTION_HELPERS:
                     adopted[module.path.name].add(node.func.id)
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
