@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 
 import pytest
 
@@ -40,6 +40,7 @@ AssertContainsAll = Callable[[set[str] | list[str], list[str]], None]
 AssertAnyTextContains = Callable[[list[str], str], None]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertExactSequence = Callable[[list[str], list[str]], list[str]]
+AssertOneOf = Callable[[object, Collection[object]], object]
 
 EXPECTED_DOCTOR_COMMANDS = [
     ["make", "pytest"],
@@ -227,6 +228,7 @@ def test_doctor_report_checks_static_safety_and_contracts(
     assert_payload_status_true: AssertPayloadStatus,
     assert_contains_all: AssertContainsAll,
     assert_field_values: AssertFieldValues,
+    assert_one_of: AssertOneOf,
 ) -> None:
     report = doctor_report()
     assert_readonly_report(report, "cleanwin.doctor.v1")
@@ -251,13 +253,13 @@ def test_doctor_report_checks_static_safety_and_contracts(
             "evidence.capabilities_version": __version__,
         },
     )
-    assert version_check["evidence"]["distribution_version"] in {None, __version__}
+    assert_one_of(version_check["evidence"]["distribution_version"], {None, __version__})
     assert_command_sequence(report["recommended_commands"], [])
 
 
 @pytest.mark.parametrize("command", EXPECTED_DOCTOR_COMMANDS)
-def test_doctor_report_recommends_quality_command(command: list[str]) -> None:
-    assert command in doctor_report()["recommended_commands"]
+def test_doctor_report_recommends_quality_command(command: list[str], assert_one_of: AssertOneOf) -> None:
+    assert_one_of(command, doctor_report()["recommended_commands"])
 
 
 def test_ai_readiness_release_gates_use_pytest_workflow(

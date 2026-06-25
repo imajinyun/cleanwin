@@ -105,6 +105,7 @@ EXACT_HELPER_ADOPTION_FILES = {
     "test_system_health.py",
 }
 SCALAR_HELPER_ADOPTION_FILES = {
+    "test_ai_readiness.py",
     "test_debloat_privacy.py",
     "test_rule_catalog.py",
 }
