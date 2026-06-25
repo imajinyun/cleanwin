@@ -25,7 +25,7 @@ def test_recycle_fails_closed_outside_windows_without_test_mode(
     target = write_text_file(tmp_path / "candidate.tmp", "x")
     monkeypatch.setenv("CLEANWIN_TEST_MODE", "0")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Recycle Bin routing is only available on Windows"):
         safe_delete(str(target), dry_run=False, mode="recycle")
 
     assert target.exists()
@@ -66,7 +66,7 @@ def test_symlinked_trash_fails_closed(
         pytest.skip("symlink creation is unavailable")
     monkeypatch.setenv("CLEANWIN_TEST_MODE", "1")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Refusing to use symlinked recycle sandbox"):
         safe_delete(str(target), dry_run=False, mode="recycle", trash_root=trash_link)
 
     assert target.exists()
@@ -75,7 +75,7 @@ def test_symlinked_trash_fails_closed(
 def test_permanent_delete_requires_explicit_allow(tmp_path: Path, write_text_file: WriteTextFile) -> None:
     target = write_text_file(tmp_path / "candidate.tmp", "x")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Permanent delete requires explicit allow_permanent=True"):
         safe_delete(str(target), dry_run=False, mode="permanent", allow_permanent=False)
 
     assert target.exists()
@@ -91,7 +91,7 @@ def test_safe_delete_rechecks_expected_identity(
     write_text_file(target, "changed")
     monkeypatch.setenv("CLEANWIN_TEST_MODE", "1")
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="Filesystem identity mismatch"):
         safe_delete(
             str(target),
             dry_run=False,
