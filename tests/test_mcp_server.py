@@ -5,7 +5,7 @@ import queue
 import subprocess
 import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,7 @@ MakeMCPTempPlan = Callable[[Path], tuple[Path, Path, dict[str, str]]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertDryRunSummary = Callable[[JSONPayload, Path], JSONPayload]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 
 MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
@@ -205,21 +206,26 @@ def mcp_error_result(response: MCPResponse) -> JSONPayload:
     "uri",
     EXPECTED_MCP_RESOURCE_URIS,
 )
-def test_resources_list_exposes_expected_uri(uri: str, cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_resources_list_exposes_expected_uri(
+    uri: str,
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     listed = mcp_request(build_mcp_request("resources/list", request_id=3), cleanwin_test_env())
     uris = {resource["uri"] for resource in listed["result"]["resources"]}
 
-    assert uri in uris
+    assert_contains_all(uris, [uri])
 
 
 def test_host_policy_resource_exposes_execute_plan_denial(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     payload = read_mcp_resource("cleanwin://ai/host-policy", cleanwin_test_env())
 
     assert_payload_schema(payload, "cleanwin.ai-host-policy.v1")
-    assert "cleanwin_execute_plan" in payload["auto_call"]["deny"]
+    assert_contains_all(payload["auto_call"]["deny"], ["cleanwin_execute_plan"])
 
 
 @pytest.mark.parametrize(("uri", "schema"), MCP_RESOURCE_SCHEMAS)
@@ -235,7 +241,9 @@ def test_resources_readiness_self_test_and_runbook(
 
 
 def test_initialize_and_tools_list(
-    cleanwin_test_env: CleanWinTestEnv, mcp_request_factory: MCPRequestFactory
+    cleanwin_test_env: CleanWinTestEnv,
+    mcp_request_factory: MCPRequestFactory,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     env = cleanwin_test_env()
     initialized = mcp_request(mcp_request_factory("initialize", request_id=1), env)
@@ -245,13 +253,18 @@ def test_initialize_and_tools_list(
     response = mcp_request(mcp_request_factory("tools/list", request_id=2), env)
     tools = response["result"]["tools"]
     names = {tool["name"] for tool in tools}
-    assert "cleanwin_capabilities" in names
-    assert "cleanwin_workflow_router" in names
-    assert "cleanwin_environment_index" in names
-    assert "cleanwin_workflow_decision" in names
-    assert "cleanwin_workflow_trace" in names
-    assert "cleanwin_execute_plan" in names
-    assert "cleanwin_review_plan" in names
+    assert_contains_all(
+        names,
+        [
+            "cleanwin_capabilities",
+            "cleanwin_workflow_router",
+            "cleanwin_environment_index",
+            "cleanwin_workflow_decision",
+            "cleanwin_workflow_trace",
+            "cleanwin_execute_plan",
+            "cleanwin_review_plan",
+        ],
+    )
     tool_by_name = {tool["name"]: tool for tool in tools}
     assert tool_by_name["cleanwin_capabilities"]["annotations"]["readOnlyHint"]
     assert tool_by_name["cleanwin_workflow_router"]["annotations"]["readOnlyHint"]
@@ -366,6 +379,7 @@ def test_tools_call_review_plan(
     tmp_path: Path,
     make_mcp_temp_plan: MakeMCPTempPlan,
     assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     plan_file, _, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool(
@@ -375,7 +389,7 @@ def test_tools_call_review_plan(
         request_id=52,
     )
     structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.review.v1")
-    assert "execution_handoff" in structured
+    assert_contains_all(structured, ["execution_handoff"])
 
 
 def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
@@ -383,12 +397,13 @@ def test_tools_call_dry_run_plan_returns_candidate_results_and_token(
     make_mcp_temp_plan: MakeMCPTempPlan,
     assert_payload_schema: AssertPayloadSchema,
     assert_dry_run_summary: AssertDryRunSummary,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     plan_file, stale_file, env = make_mcp_temp_plan(tmp_path)
     response = call_mcp_tool("cleanwin_dry_run_plan", {"plan_file": str(plan_file)}, env=env, request_id=53)
     structured = assert_payload_schema(mcp_structured_content(response), "cleanwin.execute.v1")
     assert_dry_run_summary(structured, stale_file)
-    assert "confirmation_token" in structured["confirmation"]
+    assert_contains_all(structured["confirmation"], ["confirmation_token"])
 
 
 def test_raw_command_argument_denied_for_readonly_tool(
@@ -413,6 +428,7 @@ def test_tool_call_rejects_schema_invalid_arguments(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     response = mcp_request(
         {
@@ -426,12 +442,17 @@ def test_tool_call_rejects_schema_invalid_arguments(
     result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
     assert_payload_schema(validation, "cleanwin.ai-tool-argument-validation.v1")
-    assert "arguments.categories must be an array" in validation["violations"]
-    assert "arguments.older_than_days must be a number" in validation["violations"]
+    assert_contains_all(
+        validation["violations"],
+        ["arguments.categories must be an array", "arguments.older_than_days must be a number"],
+    )
     assert_payload_status_true(result["governanceDecision"], "allowed")
 
 
-def test_tool_call_rejects_unknown_non_raw_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tool_call_rejects_unknown_non_raw_arguments(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -443,10 +464,13 @@ def test_tool_call_rejects_unknown_non_raw_arguments(cleanwin_test_env: CleanWin
     )
     result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
-    assert "arguments.unexpected is not allowed" in validation["violations"]
+    assert_contains_all(validation["violations"], ["arguments.unexpected is not allowed"])
 
 
-def test_tool_call_rejects_missing_required_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_tool_call_rejects_missing_required_arguments(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -458,10 +482,13 @@ def test_tool_call_rejects_missing_required_arguments(cleanwin_test_env: CleanWi
     )
     result = mcp_error_result(response)
     validation = result["structuredContent"]["argument_validation"]
-    assert "arguments.plan_file is required" in validation["violations"]
+    assert_contains_all(validation["violations"], ["arguments.plan_file is required"])
 
 
-def test_destructive_tool_missing_gates_denied(cleanwin_test_env: CleanWinTestEnv) -> None:
+def test_destructive_tool_missing_gates_denied(
+    cleanwin_test_env: CleanWinTestEnv,
+    assert_contains_all: AssertContainsAll,
+) -> None:
     response = mcp_request(
         {
             "jsonrpc": "2.0",
@@ -473,10 +500,15 @@ def test_destructive_tool_missing_gates_denied(cleanwin_test_env: CleanWinTestEn
     )
     result = mcp_error_result(response)
     codes = {reason["code"] for reason in result["governanceDecision"]["blocking_reasons"]}
-    assert "RECYCLE_MODE_REQUIRED" in codes
-    assert "OPERATION_LOG_REQUIRED" in codes
-    assert "HUMAN_CONFIRMATION_PHRASE_REQUIRED" in codes
-    assert "CONFIRMATION_TOKEN_REQUIRED" in codes
+    assert_contains_all(
+        codes,
+        [
+            "RECYCLE_MODE_REQUIRED",
+            "OPERATION_LOG_REQUIRED",
+            "HUMAN_CONFIRMATION_PHRASE_REQUIRED",
+            "CONFIRMATION_TOKEN_REQUIRED",
+        ],
+    )
 
 
 def test_unknown_method_returns_jsonrpc_error(

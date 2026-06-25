@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,9 @@ AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertPayloadStatus = Callable[..., JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertCommandSequence = Callable[[list[list[str]], list[list[str]]], None]
+AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertTextContainsAll = Callable[[str, Sequence[str]], None]
+AssertAnyTextContains = Callable[[Sequence[str], str], None]
 
 READONLY_WORKFLOW_CONTEXT_TOOLS = [
     "cleanwin_environment_index",
@@ -76,6 +79,7 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     assert_payload_schema: AssertPayloadSchema,
     assert_command_sequence: AssertCommandSequence,
     assert_payload_status_false: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     samples = assert_schema_samples(
         [
@@ -88,8 +92,8 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     inspect_sample = samples["cleanwin.inspect.v1"]
     assert inspect_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
     assert inspect_sample["candidates"][0]["cache_owner"] == "npm"
-    assert "official_cleanup_command" in inspect_sample["candidates"][0]
-    assert "review_details" in inspect_sample["findings"][0]
+    assert_contains_all(inspect_sample["candidates"][0], ["official_cleanup_command"])
+    assert_contains_all(inspect_sample["findings"][0], ["review_details"])
 
     plan_sample = samples["cleanwin.plan.v1"]
     assert plan_sample["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
@@ -98,24 +102,23 @@ def test_schema_samples_include_rule_metadata_and_review_details(
     execute_sample = samples["cleanwin.execute.v1"]
     assert_readonly_payload(execute_sample)
     assert execute_sample["results"][0]["status"] == "dry-run"
-    assert "confirmation_token" in execute_sample["confirmation"]
+    assert_contains_all(execute_sample["confirmation"], ["confirmation_token"])
 
     doctor_sample = assert_readonly_schema_sample("cleanwin.doctor.v1")
-    assert "recommended_commands" in doctor_sample
+    assert_contains_all(doctor_sample, ["recommended_commands"])
     assert_command_sequence(doctor_sample["recommended_commands"], [["make", "pytest"], ["make", "quality"]])
 
     review_sample = assert_readonly_schema_sample("cleanwin.review.v1")
-    assert "execution_handoff" in review_sample
-    assert "sensitive_exclusions" in review_sample
+    assert_contains_all(review_sample, ["execution_handoff", "sensitive_exclusions"])
 
     argument_validation_sample = samples["cleanwin.ai-tool-argument-validation.v1"]
     assert_payload_status_false(argument_validation_sample, "valid")
 
 
-def test_ai_tools_expose_rule_id_filter_for_inspect_and_plan() -> None:
+def test_ai_tools_expose_rule_id_filter_for_inspect_and_plan(assert_contains_all: AssertContainsAll) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
-    assert "rule_ids" in by_name["cleanwin_inspect"]["parameters"]["properties"]
-    assert "rule_ids" in by_name["cleanwin_generate_plan"]["parameters"]["properties"]
+    assert_contains_all(by_name["cleanwin_inspect"]["parameters"]["properties"], ["rule_ids"])
+    assert_contains_all(by_name["cleanwin_generate_plan"]["parameters"]["properties"], ["rule_ids"])
 
 
 def test_ai_tools_expose_readonly_workflow_router() -> None:
@@ -136,14 +139,15 @@ def test_ai_tools_expose_readonly_workflow_context_tools(tool_name: str) -> None
     assert tool["requires_confirmation"] is False
 
 
-def test_workflow_decision_tool_requires_route_id() -> None:
+def test_workflow_decision_tool_requires_route_id(assert_contains_all: AssertContainsAll) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
-    assert "route_id" in by_name["cleanwin_workflow_decision"]["parameters"]["required"]
+    assert_contains_all(by_name["cleanwin_workflow_decision"]["parameters"]["required"], ["route_id"])
 
 
 def test_workflow_router_sample_keeps_execution_non_auto_callable(
     assert_readonly_schema_sample: AssertReadonlySchemaSample,
     assert_readonly_payload: AssertReadonlyPayload,
+    assert_any_text_contains: AssertAnyTextContains,
 ) -> None:
     sample = assert_readonly_schema_sample("cleanwin.workflow-router.v1")
     assert_readonly_payload(sample)
@@ -151,7 +155,7 @@ def test_workflow_router_sample_keeps_execution_non_auto_callable(
     assert execution_route["destructive"] is True
     assert execution_route["auto_call_allowed"] is False
     assert execution_route["required_arguments"]["delete_mode"] == "recycle"
-    assert "raw shell command" in execution_route["blocked_actions"]
+    assert_any_text_contains(execution_route["blocked_actions"], "raw shell command")
 
 
 def test_workflow_context_schema_samples_are_registered(
@@ -173,27 +177,27 @@ def test_workflow_context_schema_samples_are_registered(
 
 def test_schema_samples_cover_package_and_browser_cache_categories(
     assert_schema_samples: AssertSchemaSamples,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     samples = assert_schema_samples(["cleanwin.inspect.v1"])
     inspect_sample = samples["cleanwin.inspect.v1"]
-    assert "browser-cache" in inspect_sample["categories"]
-    assert "package-cache" in inspect_sample["categories"]
+    assert_contains_all(inspect_sample["categories"], ["browser-cache", "package-cache"])
     candidate_categories = {candidate["category"] for candidate in inspect_sample["candidates"]}
-    assert "browser-cache" in candidate_categories
-    assert "package-cache" in candidate_categories
+    assert_contains_all(candidate_categories, ["browser-cache", "package-cache"])
 
 
-def test_ai_tools_expose_review_plan_tool() -> None:
+def test_ai_tools_expose_review_plan_tool(assert_contains_all: AssertContainsAll) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
-    assert "cleanwin_review_plan" in by_name
+    assert_contains_all(by_name, ["cleanwin_review_plan"])
     assert by_name["cleanwin_review_plan"]["risk"] == "planning"
     assert by_name["cleanwin_review_plan"]["requires_confirmation"] is False
-    assert "plan_file" in by_name["cleanwin_review_plan"]["parameters"]["required"]
+    assert_contains_all(by_name["cleanwin_review_plan"]["parameters"]["required"], ["plan_file"])
 
 
 def test_tool_argument_validation_rejects_invalid_types_and_unknown_fields(
     assert_payload_status_false: AssertPayloadStatus,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     by_name = {tool["name"]: tool for tool in tool_catalog()["tools"]}
     validation = validate_tool_arguments(
@@ -201,9 +205,14 @@ def test_tool_argument_validation_rejects_invalid_types_and_unknown_fields(
         {"categories": "dev-cache", "older_than_days": "0", "unexpected": True},
     )
     assert_payload_status_false(validation, "valid")
-    assert "arguments.categories must be an array" in validation["violations"]
-    assert "arguments.older_than_days must be a number" in validation["violations"]
-    assert "arguments.unexpected is not allowed" in validation["violations"]
+    assert_contains_all(
+        validation["violations"],
+        [
+            "arguments.categories must be an array",
+            "arguments.older_than_days must be a number",
+            "arguments.unexpected is not allowed",
+        ],
+    )
 
     valid = validate_tool_arguments(by_name["cleanwin_generate_plan"], {"categories": ["dev-cache"], "older_than_days": 0})
     assert_payload_status_true(valid, "valid")
@@ -212,14 +221,13 @@ def test_tool_argument_validation_rejects_invalid_types_and_unknown_fields(
 def test_host_policy_blocks_raw_command_and_missing_destructive_gates(
     assert_payload_status_false: AssertPayloadStatus,
     assert_payload_status_true: AssertPayloadStatus,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     tool = next(tool for tool in tool_catalog()["tools"] if tool["name"] == "cleanwin_execute_plan")
     denied = evaluate_ai_host_tool_call(tool=tool, arguments={"cmd": "remove things"}, source="test")
     assert_payload_status_false(denied, "allowed")
     codes = {reason["code"] for reason in denied["blocking_reasons"]}
-    assert "RAW_COMMAND_ARGUMENT_DENIED" in codes
-    assert "RECYCLE_MODE_REQUIRED" in codes
-    assert "OPERATION_LOG_REQUIRED" in codes
+    assert_contains_all(codes, ["RAW_COMMAND_ARGUMENT_DENIED", "RECYCLE_MODE_REQUIRED", "OPERATION_LOG_REQUIRED"])
 
     allowed = evaluate_ai_host_tool_call(
         tool=tool,
@@ -254,6 +262,7 @@ def test_execute_requires_dry_run_confirmation_token(
     cleanwin_plan_file: CleanWinPlanFile,
     cleanwin_json: CleanWinJSON,
     make_temp_plan_fixture: MakeTempPlan,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     _, target, env = make_temp_plan_fixture(tmp_path, True)
     plan_file = tmp_path / "plan.json"
@@ -277,7 +286,7 @@ def test_execute_requires_dry_run_confirmation_token(
         env=env,
     )
     assert denied.returncode == 2
-    assert "confirmation phrase" in cleanwin_result_json(denied)["error"]
+    assert_text_contains_all(cleanwin_result_json(denied)["error"], ["confirmation phrase"])
     assert target.exists()
 
     allowed = run_cleanwin(
