@@ -105,6 +105,19 @@ def test_workflows_use_makefile_venv_pytest_contract(repo_root: Path) -> None:
     assert "unittest discover" not in dockerfile
 
 
+def test_pytest_raises_assertions_match_messages(repo_root: Path) -> None:
+    violations: list[str] = []
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        if path.name in HELPER_MODULES:
+            continue
+        for node in ast.walk(module.tree):
+            if _is_pytest_raises_call(node) and not _has_keyword(node, "match"):
+                violations.append(f"{path.name}: pytest.raises must assert match=")
+
+    assert violations == []
+
+
 def test_tests_use_shared_provider_schema_helpers(repo_root: Path) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
@@ -174,6 +187,20 @@ def _is_subprocess_call(node: ast.AST) -> bool:
         and isinstance(node.func.value, ast.Name)
         and node.func.value.id == "subprocess"
     )
+
+
+def _is_pytest_raises_call(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "raises"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "pytest"
+    )
+
+
+def _has_keyword(node: ast.AST, name: str) -> bool:
+    return isinstance(node, ast.Call) and any(keyword.arg == name for keyword in node.keywords)
 
 
 def _is_schema_registry_call(node: ast.AST) -> bool:
