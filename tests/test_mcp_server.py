@@ -25,6 +25,7 @@ WriteTextFile = Callable[[Path, str], Path]
 MakeDirectory = Callable[[Path], Path]
 MakeMCPTempPlan = Callable[[Path], tuple[Path, Path, dict[str, str]]]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertPayloadStatus = Callable[..., JSONPayload]
 
 MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://ai/host-policy", "cleanwin.ai-host-policy.v1"),
@@ -274,6 +275,7 @@ def test_resources_read_responds_before_persistent_stdin_eof(
 def test_tools_call_readonly_capabilities(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     response = mcp_request(
         {
@@ -287,7 +289,7 @@ def test_tools_call_readonly_capabilities(
     result = mcp_success_result(response)
     assert result["structuredContent"]["tool"] == "cleanwin"
     assert_payload_schema(result["governanceDecision"], "cleanwin.ai-host-tool-call-decision.v1")
-    assert result["governanceDecision"]["allowed"]
+    assert_payload_status_true(result["governanceDecision"], "allowed")
 
 
 def test_tools_call_workflow_router(
@@ -412,6 +414,7 @@ def test_raw_command_argument_denied_for_readonly_tool(
 def test_tool_call_rejects_schema_invalid_arguments(
     cleanwin_test_env: CleanWinTestEnv,
     assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
 ) -> None:
     response = mcp_request(
         {
@@ -427,7 +430,7 @@ def test_tool_call_rejects_schema_invalid_arguments(
     assert_payload_schema(validation, "cleanwin.ai-tool-argument-validation.v1")
     assert "arguments.categories must be an array" in validation["violations"]
     assert "arguments.older_than_days must be a number" in validation["violations"]
-    assert result["governanceDecision"]["allowed"]
+    assert_payload_status_true(result["governanceDecision"], "allowed")
 
 
 def test_tool_call_rejects_unknown_non_raw_arguments(cleanwin_test_env: CleanWinTestEnv) -> None:

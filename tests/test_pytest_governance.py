@@ -21,10 +21,7 @@ READONLY_BOOLEAN_KEYS = {
 }
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
-    ("test_mcp_server.py", "test_tools_call_readonly_capabilities"): 1,
-    ("test_mcp_server.py", "test_tool_call_rejects_schema_invalid_arguments"): 1,
-}
+STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {
     "ai_auto_call_allowed",
