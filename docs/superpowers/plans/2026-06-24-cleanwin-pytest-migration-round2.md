@@ -393,3 +393,99 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 ### Verification
 
 Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
+## Round 6 Pytest Governance Plan
+
+**Goal:** Move repeated success/decision status assertions into shared pytest helpers and govern the remaining direct `valid`, `ready`, `passed`, and `allowed` checks with AST budgets.
+
+**Architecture:** Keep the previous assertion budgets closed. Add small helper fixtures for positive and negative status payloads, introduce migration budgets for direct status assertions, then migrate focused test files in small commits.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.N3xLbVOeFu`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared status assertion helpers",
+      "locator": "assert_payload_schema and safety helper fixtures",
+      "source": "explicit",
+      "reason": "tests repeat direct success/failure checks for valid, ready, passed, and allowed payload fields",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "status assertion governance budgets",
+      "locator": "AST checks for direct status assertions",
+      "source": "explicit",
+      "reason": "new helper usage should be machine-checked like schema and safety assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_contracts.py tests/test_ai_readiness.py tests/test_cli.py",
+      "target_type": "file",
+      "symbol": "AI, readiness, and CLI status assertions",
+      "locator": "direct valid, passed, ready, and allowed assertions",
+      "source": "explicit",
+      "reason": "these files contain the highest-density repeated status assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_identity.py tests/test_execution_contracts.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "remaining status assertions",
+      "locator": "direct valid and allowed assertions in identity, execution, and MCP tests",
+      "source": "explicit",
+      "reason": "remaining direct status assertions should either migrate or be locked by a small budget",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest workflow documentation",
+      "locator": "pytest governance helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe the new status helper and budget contract",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is duplicated status assertions that can drift from shared pytest contract helpers.
+
+### Round 6 Tasks
+
+- `PYTEST-GOV-108`: Record this Round 6 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-109`: Add reusable status helpers for truthy and falsey payload fields.
+- `PYTEST-GOV-110`: Add AST governance budgets for direct status assertions.
+- `PYTEST-GOV-111`: Migrate AI contract validation and host policy status assertions.
+- `PYTEST-GOV-112`: Migrate AI readiness and doctor status assertions.
+- `PYTEST-GOV-113`: Migrate CLI plan/review validation status assertions.
+- `PYTEST-GOV-114`: Migrate CLI permanent/admin validation denial assertions.
+- `PYTEST-GOV-115`: Migrate identity and execution contract status assertions.
+- `PYTEST-GOV-116`: Migrate MCP governance decision status assertions and shrink any remaining status budget.
+- `PYTEST-GOV-117`: Update pytest governance documentation, run quality gates, refresh the local aiflow governance report, and complete the round.
+
+### Verification
+
+Each round should run the smallest useful Makefile-backed pytest governance check before committing. The final round must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
