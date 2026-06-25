@@ -62,6 +62,8 @@ AssertAtLeast = Callable[[int, int], int]
 AssertOneOf = Callable[[Any, Collection[Any]], Any]
 AssertTextContainsAny = Callable[[str, Sequence[str]], str]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
+AssertPathExists = Callable[[Path], Path]
+AssertPathMissing = Callable[[Path], Path]
 AssertAnyMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Any]
 AssertAllMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
 AssertNoneMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
@@ -409,6 +411,24 @@ def assert_returncode() -> AssertReturnCode:
         return result
 
     return _assert_returncode
+
+
+@pytest.fixture
+def assert_path_exists() -> AssertPathExists:
+    def _assert_path_exists(path: Path) -> Path:
+        assert path.exists()
+        return path
+
+    return _assert_path_exists
+
+
+@pytest.fixture
+def assert_path_missing() -> AssertPathMissing:
+    def _assert_path_missing(path: Path) -> Path:
+        assert not path.exists()
+        return path
+
+    return _assert_path_missing
 
 
 @pytest.fixture

@@ -57,6 +57,10 @@ SCALAR_ASSERTION_HELPERS = {
     "assert_one_of",
     "assert_text_contains_any",
 }
+PATH_ASSERTION_HELPERS = {
+    "assert_path_exists",
+    "assert_path_missing",
+}
 GOVERNANCE_HELPER_ADOPTION_FILES = {
     "test_pytest_governance.py",
 }
@@ -475,7 +479,11 @@ def test_pytest_governance_uses_shared_assertion_helpers(
     assert_exact_sequence: AssertExactSequence,
 ) -> None:
     governance_helpers = (
-        COLLECTION_ASSERTION_HELPERS | FIELD_ASSERTION_HELPERS | EXACT_ASSERTION_HELPERS | SCALAR_ASSERTION_HELPERS
+        COLLECTION_ASSERTION_HELPERS
+        | FIELD_ASSERTION_HELPERS
+        | EXACT_ASSERTION_HELPERS
+        | SCALAR_ASSERTION_HELPERS
+        | PATH_ASSERTION_HELPERS
     )
     adopted: dict[str, set[str]] = {filename: set() for filename in GOVERNANCE_HELPER_ADOPTION_FILES}
     for module in iter_test_modules(repo_root):
@@ -563,6 +571,15 @@ def test_scalar_assertion_helpers_are_adopted(
 
     missing = [filename for filename, helpers in adopted.items() if not helpers]
     assert_exact_sequence(missing, [])
+
+
+def test_path_assertion_helpers_are_available(
+    repo_root: Path,
+    assert_contains_all: AssertContainsAll,
+) -> None:
+    conftest_tree = ast.parse((repo_root / "tests" / "conftest.py").read_text(encoding="utf-8"))
+    helper_defs = {node.name for node in ast.walk(conftest_tree) if isinstance(node, ast.FunctionDef)}
+    assert_contains_all(helper_defs, sorted(PATH_ASSERTION_HELPERS))
 
 
 def _assigned_cleanwin_json_commands(tree: ast.AST) -> dict[str, str]:
