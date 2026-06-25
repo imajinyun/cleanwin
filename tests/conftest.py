@@ -56,6 +56,9 @@ AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAnyMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Any]
 AssertAllMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
 AssertNoneMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertFieldsPresent = Callable[[JSONPayload, Sequence[str]], JSONPayload]
 
 
 class AssertPayloadStatus(Protocol):
@@ -340,6 +343,43 @@ def assert_none_match() -> AssertNoneMatch:
         return items
 
     return _assert_none_match
+
+
+def field_value(payload: JSONPayload, field_path: str) -> Any:
+    current: Any = payload
+    for part in field_path.split("."):
+        assert isinstance(current, dict)
+        current = current[part]
+    return current
+
+
+@pytest.fixture
+def assert_field_values() -> AssertFieldValues:
+    def _assert_field_values(payload: JSONPayload, expected: FieldValues) -> JSONPayload:
+        mismatches: dict[str, dict[str, Any]] = {}
+        for field_path, expected_value in expected.items():
+            actual = field_value(payload, field_path)
+            if actual != expected_value:
+                mismatches[field_path] = {"expected": expected_value, "actual": actual}
+        assert mismatches == {}
+        return payload
+
+    return _assert_field_values
+
+
+@pytest.fixture
+def assert_fields_present() -> AssertFieldsPresent:
+    def _assert_fields_present(payload: JSONPayload, fields: Sequence[str]) -> JSONPayload:
+        missing: list[str] = []
+        for field_path in fields:
+            try:
+                field_value(payload, field_path)
+            except KeyError:
+                missing.append(field_path)
+        assert missing == []
+        return payload
+
+    return _assert_fields_present
 
 
 @pytest.fixture
