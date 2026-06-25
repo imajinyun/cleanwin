@@ -4,22 +4,21 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA, installed_app_inventory_report
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
 WriteTextFile = Callable[[Path, str], Path]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 
 
-def test_report_is_non_destructive_and_supports_non_windows() -> None:
+def test_report_is_non_destructive_and_supports_non_windows(
+    assert_readonly_report: AssertReadonlyReport,
+) -> None:
     report = installed_app_inventory_report(raw_registry_entries=[], env={})
 
-    assert report["schema"] == INSTALLED_APP_INVENTORY_SCHEMA
-    assert report["destructive"] is False
-    assert report["dry_run"] is True
-    assert report["executes_system_commands"] is False
+    assert_readonly_report(report, INSTALLED_APP_INVENTORY_SCHEMA)
     assert report["summary"]["application_count"] == 0
     assert any(source["id"] == "winget" and not source["available"] for source in report["sources"])
     assert any("does not uninstall" in item for item in report["non_goals"])
@@ -148,13 +147,7 @@ def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans() -> N
     assert all(strategy["auto_executable"] is False for strategy in by_name.values())
     assert report["summary"]["uninstall_strategy_counts"]["winget-uninstall"] == 1
 
-
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("installed-app-inventory",),
-        ("ai-tools", "--provider", "installed-app-inventory"),
-    ],
-)
-def test_cli_and_ai_provider_expose_inventory(args: tuple[str, ...], cleanwin_json: CleanWinJSON) -> None:
-    assert cleanwin_json(*args)["schema"] == INSTALLED_APP_INVENTORY_SCHEMA
+def test_cli_and_ai_provider_expose_inventory(
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+) -> None:
+    assert_cli_provider_schema_sample("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA)
