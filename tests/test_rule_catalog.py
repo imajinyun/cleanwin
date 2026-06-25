@@ -10,6 +10,8 @@ from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_r
 JSONPayload = dict[str, Any]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 @pytest.fixture
@@ -31,11 +33,12 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
     rule_catalog: dict[str, Any],
     assert_payload_schema: AssertPayloadSchema,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     catalog = rule_catalog
 
     assert_payload_schema(catalog, CATALOG_SCHEMA)
-    assert catalog["version"] == "1"
+    assert_field_values(catalog, {"version": "1"})
     assert catalog["rule_count"] >= 40
     assert_contains_all(
         {rule["rule_id"] for rule in catalog["dev_cache_rules"]},

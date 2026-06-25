@@ -69,8 +69,13 @@ FIELD_HELPER_ADOPTION_FILES = {
     "test_installed_apps.py",
     "test_mcp_server.py",
     "test_official_commands.py",
+    "test_presets.py",
+    "test_promotion_gates.py",
+    "test_recovery.py",
+    "test_rule_catalog.py",
     "test_scan_governance.py",
     "test_startup_inventory.py",
+    "test_windows_smoke.py",
 }
 STATUS_KEYS = {"valid", "ready", "passed", "allowed"}
 EXECUTION_DISABLED_KEYS = {

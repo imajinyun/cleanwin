@@ -12,20 +12,28 @@ AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
 SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_windows_smoke_matrix_is_non_destructive_release_gate(
     assert_readonly_report: AssertReadonlyReport,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = windows_smoke_matrix_report()
 
     assert_readonly_report(report, WINDOWS_SMOKE_MATRIX_SCHEMA)
     assert_summary_counts(report, {"destructive_scenario_count": 0})
-    assert report["release_gate"]["required_before_execution_expansion"] is True
-    assert report["release_gate"]["requires_windows_10_evidence"] is True
-    assert report["release_gate"]["requires_windows_11_evidence"] is True
-    assert report["release_gate"]["allows_synthetic_fixture_only"] is False
+    assert_field_values(
+        report["release_gate"],
+        {
+            "required_before_execution_expansion": True,
+            "requires_windows_10_evidence": True,
+            "requires_windows_11_evidence": True,
+            "allows_synthetic_fixture_only": False,
+        },
+    )
 
 
 def test_windows_smoke_matrix_covers_expected_edge_scenarios(assert_contains_all: AssertContainsAll) -> None:

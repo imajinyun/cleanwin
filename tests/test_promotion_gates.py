@@ -14,6 +14,8 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
@@ -33,6 +35,7 @@ def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
 def test_promotion_gates_cover_high_risk_report_surfaces(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = promotion_gates_report()
     by_id = {gate["id"]: gate for gate in report["gates"]}
@@ -49,14 +52,13 @@ def test_promotion_gates_cover_high_risk_report_surfaces(
     )
 
     registry_gate = by_id["registry-privacy-to-registry-change"]
-    assert registry_gate["default_state"] == "report-only"
+    assert_field_values(registry_gate, {"default_state": "report-only"})
     assert_execution_disabled(registry_gate, "ai_auto_call_allowed")
     assert_contains_all(registry_gate["required_snapshots"], ["registry-export"])
     assert_contains_all(registry_gate["required_tests"], ["rollback-metadata-validation"])
 
     browser_gate = by_id["browser-profile-to-cache-plan"]
-    assert browser_gate["default_state"] == "low-risk-cache-only"
-    assert browser_gate["ai_auto_call_allowed"] is True
+    assert_field_values(browser_gate, {"default_state": "low-risk-cache-only", "ai_auto_call_allowed": True})
     assert_contains_all(browser_gate["required_evidence"], ["sensitive_exclusions"])
 
 

@@ -33,15 +33,17 @@ AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertAllMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
 AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_capabilities_reports_dry_run_and_single_exit(
     cleanwin_json: CleanWinJSON,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     payload = cleanwin_json("capabilities")
-    assert payload["default_dry_run"]
-    assert payload["deletion_exit"] == "cleanwincli.delete_ops.safe_delete"
+    assert_field_values(payload, {"default_dry_run": True, "deletion_exit": "cleanwincli.delete_ops.safe_delete"})
     assert_contains_all(payload["safe_categories"], ["browser-cache", "package-cache"])
     assert_contains_all(payload["never_auto_execute"], ["registry-clean"])
 
@@ -51,11 +53,12 @@ def test_inspect_temp_finds_sandbox_candidate(
     make_temp_plan_fixture: MakeTempPlan,
     assert_payload_schema: AssertPayloadSchema,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     _, stale_file, env = make_temp_plan_fixture(tmp_path, False)
     payload = cleanwin_json("inspect", "--categories", "temp", "--older-than-days", "0", env=env)
     assert_summary_counts(payload, {"candidate_count": 1})
-    assert payload["candidates"][0]["path"] == str(stale_file)
+    assert_field_values(payload["candidates"][0], {"path": str(stale_file)})
     assert_payload_schema(payload["candidates"][0]["identity"], "cleanwin.filesystem-identity.v1")
 
 def test_plan_validate_round_trip(
@@ -99,6 +102,7 @@ def test_review_plan_summarizes_execution_handoff(
     assert_payload_status_true: AssertPayloadStatus,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     npm_cache = tmp_path / "npm-cache"
     write_text_file(npm_cache / "_cacache" / "index", "x")
@@ -118,10 +122,12 @@ def test_review_plan_summarizes_execution_handoff(
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_readonly_report(review, "cleanwin.review.v1")
     assert_payload_status_true(review, "validation", "valid")
-    assert review["execution_handoff"]["requires_human_confirmation"]
+    assert_field_values(review["execution_handoff"], {"requires_human_confirmation": True})
     assert_summary_counts(review, {"candidate_count": 1})
-    assert review["rule_summary"][0]["rule_id"] == "dev-cache.npm.cache"
-    assert review["official_cleanup_commands"] == ["npm cache clean --force"]
+    assert_field_values(
+        review,
+        {"rule_summary.0.rule_id": "dev-cache.npm.cache", "official_cleanup_commands": ["npm cache clean --force"]},
+    )
     assert_contains_all(review["execution_handoff"]["required_predecessor_tools"], ["cleanwin_dry_run_plan"])
 
 def test_review_plan_rejects_invalid_plan_exit_code(
@@ -160,6 +166,7 @@ def test_read_only_categories_do_not_create_candidates(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     payload = cleanwin_json(
         "inspect",
@@ -170,8 +177,8 @@ def test_read_only_categories_do_not_create_candidates(
     for finding in payload["findings"]:
         assert_safe_to_execute_disabled(finding)
     by_category = {finding["category"]: finding for finding in payload["findings"]}
-    assert by_category["docker-report"]["rule_id"] == "report.docker.manual-cleanup"
-    assert by_category["wsl-report"]["owner"] == "WSL"
+    assert_field_values(by_category["docker-report"], {"rule_id": "report.docker.manual-cleanup"})
+    assert_field_values(by_category["wsl-report"], {"owner": "WSL"})
     assert_text_contains_all(by_category["browser-cache-report"]["detail"].lower(), ["browser profiles"])
 
 def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
@@ -182,6 +189,7 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     assert_payload_schema: AssertPayloadSchema,
     assert_summary_counts: AssertSummaryCounts,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     npm_cache = root / "npm-cache"
@@ -198,10 +206,15 @@ def test_dev_cache_candidates_include_rule_metadata_and_official_commands(
     )
     assert_summary_counts(payload, {"candidate_count": 1})
     candidate = payload["candidates"][0]
-    assert candidate["category"] == "dev-cache"
-    assert candidate["rule_id"] == "dev-cache.npm.cache"
-    assert candidate["cache_owner"] == "npm"
-    assert candidate["official_cleanup_command"] == "npm cache clean --force"
+    assert_field_values(
+        candidate,
+        {
+            "category": "dev-cache",
+            "rule_id": "dev-cache.npm.cache",
+            "cache_owner": "npm",
+            "official_cleanup_command": "npm cache clean --force",
+        },
+    )
     assert_text_contains_all(candidate["safe_to_delete_rationale"].lower(), ["regenerated"])
     assert_payload_schema(candidate["identity"], "cleanwin.filesystem-identity.v1")
 
@@ -211,6 +224,7 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -232,10 +246,10 @@ def test_dev_cache_scans_expanded_python_and_node_tool_caches(
         env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["dev-cache.poetry.cache"]["cache_owner"] == "Poetry"
-    assert by_rule["dev-cache.pipenv.cache"]["cache_owner"] == "Pipenv"
-    assert by_rule["dev-cache.pre-commit.cache"]["cache_owner"] == "pre-commit"
-    assert by_rule["dev-cache.node-gyp.cache"]["cache_owner"] == "node-gyp"
+    assert_field_values(by_rule["dev-cache.poetry.cache"], {"cache_owner": "Poetry"})
+    assert_field_values(by_rule["dev-cache.pipenv.cache"], {"cache_owner": "Pipenv"})
+    assert_field_values(by_rule["dev-cache.pre-commit.cache"], {"cache_owner": "pre-commit"})
+    assert_field_values(by_rule["dev-cache.node-gyp.cache"], {"cache_owner": "node-gyp"})
     assert_text_contains_all(by_rule["dev-cache.poetry.cache"]["official_cleanup_command"], ["poetry cache clear"])
 
 def test_package_cache_scans_common_windows_package_manager_caches(
@@ -246,6 +260,7 @@ def test_package_cache_scans_common_windows_package_manager_caches(
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -277,9 +292,9 @@ def test_package_cache_scans_common_windows_package_manager_caches(
         ],
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["package-cache.winget.packages"]["cache_owner"] == "WinGet"
+    assert_field_values(by_rule["package-cache.winget.packages"], {"cache_owner": "WinGet"})
     assert_text_contains_all(by_rule["package-cache.winget.packages"]["official_cleanup_command"].lower(), ["winget"])
-    assert by_rule["package-cache.uv.cache"]["cache_owner"] == "uv"
+    assert_field_values(by_rule["package-cache.uv.cache"], {"cache_owner": "uv"})
 
 def test_app_leftovers_scans_common_uninstalled_app_cache_and_logs(
     tmp_path: Path,
@@ -323,6 +338,7 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -345,9 +361,9 @@ def test_app_leftovers_scans_expanded_electron_gpu_caches(
         env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["app-leftovers.teams-classic.gpu-cache"]["path"] == str(teams_gpu_cache)
-    assert by_rule["app-leftovers.discord.gpu-cache"]["path"] == str(discord_gpu_cache)
-    assert by_rule["app-leftovers.vscode.gpu-cache"]["path"] == str(vscode_gpu_cache)
+    assert_field_values(by_rule["app-leftovers.teams-classic.gpu-cache"], {"path": str(teams_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.discord.gpu-cache"], {"path": str(discord_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.vscode.gpu-cache"], {"path": str(vscode_gpu_cache)})
     assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(vscode_user_data)])
 
 def test_app_leftovers_skips_when_active_install_marker_exists(
@@ -411,6 +427,7 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -434,16 +451,17 @@ def test_app_leftovers_scans_more_common_app_cache_and_logs(
         env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["app-leftovers.notion.cache"]["path"] == str(notion_cache)
-    assert by_rule["app-leftovers.figma.logs"]["path"] == str(figma_logs)
-    assert by_rule["app-leftovers.obs-studio.logs"]["path"] == str(obs_logs)
-    assert by_rule["app-leftovers.spotify.browser-cache"]["path"] == str(spotify_cache)
+    assert_field_values(by_rule["app-leftovers.notion.cache"], {"path": str(notion_cache)})
+    assert_field_values(by_rule["app-leftovers.figma.logs"], {"path": str(figma_logs)})
+    assert_field_values(by_rule["app-leftovers.obs-studio.logs"], {"path": str(obs_logs)})
+    assert_field_values(by_rule["app-leftovers.spotify.browser-cache"], {"path": str(spotify_cache)})
 
 def test_app_leftovers_scans_additional_vendor_cache_and_logs(
     tmp_path: Path,
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -474,7 +492,7 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     for rule_id, path, _, _ in cases:
-        assert by_rule[rule_id]["path"] == str(path)
+        assert_field_values(by_rule[rule_id], {"path": str(path)})
 
 def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
     tmp_path: Path,
@@ -510,6 +528,7 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     roaming = root / "Roaming"
@@ -529,11 +548,13 @@ def test_app_leftovers_rule_filter_review_and_dry_run(
         env=env,
     )
     assert_summary_counts(plan_payload, {"candidate_count": 1})
-    assert plan_payload["candidates"][0]["path"] == str(vscode_cache)
-    assert plan_payload["candidates"][0]["rule_id"] == "app-leftovers.vscode.cached-data"
+    assert_field_values(
+        plan_payload["candidates"][0],
+        {"path": str(vscode_cache), "rule_id": "app-leftovers.vscode.cached-data"},
+    )
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review["rule_ids"] == ["app-leftovers.vscode.cached-data"]
+    assert_field_values(review, {"rule_ids": ["app-leftovers.vscode.cached-data"]})
     assert_any_text_contains(review["cleanup_strategy"]["official_cleanup_commands"], "Uninstall Visual Studio Code")
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
@@ -612,6 +633,7 @@ def test_browser_cache_discovers_brave_profile_caches(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -633,8 +655,8 @@ def test_browser_cache_discovers_brave_profile_caches(
         env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["browser-cache.brave.cache"]["path"] == str(brave_cache)
-    assert by_rule["browser-cache.brave.code-cache"]["path"] == str(brave_code_cache)
+    assert_field_values(by_rule["browser-cache.brave.cache"], {"path": str(brave_cache)})
+    assert_field_values(by_rule["browser-cache.brave.code-cache"], {"path": str(brave_code_cache)})
     assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(cookies)])
 
 def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
@@ -645,6 +667,7 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_text_contains_all: AssertTextContainsAll,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -659,13 +682,14 @@ def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     exclusions = review["sensitive_exclusions"]
     assert exclusions
-    assert exclusions[0]["category"] == "browser-cache"
+    assert_field_values(exclusions[0], {"category": "browser-cache"})
     excluded_patterns = "\n".join(item["pattern"] for item in exclusions[0]["excluded_patterns"])
     assert_text_contains_all(excluded_patterns, ["Cookies", "Login Data", "Extensions"])
     strategy = review["cleanup_strategy"]
-    assert strategy["preferred"] == "official-tool-or-app-ui"
-    assert strategy["fallback"] == "cleanwin-recycle-execution"
-    assert strategy["requires_review"]
+    assert_field_values(
+        strategy,
+        {"preferred": "official-tool-or-app-ui", "fallback": "cleanwin-recycle-execution", "requires_review": True},
+    )
     assert_contains_all(strategy["official_cleanup_commands"], ["Use Chrome > Clear browsing data"])
 
 def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
@@ -677,6 +701,7 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -696,10 +721,10 @@ def test_rule_id_precise_plan_review_and_dry_run_for_package_cache(
         env=env,
     )
     assert_summary_counts(plan_payload, {"candidate_count": 1})
-    assert plan_payload["candidates"][0]["rule_id"] == "package-cache.uv.cache"
+    assert_field_values(plan_payload["candidates"][0], {"rule_id": "package-cache.uv.cache"})
 
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
-    assert review["rule_ids"] == ["package-cache.uv.cache"]
+    assert_field_values(review, {"rule_ids": ["package-cache.uv.cache"]})
     assert_contains_all(review["cleanup_strategy"]["official_cleanup_commands"], ["uv cache clean"])
 
     dry_run_payload = cleanwin_json("execute-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
@@ -711,6 +736,7 @@ def test_package_cache_scans_additional_developer_package_caches(
     cleanwin_json: CleanWinJSON,
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -726,8 +752,8 @@ def test_package_cache_scans_additional_developer_package_caches(
         env=make_windows_cache_env(root),
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
-    assert by_rule["package-cache.vcpkg.downloads"]["path"] == str(vcpkg_downloads)
-    assert by_rule["package-cache.pipx.cache"]["path"] == str(pipx_cache)
+    assert_field_values(by_rule["package-cache.vcpkg.downloads"], {"path": str(vcpkg_downloads)})
+    assert_field_values(by_rule["package-cache.pipx.cache"], {"path": str(pipx_cache)})
 
 def test_inspect_rule_id_filters_dev_cache_candidates(
     tmp_path: Path,
@@ -735,6 +761,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     pip_cache = root / "LocalAppData" / "pip" / "Cache"
@@ -755,7 +782,7 @@ def test_inspect_rule_id_filters_dev_cache_candidates(
         env=env,
     )
     assert_summary_counts(payload, {"candidate_count": 1})
-    assert payload["candidates"][0]["rule_id"] == "dev-cache.npm.cache"
+    assert_field_values(payload["candidates"][0], {"rule_id": "dev-cache.npm.cache"})
 
 def test_plan_rule_id_filters_candidates_before_write(
     tmp_path: Path,
@@ -763,6 +790,7 @@ def test_plan_rule_id_filters_candidates_before_write(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -784,7 +812,7 @@ def test_plan_rule_id_filters_candidates_before_write(
         env=env,
     )
     assert_summary_counts(payload, {"candidate_count": 1})
-    assert payload["candidates"][0]["rule_id"] == "dev-cache.pip.cache"
+    assert_field_values(payload["candidates"][0], {"rule_id": "dev-cache.pip.cache"})
 
 def test_read_only_findings_include_structured_review_details(
     cleanwin_json: CleanWinJSON,
@@ -804,6 +832,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
     write_text_file: WriteTextFile,
     make_windows_cache_env: MakeWindowsCacheEnv,
     assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -819,9 +848,7 @@ def test_read_only_findings_report_existing_path_evidence_without_candidates(
 
     details = payload["findings"][0]["review_details"]
     evidence = {item["path"]: item for item in details["path_evidence"]}
-    assert evidence[str(docker_log)]["kind"] == "directory"
-    assert evidence[str(docker_log)]["exists"]
-    assert evidence[str(docker_log)]["child_count"] == 1
+    assert_field_values(evidence[str(docker_log)], {"kind": "directory", "exists": True, "child_count": 1})
     assert details["evidence_summary"]["existing_path_count"] >= 1
 
 def test_validate_plan_rejects_permanent_and_admin_candidates(

@@ -17,6 +17,8 @@ SummaryCounts = dict[str, int]
 AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_preset_catalog_is_read_only_and_non_executable(
@@ -38,18 +40,21 @@ def test_preset_catalog_contains_safe_templates_and_review_gates(
     assert_readonly_payload: AssertReadonlyPayload,
     assert_contains_all: AssertContainsAll,
     assert_any_text_contains: AssertAnyTextContains,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = preset_catalog_report()
     by_id = {preset["id"]: preset for preset in report["presets"]}
 
     assert_contains_all(by_id, ["preset.daily-safe-cache", "preset.browser-cache-only", "preset.uninstalled-app-leftovers"])
     browser = by_id["preset.browser-cache-only"]
-    assert browser["categories"] == ["browser-cache"]
+    assert_field_values(browser, {"categories": ["browser-cache"]})
     assert_contains_all(browser["rule_ids"], ["browser-cache.chrome.cache"])
     assert_payload_schema(browser["plan_template"], "cleanwin.preset-plan-template.v1")
     assert_readonly_payload(browser["plan_template"])
-    assert browser["plan_template"]["requires_validate_plan"] is True
-    assert browser["plan_template"]["requires_matching_dry_run_token"] is True
+    assert_field_values(
+        browser["plan_template"],
+        {"requires_validate_plan": True, "requires_matching_dry_run_token": True},
+    )
     assert_any_text_contains([step.lower() for step in browser["review_steps"]], "cookies")
 
 

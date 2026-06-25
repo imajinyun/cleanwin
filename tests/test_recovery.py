@@ -13,18 +13,26 @@ AssertReadonlyPayload = Callable[[JSONPayload], JSONPayload]
 AssertExecutionDisabled = Callable[..., JSONPayload]
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertNoneMatch = Callable[[Sequence[JSONPayload], Callable[[JSONPayload], bool]], Sequence[JSONPayload]]
+FieldValues = dict[str, Any]
+AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 
 
 def test_recovery_readiness_is_non_destructive_and_declares_gates(
     assert_readonly_report: AssertReadonlyReport,
     assert_execution_disabled: AssertExecutionDisabled,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     report = recovery_readiness_report()
 
     assert_readonly_report(report, RECOVERY_READINESS_SCHEMA)
-    assert report["ready_for_recovery_planning"] is True
-    assert report["ready_for_system_execution"] is False
-    assert report["execution_gate"]["requires_recovery_snapshot"] is True
+    assert_field_values(
+        report,
+        {
+            "ready_for_recovery_planning": True,
+            "ready_for_system_execution": False,
+            "execution_gate.requires_recovery_snapshot": True,
+        },
+    )
     assert_execution_disabled(report["execution_gate"], "system_execution_enabled")
 
 

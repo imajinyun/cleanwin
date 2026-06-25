@@ -348,6 +348,9 @@ def assert_none_match() -> AssertNoneMatch:
 def field_value(payload: JSONPayload, field_path: str) -> Any:
     current: Any = payload
     for part in field_path.split("."):
+        if isinstance(current, list):
+            current = current[int(part)]
+            continue
         assert isinstance(current, dict)
         current = current[part]
     return current
