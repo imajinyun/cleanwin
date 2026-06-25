@@ -57,6 +57,9 @@ AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 AssertExactSet = Callable[[Collection[Any], Collection[Any]], set[Any]]
 AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
 AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
+AssertExactCount = Callable[[Sequence[Any], int], Sequence[Any]]
+AssertOneOf = Callable[[Any, Collection[Any]], Any]
+AssertTextContainsAny = Callable[[str, Sequence[str]], str]
 AssertReturnCode = Callable[[subprocess.CompletedProcess[str], int], subprocess.CompletedProcess[str]]
 AssertAnyMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Any]
 AssertAllMatch = Callable[[Sequence[Any], Callable[[Any], bool]], Sequence[Any]]
@@ -357,6 +360,34 @@ def assert_non_empty() -> AssertNonEmpty:
         return items
 
     return _assert_non_empty
+
+
+@pytest.fixture
+def assert_exact_count() -> AssertExactCount:
+    def _assert_exact_count(items: Sequence[Any], expected: int) -> Sequence[Any]:
+        assert len(items) == expected
+        return items
+
+    return _assert_exact_count
+
+
+@pytest.fixture
+def assert_one_of() -> AssertOneOf:
+    def _assert_one_of(value: Any, expected: Collection[Any]) -> Any:
+        assert value in expected
+        return value
+
+    return _assert_one_of
+
+
+@pytest.fixture
+def assert_text_contains_any() -> AssertTextContainsAny:
+    def _assert_text_contains_any(text: str, expected: Sequence[str]) -> str:
+        present = [fragment for fragment in expected if fragment in text]
+        assert present != []
+        return text
+
+    return _assert_text_contains_any
 
 
 @pytest.fixture
