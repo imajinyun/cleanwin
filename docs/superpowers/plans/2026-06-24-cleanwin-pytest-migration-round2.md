@@ -822,3 +822,126 @@ Filtered candidates: no production defect is claimed. The actionable risk is dup
 ### Verification
 
 Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
+
+## Round 10 Pytest Governance Plan
+
+**Goal:** Move repeated structured field equality assertions into shared pytest helpers so tests express contract checks as compact field maps with better drift control.
+
+**Architecture:** Keep all previous assertion budgets closed. Add nested field-value helpers in `tests/conftest.py`, introduce governance smoke coverage for helper availability, migrate focused high-density files, then document the workflow. This round stays test-only and does not change cleanup behavior or execution paths.
+
+**Tech Stack:** Python, pytest fixtures, AST-based governance tests, Makefile-backed `.venv` tooling, local aiflow queue.
+
+Step1 status: completed. `BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.BYRlt0FQGJ`
+
+Step2 status: completed. `LANG=python`; project conventions require pytest-native tests, shared helpers, and Makefile-backed `.venv` tooling.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/conftest.py",
+      "target_type": "file",
+      "symbol": "shared structured field assertion helpers",
+      "locator": "near existing summary, collection, text, and predicate helpers",
+      "source": "explicit",
+      "reason": "many tests repeat payload['field'] == value and nested field equality assertions",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "field assertion helper adoption smoke",
+      "locator": "helper registration and adoption checks",
+      "source": "explicit",
+      "reason": "new shared helpers should be machine-visible and covered by pytest governance smoke",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_identity.py tests/test_browser_inventory.py tests/test_file_reports.py",
+      "target_type": "file",
+      "symbol": "inventory and identity field assertions",
+      "locator": "direct replay, browser profile, and file report field equality clusters",
+      "source": "explicit",
+      "reason": "these tests contain small stable field maps that can migrate with low risk",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_installed_apps.py",
+      "target_type": "file",
+      "symbol": "installed app field assertion clusters",
+      "locator": "application, correlation, and uninstall strategy field assertions",
+      "source": "explicit",
+      "reason": "installed app tests contain repeated structured field checks over payload dictionaries",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_ai_contracts.py tests/test_ai_readiness.py tests/test_mcp_server.py",
+      "target_type": "file",
+      "symbol": "AI and MCP structured field assertions",
+      "locator": "tool metadata, route metadata, and MCP response field equality clusters",
+      "source": "explicit",
+      "reason": "AI/MCP contract tests should use shared field maps for repeated structured fields",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_execution_contracts.py tests/test_debloat_privacy.py tests/test_official_commands.py tests/test_startup_inventory.py tests/test_scan_governance.py",
+      "target_type": "file",
+      "symbol": "safety and governance field assertions",
+      "locator": "execution gate, privacy evidence, official command, startup, and scan governance fields",
+      "source": "explicit",
+      "reason": "safety reports contain repeated field equality clusters that benefit from shared helpers",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_cli.py tests/test_presets.py tests/test_promotion_gates.py tests/test_rule_catalog.py tests/test_windows_smoke.py tests/test_recovery.py",
+      "target_type": "file",
+      "symbol": "remaining CLI and governance field assertion clusters",
+      "locator": "direct rule, path, preset, gate, catalog, smoke, and recovery field equality checks",
+      "source": "explicit",
+      "reason": "remaining high-value field clusters should migrate in focused batches without broad rewrites",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest field helper documentation",
+      "locator": "pytest workflow helper guidance",
+      "source": "explicit",
+      "reason": "workflow docs should describe when to use shared field-value helpers",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "This is a test-governance migration pass; it does not change production cleanup behavior or execution paths."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is duplicated structured field assertions that can drift from shared pytest helper contracts.
+
+### Round 10 Tasks
+
+- `PYTEST-GOV-148`: Record this Round 10 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-149`: Add reusable nested field-value assertion helpers.
+- `PYTEST-GOV-150`: Add pytest governance smoke coverage for field helper availability and adoption.
+- `PYTEST-GOV-151`: Migrate identity, browser inventory, and file-report field assertion clusters.
+- `PYTEST-GOV-152`: Migrate installed-app field assertion clusters.
+- `PYTEST-GOV-153`: Migrate AI readiness, AI contracts, and MCP field assertion clusters.
+- `PYTEST-GOV-154`: Migrate execution, debloat/privacy, official-command, startup, and scan-governance field clusters.
+- `PYTEST-GOV-155`: Migrate CLI, preset, promotion-gate, rule-catalog, Windows-smoke, and recovery field clusters.
+- `PYTEST-GOV-156`: Run focused pytest governance gates and tighten helper adoption evidence.
+- `PYTEST-GOV-157`: Update docs, run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest governance check before committing. The final task must run `make quality` so lint, pytest, type checking, compile, packaging, smoke tests, and pytest governance all execute through the repository `.venv`.
