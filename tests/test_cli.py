@@ -500,6 +500,70 @@ def test_app_leftovers_scans_additional_vendor_cache_and_logs(
     for rule_id, path, _, _ in cases:
         assert_field_values(by_rule[rule_id], {"path": str(path)})
 
+def test_app_leftovers_scans_additional_windows_software_caches(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "Telegram Desktop" / "tdata" / "user_data" / "cache" / "thumb.bin", "telegram"),
+        (roaming / "Signal" / "logs" / "main.log", "signal"),
+        (roaming / "WhatsApp" / "GPUCache" / "shader.bin", "whatsapp"),
+        (roaming / "Cursor" / "CachedData" / "cache.bin", "cursor"),
+        (roaming / "Cursor" / "GPUCache" / "shader.bin", "cursor"),
+        (local / "Google" / "AndroidStudio2025.1" / "log" / "idea.log", "android-studio"),
+        (user / "VirtualBox VMs" / "ReviewVM" / "Logs" / "VBox.log", "virtualbox"),
+        (roaming / "vlc" / "art" / "cover.jpg", "vlc"),
+        (roaming / "Zoom" / "GPUCache" / "shader.bin", "zoom"),
+        (local / "1Password" / "logs" / "1password.log", "1password"),
+        (roaming / "Telegram Desktop" / "tdata" / "key_data", "sensitive"),
+        (user / "VirtualBox VMs" / "ReviewVM" / "ReviewVM.vdi", "disk"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    (
+        telegram_cache,
+        signal_logs,
+        whatsapp_gpu_cache,
+        cursor_cached_data,
+        cursor_gpu_cache,
+        android_studio_logs,
+        virtualbox_logs,
+        vlc_art_cache,
+        zoom_gpu_cache,
+        onepassword_logs,
+        telegram_key_data,
+        virtualbox_disk,
+    ) = [path.parent for path, _ in cache_files]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.telegram.cache"], {"path": str(telegram_cache)})
+    assert_field_values(by_rule["app-leftovers.signal.logs"], {"path": str(signal_logs)})
+    assert_field_values(by_rule["app-leftovers.whatsapp.gpu-cache"], {"path": str(whatsapp_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.cursor.cached-data"], {"path": str(cursor_cached_data)})
+    assert_field_values(by_rule["app-leftovers.cursor.gpu-cache"], {"path": str(cursor_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.android-studio.logs"], {"path": str(android_studio_logs)})
+    assert_field_values(by_rule["app-leftovers.virtualbox.logs"], {"path": str(virtualbox_logs)})
+    assert_field_values(by_rule["app-leftovers.vlc.art-cache"], {"path": str(vlc_art_cache)})
+    assert_field_values(by_rule["app-leftovers.zoom.gpu-cache"], {"path": str(zoom_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.1password.logs"], {"path": str(onepassword_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(telegram_key_data), str(virtualbox_disk)])
+
 def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
     tmp_path: Path,
     cleanwin_json: CleanWinJSON,
@@ -524,6 +588,36 @@ def test_app_leftovers_skips_additional_vendor_rules_when_active_marker_exists(
         env=make_windows_cache_env(root),
     )
     assert_contains_none({candidate["rule_id"] for candidate in payload["candidates"]}, ["app-leftovers.steam.htmlcache"])
+
+def test_app_leftovers_skips_additional_globbed_active_install_markers(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+
+    telegram_cache = roaming / "Telegram Desktop" / "tdata" / "user_data" / "cache"
+    write_text_file(telegram_cache / "thumb.bin", "telegram")
+    write_text_file(local / "Programs" / "Telegram Desktop" / "Telegram.exe", "exe")
+
+    onepassword_logs = local / "1Password" / "logs"
+    write_text_file(onepassword_logs / "1password.log", "1password")
+    write_text_file(local / "1Password" / "app" / "8.10.0" / "1Password.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(telegram_cache), str(onepassword_logs)])
 
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,

@@ -66,6 +66,12 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.teams-classic.gpu-cache",
         "app-leftovers.discord.gpu-cache",
         "app-leftovers.vscode.gpu-cache",
+        "app-leftovers.telegram.cache",
+        "app-leftovers.cursor.cached-data",
+        "app-leftovers.android-studio.logs",
+        "app-leftovers.virtualbox.logs",
+        "app-leftovers.vlc.art-cache",
+        "app-leftovers.1password.logs",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(

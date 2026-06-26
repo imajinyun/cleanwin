@@ -107,7 +107,7 @@ cleanwin 围绕 fail-closed 清理设计：
 | `dev-cache` | pip、npm、Yarn、pnpm、NuGet、Cargo、Go、Gradle、Maven 缓存 | 包含 owner、rule ID、官方清理命令和可安全删除理由 |
 | `package-cache` | WinGet、Scoop、Chocolatey、uv 缓存 | 面向可重新下载的软件包 payload/cache artifact |
 | `browser-cache` | Chrome、Edge、Firefox 的 cache-only 目录 | 保护 cookies、密码、会话、扩展和 profile 数据库 |
-| `app-leftovers` | 常用软件卸载后的缓存/日志残留 | 覆盖 Slack、经典 Teams、Discord、Zoom、VS Code、JetBrains 日志、Docker Desktop 日志、Postman、Notion、Figma、OBS Studio、Spotify 缓存/日志等已审查残留；若仍检测到活动安装标记则跳过，并支持 `app-*`、`*.exe` 等带版本目录/文件名的通配安装标记 |
+| `app-leftovers` | 常用软件卸载后的缓存/日志残留 | 覆盖 Slack、经典 Teams、Discord、Zoom、VS Code、JetBrains 日志、Docker Desktop 日志、Postman、Notion、Figma、OBS Studio、Spotify、Adobe Creative Cloud、Office telemetry、游戏启动器、GPU shader cache、Telegram、Signal、WhatsApp、Cursor、Android Studio、VirtualBox 日志、VLC artwork cache、1Password 日志等已审查残留；若仍检测到活动安装标记则跳过，并支持 `app-*`、IDE 版本目录、`*.exe` 等带版本目录/文件名的通配安装标记 |
 
 示例：
 

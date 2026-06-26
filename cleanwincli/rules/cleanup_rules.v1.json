@@ -465,6 +465,86 @@
       "active_markers": ["programfiles:AMD/CNext/CNext/RadeonSoftware.exe", "programfiles:AMD/AMD Software/AMDSoftware.exe"],
       "official_cleanup_command": "Use AMD Software cleanup or driver installer workflows before removing reviewed shader cache leftovers.",
       "rationale": "AMD DxCache contains regenerated shader cache artifacts and does not include driver binaries or user documents."
+    },
+    {
+      "rule_id": "app-leftovers.telegram.cache",
+      "owner": "Telegram Desktop",
+      "default": "roaming:Telegram Desktop/tdata/user_data/cache",
+      "active_markers": ["roaming:Telegram Desktop/Telegram.exe", "local:Programs/Telegram Desktop/Telegram.exe"],
+      "official_cleanup_command": "Uninstall Telegram Desktop or use its storage settings before removing reviewed cache leftovers.",
+      "rationale": "Telegram Desktop cache contains regenerated media preview artifacts; account keys, local database state, and downloads remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.signal.logs",
+      "owner": "Signal Desktop",
+      "default": "roaming:Signal/logs",
+      "active_markers": ["local:Programs/signal-desktop/Signal.exe", "local:Programs/Signal/Signal.exe"],
+      "official_cleanup_command": "Uninstall Signal Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Signal Desktop logs are diagnostic leftovers; message databases, attachments, and encryption keys remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.whatsapp.gpu-cache",
+      "owner": "WhatsApp Desktop",
+      "default": "roaming:WhatsApp/GPUCache",
+      "active_markers": ["local:Programs/WhatsApp/WhatsApp.exe", "local:WhatsApp/WhatsApp.exe"],
+      "official_cleanup_command": "Uninstall WhatsApp Desktop before removing reviewed renderer cache leftovers.",
+      "rationale": "WhatsApp GPUCache contains regenerated Electron renderer artifacts; chats, media, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.cursor.cached-data",
+      "owner": "Cursor",
+      "default": "roaming:Cursor/CachedData",
+      "active_markers": ["local:Programs/Cursor/Cursor.exe", "programfiles:Cursor/Cursor.exe", "programfilesx86:Cursor/Cursor.exe"],
+      "official_cleanup_command": "Uninstall Cursor, then remove reviewed editor cache/log leftovers.",
+      "rationale": "Cursor CachedData contains regenerated editor runtime cache artifacts, not projects, extensions, or user settings."
+    },
+    {
+      "rule_id": "app-leftovers.cursor.gpu-cache",
+      "owner": "Cursor",
+      "default": "roaming:Cursor/GPUCache",
+      "active_markers": ["local:Programs/Cursor/Cursor.exe", "programfiles:Cursor/Cursor.exe", "programfilesx86:Cursor/Cursor.exe"],
+      "official_cleanup_command": "Uninstall Cursor, then remove reviewed editor cache/log leftovers.",
+      "rationale": "Cursor GPUCache contains regenerated renderer artifacts and does not include projects, extensions, or user settings."
+    },
+    {
+      "rule_id": "app-leftovers.android-studio.logs",
+      "owner": "Android Studio",
+      "default": "local:Google/AndroidStudio*/log",
+      "active_markers": ["programfiles:Android/Android Studio/bin/studio64.exe", "programfilesx86:Android/Android Studio/bin/studio64.exe"],
+      "official_cleanup_command": "Uninstall Android Studio before removing reviewed IDE log leftovers.",
+      "rationale": "Android Studio log directories contain regenerated diagnostics and do not include Android projects, SDK packages, or keystores."
+    },
+    {
+      "rule_id": "app-leftovers.virtualbox.logs",
+      "owner": "Oracle VirtualBox",
+      "default": "home:VirtualBox VMs/*/Logs",
+      "active_markers": ["programfiles:Oracle/VirtualBox/VirtualBox.exe", "programfilesx86:Oracle/VirtualBox/VirtualBox.exe"],
+      "official_cleanup_command": "Uninstall VirtualBox and review VM state before removing VM log directories.",
+      "rationale": "VirtualBox Logs directories contain regenerated VM diagnostics; virtual disks, snapshots, and machine definitions remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.vlc.art-cache",
+      "owner": "VLC media player",
+      "default": "roaming:vlc/art",
+      "active_markers": ["programfiles:VideoLAN/VLC/vlc.exe", "programfilesx86:VideoLAN/VLC/vlc.exe"],
+      "official_cleanup_command": "Uninstall VLC or clear VLC media artwork cache before removing reviewed artwork leftovers.",
+      "rationale": "VLC art cache contains regenerated album/video artwork thumbnails and does not include user media files."
+    },
+    {
+      "rule_id": "app-leftovers.zoom.gpu-cache",
+      "owner": "Zoom",
+      "default": "roaming:Zoom/GPUCache",
+      "active_markers": ["roaming:Zoom/bin/Zoom.exe", "programfiles:Zoom/bin/Zoom.exe", "programfilesx86:Zoom/bin/Zoom.exe"],
+      "official_cleanup_command": "Uninstall Zoom from Settings > Apps, then remove reviewed Zoom renderer cache leftovers.",
+      "rationale": "Zoom GPUCache contains regenerated renderer artifacts and does not include recordings, chat history, or account credentials."
+    },
+    {
+      "rule_id": "app-leftovers.1password.logs",
+      "owner": "1Password",
+      "default": "local:1Password/logs",
+      "active_markers": ["local:1Password/app/*/1Password.exe", "local:Programs/1Password/1Password.exe"],
+      "official_cleanup_command": "Uninstall 1Password before removing reviewed diagnostic log leftovers.",
+      "rationale": "1Password logs are regenerated diagnostic artifacts; vault data, credentials, and account state remain outside this rule."
     }
   ]
 }
