@@ -1345,6 +1345,86 @@
       "active_markers": ["programfiles:NordVPN/NordVPN.exe", "programfilesx86:NordVPN/NordVPN.exe", "local:Programs/NordVPN/NordVPN.exe"],
       "official_cleanup_command": "Uninstall NordVPN before removing reviewed diagnostic log leftovers.",
       "rationale": "NordVPN logs are regenerated diagnostics; VPN profiles, tunnel configuration, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.plex.logs",
+      "owner": "Plex Media Server",
+      "default": "local:Plex Media Server/Logs",
+      "active_markers": ["programfiles:Plex/Plex Media Server/Plex Media Server.exe", "programfilesx86:Plex/Plex Media Server/Plex Media Server.exe", "local:Plex Media Server/Plex Media Server.exe"],
+      "official_cleanup_command": "Uninstall Plex Media Server before removing reviewed diagnostic log leftovers.",
+      "rationale": "Plex logs are regenerated diagnostics; media libraries, metadata databases, watched state, plug-ins, server identity, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.jellyfin.logs",
+      "owner": "Jellyfin Server",
+      "default": "programdata:Jellyfin/Server/log",
+      "active_markers": ["programfiles:Jellyfin/Server/jellyfin.exe", "programfilesx86:Jellyfin/Server/jellyfin.exe"],
+      "official_cleanup_command": "Uninstall Jellyfin Server before removing reviewed diagnostic log leftovers.",
+      "rationale": "Jellyfin logs are regenerated diagnostics; media libraries, metadata, databases, plug-ins, users, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.itunes.logs",
+      "owner": "Apple iTunes",
+      "default": "roaming:Apple Computer/Logs",
+      "active_markers": ["programfiles:iTunes/iTunes.exe", "programfilesx86:iTunes/iTunes.exe"],
+      "official_cleanup_command": "Uninstall iTunes or use Apple support tools before removing reviewed diagnostic log leftovers.",
+      "rationale": "iTunes logs are regenerated diagnostics; music libraries, device backups, sync state, purchases, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.kindle.logs",
+      "owner": "Kindle for PC",
+      "default": "local:Amazon/Kindle/logs",
+      "active_markers": ["local:Amazon/Kindle/application/Kindle.exe", "programfiles:Amazon/Kindle/Kindle.exe", "programfilesx86:Amazon/Kindle/Kindle.exe"],
+      "official_cleanup_command": "Uninstall Kindle for PC before removing reviewed diagnostic log leftovers.",
+      "rationale": "Kindle logs are regenerated diagnostics; downloaded books, annotations, reading position, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.audible.logs",
+      "owner": "Audible",
+      "default": "local:Audible/Logs",
+      "active_markers": ["local:Audible/Audible.exe", "programfiles:Audible/Audible.exe", "programfilesx86:Audible/Audible.exe"],
+      "official_cleanup_command": "Uninstall Audible before removing reviewed diagnostic log leftovers.",
+      "rationale": "Audible logs are regenerated diagnostics; audiobooks, downloads, playback state, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ringcentral.logs",
+      "owner": "RingCentral",
+      "default": "roaming:RingCentral/logs",
+      "active_markers": ["local:Programs/RingCentral/RingCentral.exe", "programfiles:RingCentral/RingCentral.exe", "programfilesx86:RingCentral/RingCentral.exe"],
+      "official_cleanup_command": "Uninstall RingCentral before removing reviewed diagnostic log leftovers.",
+      "rationale": "RingCentral logs are regenerated diagnostics; messages, meetings, call history, recordings, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bluejeans.logs",
+      "owner": "BlueJeans",
+      "default": "local:BlueJeans/logs",
+      "active_markers": ["local:BlueJeans/BlueJeans.exe", "programfiles:BlueJeans/BlueJeans.exe", "programfilesx86:BlueJeans/BlueJeans.exe"],
+      "official_cleanup_command": "Uninstall BlueJeans before removing reviewed diagnostic log leftovers.",
+      "rationale": "BlueJeans logs are regenerated diagnostics; meeting recordings, chat data, calendar state, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bitwarden.gpu-cache",
+      "owner": "Bitwarden",
+      "default": "roaming:Bitwarden/GPUCache",
+      "active_markers": ["local:Programs/Bitwarden/Bitwarden.exe", "programfiles:Bitwarden/Bitwarden.exe", "programfilesx86:Bitwarden/Bitwarden.exe"],
+      "official_cleanup_command": "Uninstall Bitwarden before removing reviewed renderer cache leftovers.",
+      "rationale": "Bitwarden GPUCache contains regenerated Electron renderer artifacts; encrypted vault data, keys, account state, browser integration, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.protonvpn.logs",
+      "owner": "Proton VPN",
+      "default": "local:ProtonVPN/Logs",
+      "active_markers": ["programfiles:Proton/VPN/ProtonVPN.exe", "programfilesx86:Proton/VPN/ProtonVPN.exe", "local:Programs/ProtonVPN/ProtonVPN.exe"],
+      "official_cleanup_command": "Uninstall Proton VPN before removing reviewed diagnostic log leftovers.",
+      "rationale": "Proton VPN logs are regenerated diagnostics; VPN profiles, tunnel configuration, account state, certificates, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mullvad-vpn.logs",
+      "owner": "Mullvad VPN",
+      "default": "local:Mullvad VPN/logs",
+      "active_markers": ["programfiles:Mullvad VPN/Mullvad VPN.exe", "programfilesx86:Mullvad VPN/Mullvad VPN.exe", "local:Programs/Mullvad VPN/Mullvad VPN.exe"],
+      "official_cleanup_command": "Uninstall Mullvad VPN before removing reviewed diagnostic log leftovers.",
+      "rationale": "Mullvad VPN logs are regenerated diagnostics; VPN profiles, tunnel configuration, account state, certificates, and credentials remain outside this rule."
     }
   ]
 }

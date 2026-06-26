@@ -1706,6 +1706,123 @@ def test_app_leftovers_skips_mail_reference_video_security_and_vpn_rules_when_ac
     assert_contains_none(paths, [str(mailbird_logs), str(zotero_logs), str(resolve_logs)])
     assert_contains_none(paths, [str(malwarebytes_logs), str(nordvpn_logs)])
 
+def test_app_leftovers_scans_media_library_reader_meeting_password_and_vpn_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "Plex Media Server" / "Logs" / "plex.log", "plex"),
+        (program_data / "Jellyfin" / "Server" / "log" / "server.log", "jellyfin"),
+        (roaming / "Apple Computer" / "Logs" / "itunes.log", "itunes"),
+        (local / "Amazon" / "Kindle" / "logs" / "kindle.log", "kindle"),
+        (local / "Audible" / "Logs" / "audible.log", "audible"),
+        (roaming / "RingCentral" / "logs" / "ringcentral.log", "ringcentral"),
+        (local / "BlueJeans" / "logs" / "bluejeans.log", "bluejeans"),
+        (roaming / "Bitwarden" / "GPUCache" / "shader.bin", "bitwarden"),
+        (local / "ProtonVPN" / "Logs" / "protonvpn.log", "protonvpn"),
+        (local / "Mullvad VPN" / "logs" / "mullvad.log", "mullvad"),
+        (user / "Videos" / "Movies" / "film.mkv", "media"),
+        (local / "Plex Media Server" / "Plug-in Support" / "Databases" / "library.db", "plex-db"),
+        (program_data / "Jellyfin" / "Server" / "data" / "library.db", "jellyfin-db"),
+        (user / "Music" / "iTunes" / "iTunes Library.itl", "itunes-library"),
+        (roaming / "Apple Computer" / "MobileSync" / "Backup" / "manifest.db", "device-backup"),
+        (user / "Documents" / "My Kindle Content" / "book.azw", "kindle-book"),
+        (user / "Audiobooks" / "title.aax", "audiobook"),
+        (user / "Videos" / "RingCentral" / "meeting.mp4", "recording"),
+        (user / "Documents" / "BlueJeans" / "chat.txt", "meeting-chat"),
+        (roaming / "Bitwarden" / "data.json", "vault"),
+        (local / "ProtonVPN" / "settings.json", "proton-settings"),
+        (local / "Mullvad VPN" / "settings.ini", "mullvad-settings"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    plex_logs = cache_files[0][0].parent
+    jellyfin_logs = cache_files[1][0].parent
+    itunes_logs = cache_files[2][0].parent
+    kindle_logs = cache_files[3][0].parent
+    audible_logs = cache_files[4][0].parent
+    ringcentral_logs = cache_files[5][0].parent
+    bluejeans_logs = cache_files[6][0].parent
+    bitwarden_gpu_cache = cache_files[7][0].parent
+    protonvpn_logs = cache_files[8][0].parent
+    mullvad_logs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.plex.logs"], {"path": str(plex_logs)})
+    assert_field_values(by_rule["app-leftovers.jellyfin.logs"], {"path": str(jellyfin_logs)})
+    assert_field_values(by_rule["app-leftovers.itunes.logs"], {"path": str(itunes_logs)})
+    assert_field_values(by_rule["app-leftovers.kindle.logs"], {"path": str(kindle_logs)})
+    assert_field_values(by_rule["app-leftovers.audible.logs"], {"path": str(audible_logs)})
+    assert_field_values(by_rule["app-leftovers.ringcentral.logs"], {"path": str(ringcentral_logs)})
+    assert_field_values(by_rule["app-leftovers.bluejeans.logs"], {"path": str(bluejeans_logs)})
+    assert_field_values(by_rule["app-leftovers.bitwarden.gpu-cache"], {"path": str(bitwarden_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.protonvpn.logs"], {"path": str(protonvpn_logs)})
+    assert_field_values(by_rule["app-leftovers.mullvad-vpn.logs"], {"path": str(mullvad_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_media_library_reader_meeting_password_and_vpn_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    plex_logs = local / "Plex Media Server" / "Logs"
+    write_text_file(plex_logs / "plex.log", "plex")
+    write_text_file(program_files / "Plex" / "Plex Media Server" / "Plex Media Server.exe", "exe")
+
+    jellyfin_logs = program_data / "Jellyfin" / "Server" / "log"
+    write_text_file(jellyfin_logs / "server.log", "jellyfin")
+    write_text_file(program_files / "Jellyfin" / "Server" / "jellyfin.exe", "exe")
+
+    bitwarden_gpu_cache = roaming / "Bitwarden" / "GPUCache"
+    write_text_file(bitwarden_gpu_cache / "shader.bin", "bitwarden")
+    write_text_file(local / "Programs" / "Bitwarden" / "Bitwarden.exe", "exe")
+
+    protonvpn_logs = local / "ProtonVPN" / "Logs"
+    write_text_file(protonvpn_logs / "protonvpn.log", "protonvpn")
+    write_text_file(program_files / "Proton" / "VPN" / "ProtonVPN.exe", "exe")
+
+    mullvad_logs = local / "Mullvad VPN" / "logs"
+    write_text_file(mullvad_logs / "mullvad.log", "mullvad")
+    write_text_file(program_files / "Mullvad VPN" / "Mullvad VPN.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(plex_logs), str(jellyfin_logs), str(bitwarden_gpu_cache)])
+    assert_contains_none(paths, [str(protonvpn_logs), str(mullvad_logs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

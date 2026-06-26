@@ -172,6 +172,16 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.kdenlive.cache",
         "app-leftovers.malwarebytes.logs",
         "app-leftovers.nordvpn.logs",
+        "app-leftovers.plex.logs",
+        "app-leftovers.jellyfin.logs",
+        "app-leftovers.itunes.logs",
+        "app-leftovers.kindle.logs",
+        "app-leftovers.audible.logs",
+        "app-leftovers.ringcentral.logs",
+        "app-leftovers.bluejeans.logs",
+        "app-leftovers.bitwarden.gpu-cache",
+        "app-leftovers.protonvpn.logs",
+        "app-leftovers.mullvad-vpn.logs",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
