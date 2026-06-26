@@ -1413,6 +1413,7 @@ pytest governance all execute through the repository `.venv`.
 - `PYTEST-GOV-224`: Updated AI readiness plan wording and verification commands to pytest/`.venv` workflow and verified no unittest residuals remained.
 - `PYTEST-GOV-225`: Added historical plan regression coverage in `tests/test_pytest_governance.py`; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 29 tests.
 - `PYTEST-GOV-226`: Focused docs/governance smoke passed: `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` reported 29 passed, and `rg` found no `python3 -m unittest`, `python -m unittest`, `unittest discover`, `self.assert`, or `TestCase` fragments in `docs/superpowers/plans/2026-06-20-cleanwin-*.md`.
+- `PYTEST-GOV-227`: `make quality` passed through repository `.venv`; full pytest result was 245 passed and 2 skipped, pytest governance smoke was 30 passed, and package install/sdist smoke completed before cleanup. Local aiflow governance report was refreshed at `.aiflow/governance.json`.
 
 ## Round 12 Pytest Governance Plan
 
