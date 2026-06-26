@@ -1591,6 +1591,121 @@ def test_app_leftovers_skips_backup_search_password_pdf_and_chat_rules_when_acti
     assert_contains_none(paths, [str(backblaze_logs), str(freefilesync_logs), str(keepassxc_dump)])
     assert_contains_none(paths, [str(foxit_logs), str(element_gpu_cache)])
 
+def test_app_leftovers_scans_mail_reference_video_security_and_vpn_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "CrashDumps" / "thunderbird.exe.1234.dmp", "thunderbird"),
+        (local / "Mailbird" / "logs" / "mailbird.log", "mailbird"),
+        (roaming / "eM Client" / "logs" / "mailclient.log", "em-client"),
+        (roaming / "Zotero" / "log" / "zotero.log", "zotero"),
+        (local / "Mendeley Reference Manager" / "logs" / "mendeley.log", "mendeley"),
+        (program_data / "Blackmagic Design" / "DaVinci Resolve" / "Support" / "logs" / "resolve.log", "resolve"),
+        (local / "Meltytech" / "Shotcut" / "logs" / "shotcut.log", "shotcut"),
+        (local / "kdenlive" / "cache" / "preview.bin", "kdenlive"),
+        (program_data / "Malwarebytes" / "MBAMService" / "logs" / "mbam.log", "malwarebytes"),
+        (local / "NordVPN" / "logs" / "nordvpn.log", "nordvpn"),
+        (roaming / "Thunderbird" / "Profiles" / "default" / "Mail" / "Inbox", "mailbox"),
+        (local / "Mailbird" / "Store" / "mail.db", "mail-store"),
+        (roaming / "eM Client" / "mail_data.dat", "em-database"),
+        (user / "Zotero" / "storage" / "paper.pdf", "zotero-pdf"),
+        (user / "Documents" / "Mendeley Desktop" / "library.sqlite", "mendeley-library"),
+        (user / "Videos" / "Resolve" / "project.drp", "resolve-project"),
+        (user / "Videos" / "source.mov", "source-media"),
+        (user / "Videos" / "Kdenlive" / "timeline.kdenlive", "kdenlive-project"),
+        (program_data / "Malwarebytes" / "MBAMService" / "Quarantine" / "quarantine.dat", "quarantine"),
+        (local / "NordVPN" / "settings.dat", "vpn-settings"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    thunderbird_dump = cache_files[0][0]
+    mailbird_logs = cache_files[1][0].parent
+    em_client_logs = cache_files[2][0].parent
+    zotero_logs = cache_files[3][0].parent
+    mendeley_logs = cache_files[4][0].parent
+    resolve_logs = cache_files[5][0].parent
+    shotcut_logs = cache_files[6][0].parent
+    kdenlive_cache = cache_files[7][0].parent
+    malwarebytes_logs = cache_files[8][0].parent
+    nordvpn_logs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.thunderbird.crashdumps"], {"path": str(thunderbird_dump)})
+    assert_field_values(by_rule["app-leftovers.mailbird.logs"], {"path": str(mailbird_logs)})
+    assert_field_values(by_rule["app-leftovers.em-client.logs"], {"path": str(em_client_logs)})
+    assert_field_values(by_rule["app-leftovers.zotero.logs"], {"path": str(zotero_logs)})
+    assert_field_values(by_rule["app-leftovers.mendeley.logs"], {"path": str(mendeley_logs)})
+    assert_field_values(by_rule["app-leftovers.davinci-resolve.logs"], {"path": str(resolve_logs)})
+    assert_field_values(by_rule["app-leftovers.shotcut.logs"], {"path": str(shotcut_logs)})
+    assert_field_values(by_rule["app-leftovers.kdenlive.cache"], {"path": str(kdenlive_cache)})
+    assert_field_values(by_rule["app-leftovers.malwarebytes.logs"], {"path": str(malwarebytes_logs)})
+    assert_field_values(by_rule["app-leftovers.nordvpn.logs"], {"path": str(nordvpn_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_mail_reference_video_security_and_vpn_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    mailbird_logs = local / "Mailbird" / "logs"
+    write_text_file(mailbird_logs / "mailbird.log", "mailbird")
+    write_text_file(program_files / "Mailbird" / "Mailbird.exe", "exe")
+
+    zotero_logs = roaming / "Zotero" / "log"
+    write_text_file(zotero_logs / "zotero.log", "zotero")
+    write_text_file(program_files / "Zotero" / "zotero.exe", "exe")
+
+    resolve_logs = program_data / "Blackmagic Design" / "DaVinci Resolve" / "Support" / "logs"
+    write_text_file(resolve_logs / "resolve.log", "resolve")
+    write_text_file(program_files / "Blackmagic Design" / "DaVinci Resolve" / "Resolve.exe", "exe")
+
+    malwarebytes_logs = program_data / "Malwarebytes" / "MBAMService" / "logs"
+    write_text_file(malwarebytes_logs / "mbam.log", "malwarebytes")
+    write_text_file(program_files / "Malwarebytes" / "Anti-Malware" / "mbam.exe", "exe")
+
+    nordvpn_logs = local / "NordVPN" / "logs"
+    write_text_file(nordvpn_logs / "nordvpn.log", "nordvpn")
+    write_text_file(program_files / "NordVPN" / "NordVPN.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(mailbird_logs), str(zotero_logs), str(resolve_logs)])
+    assert_contains_none(paths, [str(malwarebytes_logs), str(nordvpn_logs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

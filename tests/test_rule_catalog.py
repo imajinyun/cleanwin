@@ -162,6 +162,16 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.foxit.logs",
         "app-leftovers.viber.gpu-cache",
         "app-leftovers.element.gpu-cache",
+        "app-leftovers.thunderbird.crashdumps",
+        "app-leftovers.mailbird.logs",
+        "app-leftovers.em-client.logs",
+        "app-leftovers.zotero.logs",
+        "app-leftovers.mendeley.logs",
+        "app-leftovers.davinci-resolve.logs",
+        "app-leftovers.shotcut.logs",
+        "app-leftovers.kdenlive.cache",
+        "app-leftovers.malwarebytes.logs",
+        "app-leftovers.nordvpn.logs",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(

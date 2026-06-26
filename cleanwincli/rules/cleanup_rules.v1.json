@@ -1265,6 +1265,86 @@
       "active_markers": ["local:Programs/Element/Element.exe", "programfiles:Element/Element.exe", "programfilesx86:Element/Element.exe"],
       "official_cleanup_command": "Uninstall Element before removing reviewed renderer cache leftovers.",
       "rationale": "Element GPUCache contains regenerated Electron renderer artifacts; Matrix rooms, encrypted data, keys, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.thunderbird.crashdumps",
+      "owner": "Mozilla Thunderbird",
+      "default": "local:CrashDumps/thunderbird.exe.*.dmp",
+      "active_markers": ["programfiles:Mozilla Thunderbird/thunderbird.exe", "programfilesx86:Mozilla Thunderbird/thunderbird.exe"],
+      "official_cleanup_command": "Uninstall Thunderbird or use its profile tools before removing reviewed crash dump leftovers.",
+      "rationale": "Thunderbird crash dumps are recreated diagnostics; mail profiles, messages, address books, attachments, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mailbird.logs",
+      "owner": "Mailbird",
+      "default": "local:Mailbird/logs",
+      "active_markers": ["local:Mailbird/Mailbird.exe", "programfiles:Mailbird/Mailbird.exe", "programfilesx86:Mailbird/Mailbird.exe"],
+      "official_cleanup_command": "Uninstall Mailbird before removing reviewed diagnostic log leftovers.",
+      "rationale": "Mailbird logs are regenerated diagnostics; mail stores, account settings, attachments, calendars, contacts, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.em-client.logs",
+      "owner": "eM Client",
+      "default": "roaming:eM Client/logs",
+      "active_markers": ["programfiles:eM Client/MailClient.exe", "programfilesx86:eM Client/MailClient.exe", "local:Programs/eM Client/MailClient.exe"],
+      "official_cleanup_command": "Uninstall eM Client before removing reviewed diagnostic log leftovers.",
+      "rationale": "eM Client logs are regenerated diagnostics; mail databases, calendars, contacts, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.zotero.logs",
+      "owner": "Zotero",
+      "default": "roaming:Zotero/log",
+      "active_markers": ["programfiles:Zotero/zotero.exe", "programfilesx86:Zotero/zotero.exe", "local:Programs/Zotero/zotero.exe"],
+      "official_cleanup_command": "Uninstall Zotero or use Zotero profile tools before removing reviewed diagnostic log leftovers.",
+      "rationale": "Zotero logs are regenerated diagnostics; libraries, citations, PDFs, attachments, sync state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mendeley.logs",
+      "owner": "Mendeley Reference Manager",
+      "default": "local:Mendeley Reference Manager/logs",
+      "active_markers": ["local:Programs/Mendeley Reference Manager/Mendeley Reference Manager.exe", "programfiles:Mendeley Reference Manager/Mendeley Reference Manager.exe", "programfilesx86:Mendeley Reference Manager/Mendeley Reference Manager.exe"],
+      "official_cleanup_command": "Uninstall Mendeley Reference Manager before removing reviewed diagnostic log leftovers.",
+      "rationale": "Mendeley logs are regenerated diagnostics; reference libraries, PDFs, annotations, sync state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.davinci-resolve.logs",
+      "owner": "DaVinci Resolve",
+      "default": "programdata:Blackmagic Design/DaVinci Resolve/Support/logs",
+      "active_markers": ["programfiles:Blackmagic Design/DaVinci Resolve/Resolve.exe", "programfilesx86:Blackmagic Design/DaVinci Resolve/Resolve.exe"],
+      "official_cleanup_command": "Uninstall DaVinci Resolve before removing reviewed diagnostic log leftovers.",
+      "rationale": "DaVinci Resolve logs are regenerated diagnostics; project databases, media files, render outputs, LUTs, plug-ins, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.shotcut.logs",
+      "owner": "Shotcut",
+      "default": "local:Meltytech/Shotcut/logs",
+      "active_markers": ["programfiles:Shotcut/shotcut.exe", "programfilesx86:Shotcut/shotcut.exe", "local:Programs/Shotcut/shotcut.exe"],
+      "official_cleanup_command": "Uninstall Shotcut before removing reviewed diagnostic log leftovers.",
+      "rationale": "Shotcut logs are regenerated diagnostics; projects, source media, exports, presets, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.kdenlive.cache",
+      "owner": "Kdenlive",
+      "default": "local:kdenlive/cache",
+      "active_markers": ["programfiles:kdenlive/bin/kdenlive.exe", "programfilesx86:kdenlive/bin/kdenlive.exe", "local:Programs/kdenlive/bin/kdenlive.exe"],
+      "official_cleanup_command": "Uninstall Kdenlive before removing reviewed renderer cache leftovers.",
+      "rationale": "Kdenlive cache contains regenerated preview/render artifacts; projects, source media, exports, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.malwarebytes.logs",
+      "owner": "Malwarebytes",
+      "default": "programdata:Malwarebytes/MBAMService/logs",
+      "active_markers": ["programfiles:Malwarebytes/Anti-Malware/mbam.exe", "programfilesx86:Malwarebytes/Anti-Malware/mbam.exe"],
+      "official_cleanup_command": "Uninstall Malwarebytes before removing reviewed diagnostic log leftovers.",
+      "rationale": "Malwarebytes logs are regenerated diagnostics; quarantine data, scan results, license state, protection settings, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.nordvpn.logs",
+      "owner": "NordVPN",
+      "default": "local:NordVPN/logs",
+      "active_markers": ["programfiles:NordVPN/NordVPN.exe", "programfilesx86:NordVPN/NordVPN.exe", "local:Programs/NordVPN/NordVPN.exe"],
+      "official_cleanup_command": "Uninstall NordVPN before removing reviewed diagnostic log leftovers.",
+      "rationale": "NordVPN logs are regenerated diagnostics; VPN profiles, tunnel configuration, account state, and credentials remain outside this rule."
     }
   ]
 }
