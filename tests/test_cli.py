@@ -1938,6 +1938,144 @@ def test_app_leftovers_skips_cleaner_disk_hardware_and_viewer_rules_when_active_
     assert_contains_none(paths, [str(ccleaner_logs), str(bleachbit_logs), str(wiztree_logs)])
     assert_contains_none(paths, [str(hwinfo_logs), str(irfanview_thumbs)])
 
+def test_app_leftovers_scans_image_audio_media_and_editor_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "CrashDumps" / "paintdotnet.exe.1234.dmp", "paintdotnet"),
+        (roaming / "XnViewMP" / "Thumbs" / "thumb.db", "xnview"),
+        (local / "nomacs" / "cache" / "entry", "nomacs"),
+        (roaming / "FastStone" / "FSViewer" / "Thumbs" / "thumb.db", "faststone"),
+        (roaming / "foobar2000" / "logs" / "foobar.log", "foobar"),
+        (roaming / "AIMP" / "Logs" / "aimp.log", "aimp"),
+        (local / "mpv" / "cache" / "entry", "mpv"),
+        (local / "MPC-HC" / "Logs" / "mpc-hc.log", "mpc"),
+        (roaming / "PotPlayerMini64" / "Log" / "potplayer.log", "potplayer"),
+        (roaming / "Notepad++" / "backup" / "new 1@2026-06-26.bak", "npp"),
+        (local / "Sublime Text" / "Cache" / "entry", "sublime"),
+        (user / "Pictures" / "Photos" / "image.jpg", "image"),
+        (user / "Music" / "Library" / "song.flac", "music"),
+        (user / "Videos" / "Movies" / "movie.mkv", "video"),
+        (user / "Documents" / "Notes" / "draft.txt", "document"),
+        (roaming / "Notepad++" / "plugins" / "plugin.dll", "npp-plugin"),
+        (roaming / "foobar2000" / "playlists" / "library.fpl", "playlist"),
+        (local / "Sublime Text" / "Packages" / "User" / "Preferences.sublime-settings", "settings"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    paintnet_dump = cache_files[0][0]
+    xnview_thumbs = cache_files[1][0].parent
+    nomacs_cache = cache_files[2][0].parent
+    faststone_thumbs = cache_files[3][0].parent
+    foobar_logs = cache_files[4][0].parent
+    aimp_logs = cache_files[5][0].parent
+    mpv_cache = cache_files[6][0].parent
+    mpc_logs = cache_files[7][0].parent
+    potplayer_logs = cache_files[8][0].parent
+    notepad_backups = cache_files[9][0].parent
+    sublime_cache = cache_files[10][0].parent
+    protected_files = [path for path, _ in cache_files[11:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.paintdotnet.crashdumps"], {"path": str(paintnet_dump)})
+    assert_field_values(by_rule["app-leftovers.xnviewmp.thumbnails"], {"path": str(xnview_thumbs)})
+    assert_field_values(by_rule["app-leftovers.nomacs.cache"], {"path": str(nomacs_cache)})
+    assert_field_values(by_rule["app-leftovers.faststone.thumbnails"], {"path": str(faststone_thumbs)})
+    assert_field_values(by_rule["app-leftovers.foobar2000.logs"], {"path": str(foobar_logs)})
+    assert_field_values(by_rule["app-leftovers.aimp.logs"], {"path": str(aimp_logs)})
+    assert_field_values(by_rule["app-leftovers.mpv.cache"], {"path": str(mpv_cache)})
+    assert_field_values(by_rule["app-leftovers.mpc-hc.logs"], {"path": str(mpc_logs)})
+    assert_field_values(by_rule["app-leftovers.potplayer.logs"], {"path": str(potplayer_logs)})
+    assert_field_values(by_rule["app-leftovers.notepad-plus-plus.backups"], {"path": str(notepad_backups)})
+    assert_field_values(by_rule["app-leftovers.sublime-text.cache"], {"path": str(sublime_cache)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_image_audio_media_and_editor_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    paintnet_dump = local / "CrashDumps" / "paintdotnet.exe.1234.dmp"
+    write_text_file(paintnet_dump, "paintdotnet")
+    write_text_file(program_files / "paint.net" / "paintdotnet.exe", "exe")
+
+    xnview_thumbs = roaming / "XnViewMP" / "Thumbs"
+    write_text_file(xnview_thumbs / "thumb.db", "xnview")
+    write_text_file(program_files / "XnViewMP" / "xnviewmp.exe", "exe")
+
+    nomacs_cache = local / "nomacs" / "cache"
+    write_text_file(nomacs_cache / "entry", "nomacs")
+    write_text_file(program_files / "nomacs" / "bin" / "nomacs.exe", "exe")
+
+    faststone_thumbs = roaming / "FastStone" / "FSViewer" / "Thumbs"
+    write_text_file(faststone_thumbs / "thumb.db", "faststone")
+    write_text_file(program_files / "FastStone Image Viewer" / "FSViewer.exe", "exe")
+
+    foobar_logs = roaming / "foobar2000" / "logs"
+    write_text_file(foobar_logs / "foobar.log", "foobar")
+    write_text_file(program_files / "foobar2000" / "foobar2000.exe", "exe")
+
+    aimp_logs = roaming / "AIMP" / "Logs"
+    write_text_file(aimp_logs / "aimp.log", "aimp")
+    write_text_file(program_files / "AIMP" / "AIMP.exe", "exe")
+
+    mpv_cache = local / "mpv" / "cache"
+    write_text_file(mpv_cache / "entry", "mpv")
+    write_text_file(program_files / "mpv" / "mpv.exe", "exe")
+
+    mpc_logs = local / "MPC-HC" / "Logs"
+    write_text_file(mpc_logs / "mpc-hc.log", "mpc")
+    write_text_file(program_files / "MPC-HC" / "mpc-hc64.exe", "exe")
+
+    potplayer_logs = roaming / "PotPlayerMini64" / "Log"
+    write_text_file(potplayer_logs / "potplayer.log", "potplayer")
+    write_text_file(program_files / "DAUM" / "PotPlayer" / "PotPlayerMini64.exe", "exe")
+
+    notepad_backups = roaming / "Notepad++" / "backup"
+    write_text_file(notepad_backups / "new 1@2026-06-26.bak", "npp")
+    write_text_file(program_files / "Notepad++" / "notepad++.exe", "exe")
+
+    sublime_cache = local / "Sublime Text" / "Cache"
+    write_text_file(sublime_cache / "entry", "sublime")
+    write_text_file(program_files / "Sublime Text" / "sublime_text.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(paintnet_dump), str(xnview_thumbs), str(nomacs_cache), str(faststone_thumbs)])
+    assert_contains_none(paths, [str(foobar_logs), str(aimp_logs), str(mpv_cache), str(mpc_logs)])
+    assert_contains_none(paths, [str(potplayer_logs), str(notepad_backups), str(sublime_cache)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

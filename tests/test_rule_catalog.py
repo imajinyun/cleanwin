@@ -192,6 +192,17 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.cpu-z.logs",
         "app-leftovers.gpu-z.logs",
         "app-leftovers.irfanview.thumbnails",
+        "app-leftovers.paintdotnet.crashdumps",
+        "app-leftovers.xnviewmp.thumbnails",
+        "app-leftovers.nomacs.cache",
+        "app-leftovers.faststone.thumbnails",
+        "app-leftovers.foobar2000.logs",
+        "app-leftovers.aimp.logs",
+        "app-leftovers.mpv.cache",
+        "app-leftovers.mpc-hc.logs",
+        "app-leftovers.potplayer.logs",
+        "app-leftovers.notepad-plus-plus.backups",
+        "app-leftovers.sublime-text.cache",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(

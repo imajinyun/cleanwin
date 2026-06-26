@@ -1505,6 +1505,94 @@
       "active_markers": ["programfiles:IrfanView/i_view64.exe", "programfiles:IrfanView/i_view32.exe", "programfilesx86:IrfanView/i_view32.exe"],
       "official_cleanup_command": "Uninstall IrfanView before removing reviewed thumbnail cache leftovers.",
       "rationale": "IrfanView thumbnail cache is regenerated UI state; image files, plug-ins, batch settings, recent paths, and saved edits remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.paintdotnet.crashdumps",
+      "owner": "paint.net",
+      "default": "local:CrashDumps/paintdotnet.exe.*.dmp",
+      "active_markers": ["programfiles:paint.net/paintdotnet.exe", "programfilesx86:paint.net/paintdotnet.exe"],
+      "official_cleanup_command": "Uninstall paint.net before removing reviewed crash dump leftovers.",
+      "rationale": "paint.net crash dumps are recreated diagnostics; images, plug-ins, palettes, autosave data, settings, and saved edits remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.xnviewmp.thumbnails",
+      "owner": "XnView MP",
+      "default": "roaming:XnViewMP/Thumbs",
+      "active_markers": ["programfiles:XnViewMP/xnviewmp.exe", "programfilesx86:XnViewMP/xnviewmp.exe", "local:Programs/XnViewMP/xnviewmp.exe"],
+      "official_cleanup_command": "Uninstall XnView MP before removing reviewed thumbnail cache leftovers.",
+      "rationale": "XnView MP thumbnail cache is regenerated UI state; images, catalogs, ratings, metadata, batch presets, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.nomacs.cache",
+      "owner": "nomacs",
+      "default": "local:nomacs/cache",
+      "active_markers": ["programfiles:nomacs/bin/nomacs.exe", "programfilesx86:nomacs/bin/nomacs.exe", "local:Programs/nomacs/bin/nomacs.exe"],
+      "official_cleanup_command": "Uninstall nomacs before removing reviewed cache leftovers.",
+      "rationale": "nomacs cache is regenerated UI state; images, recent files, plug-ins, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.faststone.thumbnails",
+      "owner": "FastStone Image Viewer",
+      "default": "roaming:FastStone/FSViewer/Thumbs",
+      "active_markers": ["programfiles:FastStone Image Viewer/FSViewer.exe", "programfilesx86:FastStone Image Viewer/FSViewer.exe"],
+      "official_cleanup_command": "Uninstall FastStone Image Viewer before removing reviewed thumbnail cache leftovers.",
+      "rationale": "FastStone thumbnail cache is regenerated UI state; images, edited files, batch conversion settings, recent paths, and profiles remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.foobar2000.logs",
+      "owner": "foobar2000",
+      "default": "roaming:foobar2000/logs",
+      "active_markers": ["programfiles:foobar2000/foobar2000.exe", "programfilesx86:foobar2000/foobar2000.exe", "local:Programs/foobar2000/foobar2000.exe"],
+      "official_cleanup_command": "Uninstall foobar2000 before removing reviewed diagnostic log leftovers.",
+      "rationale": "foobar2000 logs are regenerated diagnostics; music libraries, playlists, components, playback state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.aimp.logs",
+      "owner": "AIMP",
+      "default": "roaming:AIMP/Logs",
+      "active_markers": ["programfiles:AIMP/AIMP.exe", "programfilesx86:AIMP/AIMP.exe"],
+      "official_cleanup_command": "Uninstall AIMP before removing reviewed diagnostic log leftovers.",
+      "rationale": "AIMP logs are regenerated diagnostics; music libraries, playlists, skins, plug-ins, playback state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mpv.cache",
+      "owner": "mpv",
+      "default": "local:mpv/cache",
+      "active_markers": ["programfiles:mpv/mpv.exe", "programfilesx86:mpv/mpv.exe", "local:Programs/mpv/mpv.exe"],
+      "official_cleanup_command": "Uninstall mpv before removing reviewed cache leftovers.",
+      "rationale": "mpv cache is regenerated playback state; media files, watch history, scripts, shaders, configuration, and profiles remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mpc-hc.logs",
+      "owner": "MPC-HC",
+      "default": "local:MPC-HC/Logs",
+      "active_markers": ["programfiles:MPC-HC/mpc-hc64.exe", "programfiles:MPC-HC/mpc-hc.exe", "programfilesx86:MPC-HC/mpc-hc.exe"],
+      "official_cleanup_command": "Uninstall MPC-HC before removing reviewed diagnostic log leftovers.",
+      "rationale": "MPC-HC logs are regenerated diagnostics; media files, playback history, shader settings, subtitle paths, and configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.potplayer.logs",
+      "owner": "PotPlayer",
+      "default": "roaming:PotPlayerMini64/Log",
+      "active_markers": ["programfiles:DAUM/PotPlayer/PotPlayerMini64.exe", "programfilesx86:DAUM/PotPlayer/PotPlayerMini.exe"],
+      "official_cleanup_command": "Uninstall PotPlayer before removing reviewed diagnostic log leftovers.",
+      "rationale": "PotPlayer logs are regenerated diagnostics; media files, playlists, skins, codecs, playback state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.notepad-plus-plus.backups",
+      "owner": "Notepad++",
+      "default": "roaming:Notepad++/backup",
+      "active_markers": ["programfiles:Notepad++/notepad++.exe", "programfilesx86:Notepad++/notepad++.exe"],
+      "official_cleanup_command": "Uninstall Notepad++ and review session recovery before removing reviewed backup leftovers.",
+      "rationale": "Notepad++ backup leftovers are regenerated session recovery artifacts; saved documents, unsaved work review, plug-ins, themes, macros, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.sublime-text.cache",
+      "owner": "Sublime Text",
+      "default": "local:Sublime Text/Cache",
+      "active_markers": ["programfiles:Sublime Text/sublime_text.exe", "programfilesx86:Sublime Text/sublime_text.exe", "local:Programs/Sublime Text/sublime_text.exe"],
+      "official_cleanup_command": "Uninstall Sublime Text before removing reviewed cache leftovers.",
+      "rationale": "Sublime Text cache contains regenerated editor artifacts; projects, packages, session state, unsaved buffers, license state, and settings remain outside this rule."
     }
   ]
 }

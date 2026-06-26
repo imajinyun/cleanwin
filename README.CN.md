@@ -42,7 +42,7 @@ python3 -m cleanwincli.mcp_server
 |---|---|
 | 🧹 **Dry-run 优先** | inspect、plan、validate、review 和 dry-run 是默认工作流 |
 | 🪟 **Windows 安全策略** | 保护 Windows 根目录、用户库、凭据、浏览器配置、WSL、Docker 和系统组件存储 |
-| 🗑️ **卸载残留清理增强** | 扩展对已审查常用软件卸载后缓存/日志残留的安全清理覆盖，包括 Electron 应用、IDE、Git 客户端、数据库/API 客户端、Kubernetes/容器桌面工具、游戏启动器、同步/备份客户端、媒体服务器、电子书/有声书应用、搜索工具、密码管理器、PDF 阅读器、邮件客户端、文献管理工具、笔记应用、协作/聊天/会议工具、终端缓存、远程访问/VPN 工具、传输客户端、截图/扫描工具、图像/媒体工具、视频编辑工具、设计工具、Markdown 工具、清理工具、磁盘分析工具、硬件诊断工具、OEM 支持工具、创作辅助工具、打印工具、外设工具、安全工具和诊断日志 |
+| 🗑️ **卸载残留清理增强** | 扩展对已审查常用软件卸载后缓存/日志残留的安全清理覆盖，包括 Electron 应用、IDE、文本编辑器、Git 客户端、数据库/API 客户端、Kubernetes/容器桌面工具、游戏启动器、同步/备份客户端、媒体服务器、电子书/有声书应用、音频/媒体播放器、搜索工具、密码管理器、PDF 阅读器、邮件客户端、文献管理工具、笔记应用、协作/聊天/会议工具、终端缓存、远程访问/VPN 工具、传输客户端、截图/扫描工具、图像查看器、图像/媒体工具、视频编辑工具、设计工具、Markdown 工具、清理工具、磁盘分析工具、硬件诊断工具、OEM 支持工具、创作辅助工具、打印工具、外设工具、安全工具和诊断日志 |
 | ♻️ **默认走回收站** | 真实清理路由到 Windows Recycle Bin；非 Windows 环境真实执行默认 fail-closed |
 | 🧾 **计划契约** | `cleanwin.plan.v1` 记录 source fingerprint、主机/用户上下文、规则元数据和文件身份 |
 | 🤖 **AI 原生 · 12 个工具** | 支持 Anthropic / OpenAI 导出、workflow routing、environment indexing、Host Policy 模拟和 readiness 报告 |
