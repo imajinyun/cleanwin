@@ -1281,6 +1281,127 @@ through the repository `.venv`.
 - `PYTEST-GOV-216`: `make pytest-governance-smoke` passed through repository `.venv`; focused result was 29 passed.
 - `PYTEST-GOV-217`: `make quality` passed through repository `.venv`; full pytest result was 244 passed and 2 skipped, pytest governance smoke was 29 passed, and package install/sdist smoke completed before cleanup. Local aiflow governance report was refreshed at `.aiflow/governance.json`.
 
+## Round 17 Pytest Governance Plan
+
+**Goal:** Finish the pytest replacement work at the governance-document layer by
+removing stale historical `unittest` commands and `self.assert*` examples from
+legacy implementation plans, then add a pytest-only documentation regression
+gate.
+
+**Architecture:** No runtime behavior changes and no cleanup execution changes.
+The current `tests/` suite is already pytest-native, so this round updates
+historical plan documents that still show old unittest workflows and adds a
+machine-checkable guard so old examples do not return.
+
+**Tech Stack:** Python, pytest, AST/text governance tests, Makefile-backed
+`.venv` tooling, local aiflow queue.
+
+Step1 status: completed.
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.8NgZ7AZ57t`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty. Project
+conventions require pytest-native tests, shared helpers, and Makefile-backed
+`.venv` tooling. Current real test files contain no unittest classes or
+unittest-style assertion calls.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "docs/superpowers/plans/2026-06-20-cleanwin-governance.md",
+      "target_type": "file",
+      "symbol": "governance plan pytest workflow",
+      "locator": "Tech Stack, Makefile snippet, doctor test commands, full validation",
+      "source": "explicit",
+      "reason": "legacy governance instructions still show unittest discovery and self.assertIn examples",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/superpowers/plans/2026-06-20-cleanwin-mvp.md",
+      "target_type": "file",
+      "symbol": "MVP plan pytest workflow",
+      "locator": "Tech Stack and task verification commands",
+      "source": "explicit",
+      "reason": "legacy MVP verification commands still point at python -m unittest",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/superpowers/plans/2026-06-20-cleanwin-uninstall-leftovers.md",
+      "target_type": "file",
+      "symbol": "uninstall leftovers pytest examples",
+      "locator": "Tech Stack, test snippets, targeted and full validation commands",
+      "source": "explicit",
+      "reason": "legacy snippets still use unittest.TestCase-style assertions and unittest execution commands",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/superpowers/plans/2026-06-20-cleanwin-windows-native-identity-ci.md docs/superpowers/plans/2026-06-20-cleanwin-windows-identity.md docs/superpowers/plans/2026-06-20-cleanwin-ai-readiness.md",
+      "target_type": "file",
+      "symbol": "Windows identity and AI readiness pytest workflow",
+      "locator": "Tech Stack and verification commands",
+      "source": "explicit",
+      "reason": "legacy plan text still says unittest even though the repository workflow is pytest-only",
+      "hunks": []
+    },
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "historical plan pytest-only documentation gate",
+      "locator": "pytest governance tests",
+      "source": "explicit",
+      "reason": "historical plan docs need a machine-readable regression gate against unittest command examples",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/superpowers/plans/2026-06-24-cleanwin-pytest-migration-round2.md",
+      "target_type": "file",
+      "symbol": "Round 17 plan and completion evidence",
+      "locator": "Round 17 section",
+      "source": "explicit",
+      "reason": "aiflow-managed governance rounds need durable plan and verification evidence",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "The real test suite is already pytest-native; this round removes stale unittest guidance from historical governance documents."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is
+documentation drift: historical implementation plans still demonstrate
+unittest-style commands or assertions after the repository has moved to pytest.
+
+### Round 17 Tasks
+
+- `PYTEST-GOV-218`: Record this Round 17 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-219`: Update the governance implementation plan to use `.venv`/pytest workflow examples.
+- `PYTEST-GOV-220`: Update the MVP implementation plan verification commands to pytest.
+- `PYTEST-GOV-221`: Convert uninstall-leftovers plan snippets and commands to pytest-native style.
+- `PYTEST-GOV-222`: Update Windows native identity CI plan wording and commands to pytest.
+- `PYTEST-GOV-223`: Update Windows identity safety plan wording to pytest.
+- `PYTEST-GOV-224`: Update AI readiness plan wording and commands to pytest.
+- `PYTEST-GOV-225`: Add pytest governance coverage for historical plan docs.
+- `PYTEST-GOV-226`: Run focused docs/governance smoke and record migration evidence.
+- `PYTEST-GOV-227`: Run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each document cleanup task should run the smallest useful grep or focused
+pytest governance check before committing. The final task must run `make
+quality` so lint, pytest, type checking, compile, packaging, smoke tests, and
+pytest governance all execute through the repository `.venv`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
