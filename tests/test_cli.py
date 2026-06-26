@@ -2076,6 +2076,540 @@ def test_app_leftovers_skips_image_audio_media_and_editor_rules_when_active_mark
     assert_contains_none(paths, [str(foobar_logs), str(aimp_logs), str(mpv_cache), str(mpc_logs)])
     assert_contains_none(paths, [str(potplayer_logs), str(notepad_backups), str(sublime_cache)])
 
+def test_app_leftovers_scans_archive_and_image_writer_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "CrashDumps" / "7zFM.exe.1234.dmp", "7zip"),
+        (local / "CrashDumps" / "WinRAR.exe.1234.dmp", "winrar"),
+        (local / "CrashDumps" / "peazip.exe.1234.dmp", "peazip"),
+        (local / "CrashDumps" / "Bandizip.exe.1234.dmp", "bandizip"),
+        (local / "CrashDumps" / "NanaZip.exe.1234.dmp", "nanazip"),
+        (local / "CrashDumps" / "rufus.exe.1234.dmp", "rufus"),
+        (roaming / "balenaEtcher" / "logs" / "etcher.log", "etcher"),
+        (roaming / "Raspberry Pi Imager" / "logs" / "imager.log", "imager"),
+        (local / "CrashDumps" / "Ventoy2Disk.exe.1234.dmp", "ventoy"),
+        (local / "CrashDumps" / "Win32DiskImager.exe.1234.dmp", "diskimager"),
+        (user / "Downloads" / "archives" / "backup.zip", "archive"),
+        (user / "Downloads" / "archives" / "installer.rar", "rar"),
+        (user / "Downloads" / "images" / "linux.iso", "iso"),
+        (user / "Documents" / "boot" / "custom-config.toml", "config"),
+        (roaming / "Raspberry Pi Imager" / "settings.json", "settings"),
+        (roaming / "Raspberry Pi Imager" / "ssh" / "id_rsa", "key"),
+        (roaming / "balenaEtcher" / "flash-results.json", "history"),
+        (user / "Documents" / "Ventoy" / "persistence.dat", "persistence"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    sevenzip_dump = cache_files[0][0]
+    winrar_dump = cache_files[1][0]
+    peazip_dump = cache_files[2][0]
+    bandizip_dump = cache_files[3][0]
+    nanazip_dump = cache_files[4][0]
+    rufus_dump = cache_files[5][0]
+    etcher_logs = cache_files[6][0].parent
+    imager_logs = cache_files[7][0].parent
+    ventoy_dump = cache_files[8][0]
+    win32diskimager_dump = cache_files[9][0]
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.7zip.crashdumps"], {"path": str(sevenzip_dump)})
+    assert_field_values(by_rule["app-leftovers.winrar.crashdumps"], {"path": str(winrar_dump)})
+    assert_field_values(by_rule["app-leftovers.peazip.crashdumps"], {"path": str(peazip_dump)})
+    assert_field_values(by_rule["app-leftovers.bandizip.crashdumps"], {"path": str(bandizip_dump)})
+    assert_field_values(by_rule["app-leftovers.nanazip.crashdumps"], {"path": str(nanazip_dump)})
+    assert_field_values(by_rule["app-leftovers.rufus.crashdumps"], {"path": str(rufus_dump)})
+    assert_field_values(by_rule["app-leftovers.balenaetcher.logs"], {"path": str(etcher_logs)})
+    assert_field_values(by_rule["app-leftovers.raspberry-pi-imager.logs"], {"path": str(imager_logs)})
+    assert_field_values(by_rule["app-leftovers.ventoy.crashdumps"], {"path": str(ventoy_dump)})
+    assert_field_values(by_rule["app-leftovers.win32diskimager.crashdumps"], {"path": str(win32diskimager_dump)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_archive_and_image_writer_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    sevenzip_dump = local / "CrashDumps" / "7zFM.exe.1234.dmp"
+    write_text_file(sevenzip_dump, "7zip")
+    write_text_file(program_files / "7-Zip" / "7zFM.exe", "exe")
+
+    winrar_dump = local / "CrashDumps" / "WinRAR.exe.1234.dmp"
+    write_text_file(winrar_dump, "winrar")
+    write_text_file(program_files / "WinRAR" / "WinRAR.exe", "exe")
+
+    peazip_dump = local / "CrashDumps" / "peazip.exe.1234.dmp"
+    write_text_file(peazip_dump, "peazip")
+    write_text_file(program_files / "PeaZip" / "peazip.exe", "exe")
+
+    bandizip_dump = local / "CrashDumps" / "Bandizip.exe.1234.dmp"
+    write_text_file(bandizip_dump, "bandizip")
+    write_text_file(program_files / "Bandizip" / "Bandizip.exe", "exe")
+
+    nanazip_dump = local / "CrashDumps" / "NanaZip.exe.1234.dmp"
+    write_text_file(nanazip_dump, "nanazip")
+    write_text_file(local / "Microsoft" / "WindowsApps" / "NanaZip.exe", "exe")
+
+    rufus_dump = local / "CrashDumps" / "rufus.exe.1234.dmp"
+    write_text_file(rufus_dump, "rufus")
+    write_text_file(program_files / "Rufus" / "rufus.exe", "exe")
+
+    etcher_logs = roaming / "balenaEtcher" / "logs"
+    write_text_file(etcher_logs / "etcher.log", "etcher")
+    write_text_file(local / "Programs" / "balenaEtcher" / "balenaEtcher.exe", "exe")
+
+    imager_logs = roaming / "Raspberry Pi Imager" / "logs"
+    write_text_file(imager_logs / "imager.log", "imager")
+    write_text_file(local / "Programs" / "Raspberry Pi Imager" / "rpi-imager.exe", "exe")
+
+    ventoy_dump = local / "CrashDumps" / "Ventoy2Disk.exe.1234.dmp"
+    write_text_file(ventoy_dump, "ventoy")
+    write_text_file(program_files / "Ventoy" / "Ventoy2Disk.exe", "exe")
+
+    win32diskimager_dump = local / "CrashDumps" / "Win32DiskImager.exe.1234.dmp"
+    write_text_file(win32diskimager_dump, "diskimager")
+    write_text_file(program_files / "Win32DiskImager" / "Win32DiskImager.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(sevenzip_dump), str(winrar_dump), str(peazip_dump), str(bandizip_dump)])
+    assert_contains_none(paths, [str(nanazip_dump), str(rufus_dump), str(etcher_logs), str(imager_logs)])
+    assert_contains_none(paths, [str(ventoy_dump), str(win32diskimager_dump)])
+
+def test_app_leftovers_scans_terminal_and_ssh_client_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "CrashDumps" / "putty.exe.1234.dmp", "putty"),
+        (local / "SuperPuTTY" / "logs" / "superputty.log", "superputty"),
+        (local / "mRemoteNG" / "logs" / "mremote.log", "mremote"),
+        (roaming / "Termius" / "logs" / "termius.log", "termius"),
+        (local / "Mobatek" / "MobaXterm" / "logs" / "moba.log", "mobaxterm"),
+        (local / "code4ward" / "Royal TS" / "Logs" / "royalts.log", "royalts"),
+        (local / "Bitvise" / "SSH Client" / "Logs" / "bitvise.log", "bitvise"),
+        (local / "cygwin" / "setup.log", "cygwin"),
+        (local / "msys2" / "setup.log", "msys2"),
+        (local / "CrashDumps" / "alacritty.exe.1234.dmp", "alacritty"),
+        (roaming / "PuTTY" / "sessions" / "prod", "session"),
+        (roaming / "PuTTY" / "sshhostkeys", "hostkey"),
+        (user / ".ssh" / "id_rsa", "private-key"),
+        (user / ".ssh" / "known_hosts", "known-hosts"),
+        (local / "mRemoteNG" / "confCons.xml", "connections"),
+        (roaming / "Termius" / "vault" / "vault.db", "vault"),
+        (user / "Documents" / "RoyalTS" / "connections.rtsz", "royalts-doc"),
+        (user / ".bash_history", "history"),
+        (user / "Downloads" / "session.log", "terminal-log"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    putty_dump = cache_files[0][0]
+    superputty_logs = cache_files[1][0].parent
+    mremoteng_logs = cache_files[2][0].parent
+    termius_logs = cache_files[3][0].parent
+    mobaxterm_logs = cache_files[4][0].parent
+    royalts_logs = cache_files[5][0].parent
+    bitvise_logs = cache_files[6][0].parent
+    cygwin_setup_log = cache_files[7][0]
+    msys2_setup_log = cache_files[8][0]
+    alacritty_dump = cache_files[9][0]
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.putty.crashdumps"], {"path": str(putty_dump)})
+    assert_field_values(by_rule["app-leftovers.superputty.logs"], {"path": str(superputty_logs)})
+    assert_field_values(by_rule["app-leftovers.mremoteng.logs"], {"path": str(mremoteng_logs)})
+    assert_field_values(by_rule["app-leftovers.termius.logs"], {"path": str(termius_logs)})
+    assert_field_values(by_rule["app-leftovers.mobaxterm.logs"], {"path": str(mobaxterm_logs)})
+    assert_field_values(by_rule["app-leftovers.royal-ts.logs"], {"path": str(royalts_logs)})
+    assert_field_values(by_rule["app-leftovers.bitvise-ssh-client.logs"], {"path": str(bitvise_logs)})
+    assert_field_values(by_rule["app-leftovers.cygwin-setup.logs"], {"path": str(cygwin_setup_log)})
+    assert_field_values(by_rule["app-leftovers.msys2-setup.logs"], {"path": str(msys2_setup_log)})
+    assert_field_values(by_rule["app-leftovers.alacritty.crashdumps"], {"path": str(alacritty_dump)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_terminal_and_ssh_client_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    putty_dump = local / "CrashDumps" / "putty.exe.1234.dmp"
+    write_text_file(putty_dump, "putty")
+    write_text_file(program_files / "PuTTY" / "putty.exe", "exe")
+
+    superputty_logs = local / "SuperPuTTY" / "logs"
+    write_text_file(superputty_logs / "superputty.log", "superputty")
+    write_text_file(program_files / "SuperPuTTY" / "SuperPuTTY.exe", "exe")
+
+    mremoteng_logs = local / "mRemoteNG" / "logs"
+    write_text_file(mremoteng_logs / "mremote.log", "mremote")
+    write_text_file(program_files / "mRemoteNG" / "mRemoteNG.exe", "exe")
+
+    termius_logs = roaming / "Termius" / "logs"
+    write_text_file(termius_logs / "termius.log", "termius")
+    write_text_file(local / "Programs" / "Termius" / "Termius.exe", "exe")
+
+    mobaxterm_logs = local / "Mobatek" / "MobaXterm" / "logs"
+    write_text_file(mobaxterm_logs / "moba.log", "mobaxterm")
+    write_text_file(program_files / "Mobatek" / "MobaXterm" / "MobaXterm.exe", "exe")
+
+    royalts_logs = local / "code4ward" / "Royal TS" / "Logs"
+    write_text_file(royalts_logs / "royalts.log", "royalts")
+    write_text_file(program_files / "Royal TS V7" / "RoyalTS.exe", "exe")
+
+    bitvise_logs = local / "Bitvise" / "SSH Client" / "Logs"
+    write_text_file(bitvise_logs / "bitvise.log", "bitvise")
+    write_text_file(program_files / "Bitvise SSH Client" / "BvSsh.exe", "exe")
+
+    cygwin_setup_log = local / "cygwin" / "setup.log"
+    write_text_file(cygwin_setup_log, "cygwin")
+    write_text_file(program_files / "Cygwin" / "Cygwin.bat", "bat")
+
+    msys2_setup_log = local / "msys2" / "setup.log"
+    write_text_file(msys2_setup_log, "msys2")
+    write_text_file(program_files / "msys64" / "msys2.exe", "exe")
+
+    alacritty_dump = local / "CrashDumps" / "alacritty.exe.1234.dmp"
+    write_text_file(alacritty_dump, "alacritty")
+    write_text_file(program_files / "Alacritty" / "alacritty.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(putty_dump), str(superputty_logs), str(mremoteng_logs), str(termius_logs)])
+    assert_contains_none(paths, [str(mobaxterm_logs), str(royalts_logs), str(bitvise_logs)])
+    assert_contains_none(paths, [str(cygwin_setup_log), str(msys2_setup_log), str(alacritty_dump)])
+
+def test_app_leftovers_scans_live_capture_and_audio_tool_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "slobs-client" / "node-obs" / "logs" / "streamlabs.log", "streamlabs"),
+        (local / "SplitmediaLabs" / "XSplit" / "logs" / "xsplit.log", "xsplit"),
+        (local / "Bandicam" / "logs" / "bandicam.log", "bandicam"),
+        (local / "Mirillis" / "Action!" / "Logs" / "action.log", "action"),
+        (roaming / "REAPER" / "CrashLogs" / "reaper-crash.log", "reaper"),
+        (roaming / "Image-Line" / "FL Studio" / "Logs" / "fl.log", "fl"),
+        (roaming / "Ableton" / "Live Reports" / "crash-report.zip", "ableton"),
+        (local / "Steinberg" / "CrashDumps" / "cubase.dmp", "cubase"),
+        (local / "VB" / "Voicemeeter" / "logs" / "voicemeeter.log", "voicemeeter"),
+        (local / "Voicemod" / "logs" / "voicemod.log", "voicemod"),
+        (user / "Videos" / "Captures" / "recording.mp4", "recording"),
+        (user / "Pictures" / "Screenshots" / "capture.png", "screenshot"),
+        (user / "Music" / "Projects" / "song.rpp", "reaper-project"),
+        (user / "Music" / "Projects" / "track.flp", "fl-project"),
+        (user / "Music" / "Ableton" / "set.als", "ableton-set"),
+        (user / "Music" / "Samples" / "kick.wav", "sample"),
+        (roaming / "obs-studio" / "basic" / "scenes" / "scene.json", "scene"),
+        (roaming / "Image-Line" / "FL Studio" / "Presets" / "preset.fst", "preset"),
+        (local / "VB" / "Voicemeeter" / "settings.xml", "voicemeeter-settings"),
+        (local / "Voicemod" / "recordings" / "voice.wav", "voice-recording"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    streamlabs_logs = cache_files[0][0].parent
+    xsplit_logs = cache_files[1][0].parent
+    bandicam_logs = cache_files[2][0].parent
+    action_logs = cache_files[3][0].parent
+    reaper_logs = cache_files[4][0].parent
+    fl_studio_logs = cache_files[5][0].parent
+    ableton_reports = cache_files[6][0].parent
+    cubase_dumps = cache_files[7][0].parent
+    voicemeeter_logs = cache_files[8][0].parent
+    voicemod_logs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.streamlabs.logs"], {"path": str(streamlabs_logs)})
+    assert_field_values(by_rule["app-leftovers.xsplit.logs"], {"path": str(xsplit_logs)})
+    assert_field_values(by_rule["app-leftovers.bandicam.logs"], {"path": str(bandicam_logs)})
+    assert_field_values(by_rule["app-leftovers.mirillis-action.logs"], {"path": str(action_logs)})
+    assert_field_values(by_rule["app-leftovers.reaper.logs"], {"path": str(reaper_logs)})
+    assert_field_values(by_rule["app-leftovers.fl-studio.logs"], {"path": str(fl_studio_logs)})
+    assert_field_values(by_rule["app-leftovers.ableton-live.crashdumps"], {"path": str(ableton_reports)})
+    assert_field_values(by_rule["app-leftovers.steinberg-cubase.logs"], {"path": str(cubase_dumps)})
+    assert_field_values(by_rule["app-leftovers.voicemeeter.logs"], {"path": str(voicemeeter_logs)})
+    assert_field_values(by_rule["app-leftovers.voicemod.logs"], {"path": str(voicemod_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_live_capture_and_audio_tool_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    streamlabs_logs = roaming / "slobs-client" / "node-obs" / "logs"
+    write_text_file(streamlabs_logs / "streamlabs.log", "streamlabs")
+    write_text_file(local / "Programs" / "streamlabs-desktop" / "Streamlabs Desktop.exe", "exe")
+
+    xsplit_logs = local / "SplitmediaLabs" / "XSplit" / "logs"
+    write_text_file(xsplit_logs / "xsplit.log", "xsplit")
+    write_text_file(program_files / "SplitmediaLabs" / "XSplit Broadcaster" / "XSplit.Core.exe", "exe")
+
+    bandicam_logs = local / "Bandicam" / "logs"
+    write_text_file(bandicam_logs / "bandicam.log", "bandicam")
+    write_text_file(program_files / "Bandicam" / "bdcam.exe", "exe")
+
+    action_logs = local / "Mirillis" / "Action!" / "Logs"
+    write_text_file(action_logs / "action.log", "action")
+    write_text_file(program_files / "Mirillis" / "Action!" / "Action.exe", "exe")
+
+    reaper_logs = roaming / "REAPER" / "CrashLogs"
+    write_text_file(reaper_logs / "reaper-crash.log", "reaper")
+    write_text_file(program_files / "REAPER (x64)" / "reaper.exe", "exe")
+
+    fl_studio_logs = roaming / "Image-Line" / "FL Studio" / "Logs"
+    write_text_file(fl_studio_logs / "fl.log", "fl")
+    write_text_file(program_files / "Image-Line" / "FL Studio 21" / "FL64.exe", "exe")
+
+    ableton_reports = roaming / "Ableton" / "Live Reports"
+    write_text_file(ableton_reports / "crash-report.zip", "ableton")
+    write_text_file(program_files / "Ableton" / "Live 12 Suite" / "Program" / "Ableton Live 12 Suite.exe", "exe")
+
+    cubase_dumps = local / "Steinberg" / "CrashDumps"
+    write_text_file(cubase_dumps / "cubase.dmp", "cubase")
+    write_text_file(program_files / "Steinberg" / "Cubase 13" / "Cubase13.exe", "exe")
+
+    voicemeeter_logs = local / "VB" / "Voicemeeter" / "logs"
+    write_text_file(voicemeeter_logs / "voicemeeter.log", "voicemeeter")
+    write_text_file(program_files / "VB" / "Voicemeeter" / "voicemeeter8.exe", "exe")
+
+    voicemod_logs = local / "Voicemod" / "logs"
+    write_text_file(voicemod_logs / "voicemod.log", "voicemod")
+    write_text_file(local / "Programs" / "Voicemod Desktop" / "VoicemodDesktop.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(streamlabs_logs), str(xsplit_logs), str(bandicam_logs), str(action_logs)])
+    assert_contains_none(paths, [str(reaper_logs), str(fl_studio_logs), str(ableton_reports), str(cubase_dumps)])
+    assert_contains_none(paths, [str(voicemeeter_logs), str(voicemod_logs)])
+
+def test_app_leftovers_scans_3d_printing_modeling_and_cad_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "cura" / "5.7" / "cura.log", "cura"),
+        (roaming / "PrusaSlicer" / "logs" / "prusaslicer.log", "prusaslicer"),
+        (roaming / "BambuStudio" / "log" / "bambu.log", "bambu"),
+        (roaming / "OrcaSlicer" / "log" / "orca.log", "orca"),
+        (roaming / "CHITUBOX" / "logs" / "chitubox.log", "chitubox"),
+        (roaming / "LycheeSlicer" / "logs" / "lychee.log", "lychee"),
+        (local / "CrashDumps" / "FreeCAD.exe.1234.dmp", "freecad"),
+        (local / "OpenSCAD" / "logs" / "openscad.log", "openscad"),
+        (local / "Autodesk" / "Autodesk Fusion 360" / "logs" / "fusion.log", "fusion"),
+        (local / "CrashDumps" / "SLDWORKS.exe.1234.dmp", "solidworks"),
+        (user / "Documents" / "3D Models" / "part.stl", "stl"),
+        (user / "Documents" / "3D Models" / "slice.gcode", "gcode"),
+        (user / "Documents" / "PrusaSlicer" / "project.3mf", "project"),
+        (roaming / "cura" / "5.7" / "quality" / "profile.cfg", "cura-profile"),
+        (roaming / "PrusaSlicer" / "printer" / "printer.ini", "printer-profile"),
+        (roaming / "BambuStudio" / "system" / "network.json", "printer-network"),
+        (roaming / "CHITUBOX" / "machine" / "resin.cfg", "resin-profile"),
+        (user / "Documents" / "FreeCAD" / "assembly.FCStd", "freecad-doc"),
+        (user / "Documents" / "OpenSCAD" / "model.scad", "openscad-script"),
+        (user / "Documents" / "SOLIDWORKS" / "assembly.sldasm", "solidworks-assembly"),
+        (local / "Autodesk" / "Autodesk Fusion 360" / "credentials.json", "fusion-credentials"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    cura_log = cache_files[0][0]
+    prusaslicer_logs = cache_files[1][0].parent
+    bambu_logs = cache_files[2][0].parent
+    orca_logs = cache_files[3][0].parent
+    chitubox_logs = cache_files[4][0].parent
+    lychee_logs = cache_files[5][0].parent
+    freecad_dump = cache_files[6][0]
+    openscad_logs = cache_files[7][0].parent
+    fusion_logs = cache_files[8][0].parent
+    solidworks_dump = cache_files[9][0]
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.ultimaker-cura.logs"], {"path": str(cura_log)})
+    assert_field_values(by_rule["app-leftovers.prusaslicer.logs"], {"path": str(prusaslicer_logs)})
+    assert_field_values(by_rule["app-leftovers.bambu-studio.logs"], {"path": str(bambu_logs)})
+    assert_field_values(by_rule["app-leftovers.orca-slicer.logs"], {"path": str(orca_logs)})
+    assert_field_values(by_rule["app-leftovers.chitubox.logs"], {"path": str(chitubox_logs)})
+    assert_field_values(by_rule["app-leftovers.lychee-slicer.logs"], {"path": str(lychee_logs)})
+    assert_field_values(by_rule["app-leftovers.freecad.crashdumps"], {"path": str(freecad_dump)})
+    assert_field_values(by_rule["app-leftovers.openscad.logs"], {"path": str(openscad_logs)})
+    assert_field_values(by_rule["app-leftovers.fusion360.logs"], {"path": str(fusion_logs)})
+    assert_field_values(by_rule["app-leftovers.solidworks.crashdumps"], {"path": str(solidworks_dump)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_3d_printing_modeling_and_cad_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    cura_log = roaming / "cura" / "5.7" / "cura.log"
+    write_text_file(cura_log, "cura")
+    write_text_file(program_files / "UltiMaker Cura 5.7" / "UltiMaker-Cura.exe", "exe")
+
+    prusaslicer_logs = roaming / "PrusaSlicer" / "logs"
+    write_text_file(prusaslicer_logs / "prusaslicer.log", "prusaslicer")
+    write_text_file(program_files / "Prusa3D" / "PrusaSlicer" / "prusa-slicer.exe", "exe")
+
+    bambu_logs = roaming / "BambuStudio" / "log"
+    write_text_file(bambu_logs / "bambu.log", "bambu")
+    write_text_file(program_files / "Bambu Studio" / "bambu-studio.exe", "exe")
+
+    orca_logs = roaming / "OrcaSlicer" / "log"
+    write_text_file(orca_logs / "orca.log", "orca")
+    write_text_file(program_files / "OrcaSlicer" / "orca-slicer.exe", "exe")
+
+    chitubox_logs = roaming / "CHITUBOX" / "logs"
+    write_text_file(chitubox_logs / "chitubox.log", "chitubox")
+    write_text_file(program_files / "CHITUBOX" / "CHITUBOX.exe", "exe")
+
+    lychee_logs = roaming / "LycheeSlicer" / "logs"
+    write_text_file(lychee_logs / "lychee.log", "lychee")
+    write_text_file(local / "Programs" / "LycheeSlicer" / "LycheeSlicer.exe", "exe")
+
+    freecad_dump = local / "CrashDumps" / "FreeCAD.exe.1234.dmp"
+    write_text_file(freecad_dump, "freecad")
+    write_text_file(program_files / "FreeCAD 0.21" / "bin" / "FreeCAD.exe", "exe")
+
+    openscad_logs = local / "OpenSCAD" / "logs"
+    write_text_file(openscad_logs / "openscad.log", "openscad")
+    write_text_file(program_files / "OpenSCAD" / "openscad.exe", "exe")
+
+    fusion_logs = local / "Autodesk" / "Autodesk Fusion 360" / "logs"
+    write_text_file(fusion_logs / "fusion.log", "fusion")
+    write_text_file(local / "Autodesk" / "webdeploy" / "production" / "abc123" / "Fusion360.exe", "exe")
+
+    solidworks_dump = local / "CrashDumps" / "SLDWORKS.exe.1234.dmp"
+    write_text_file(solidworks_dump, "solidworks")
+    write_text_file(program_files / "SOLIDWORKS Corp" / "SOLIDWORKS" / "SLDWORKS.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(cura_log), str(prusaslicer_logs), str(bambu_logs), str(orca_logs)])
+    assert_contains_none(paths, [str(chitubox_logs), str(lychee_logs), str(freecad_dump), str(openscad_logs)])
+    assert_contains_none(paths, [str(fusion_logs), str(solidworks_dump)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

@@ -1593,6 +1593,326 @@
       "active_markers": ["programfiles:Sublime Text/sublime_text.exe", "programfilesx86:Sublime Text/sublime_text.exe", "local:Programs/Sublime Text/sublime_text.exe"],
       "official_cleanup_command": "Uninstall Sublime Text before removing reviewed cache leftovers.",
       "rationale": "Sublime Text cache contains regenerated editor artifacts; projects, packages, session state, unsaved buffers, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.7zip.crashdumps",
+      "owner": "7-Zip",
+      "default": "local:CrashDumps/7zFM.exe.*.dmp",
+      "active_markers": ["programfiles:7-Zip/7zFM.exe", "programfilesx86:7-Zip/7zFM.exe"],
+      "official_cleanup_command": "Uninstall 7-Zip before removing reviewed crash dump leftovers.",
+      "rationale": "7-Zip crash dumps are recreated diagnostics; archives, extracted files, file associations, history, shell integration, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.winrar.crashdumps",
+      "owner": "WinRAR",
+      "default": "local:CrashDumps/WinRAR.exe.*.dmp",
+      "active_markers": ["programfiles:WinRAR/WinRAR.exe", "programfilesx86:WinRAR/WinRAR.exe"],
+      "official_cleanup_command": "Uninstall WinRAR before removing reviewed crash dump leftovers.",
+      "rationale": "WinRAR crash dumps are recreated diagnostics; archives, extracted files, recovery records, profiles, passwords, license data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.peazip.crashdumps",
+      "owner": "PeaZip",
+      "default": "local:CrashDumps/peazip.exe.*.dmp",
+      "active_markers": ["programfiles:PeaZip/peazip.exe", "programfilesx86:PeaZip/peazip.exe", "local:Programs/PeaZip/peazip.exe"],
+      "official_cleanup_command": "Uninstall PeaZip before removing reviewed crash dump leftovers.",
+      "rationale": "PeaZip crash dumps are recreated diagnostics; archives, extracted files, bookmarks, scripts, passwords, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bandizip.crashdumps",
+      "owner": "Bandizip",
+      "default": "local:CrashDumps/Bandizip.exe.*.dmp",
+      "active_markers": ["programfiles:Bandizip/Bandizip.exe", "programfilesx86:Bandizip/Bandizip.exe", "local:Programs/Bandizip/Bandizip.exe"],
+      "official_cleanup_command": "Uninstall Bandizip before removing reviewed crash dump leftovers.",
+      "rationale": "Bandizip crash dumps are recreated diagnostics; archives, extracted files, compression profiles, passwords, license data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.nanazip.crashdumps",
+      "owner": "NanaZip",
+      "default": "local:CrashDumps/NanaZip.exe.*.dmp",
+      "active_markers": ["local:Microsoft/WindowsApps/NanaZip.exe", "local:Programs/NanaZip/NanaZip.exe"],
+      "official_cleanup_command": "Uninstall NanaZip before removing reviewed crash dump leftovers.",
+      "rationale": "NanaZip crash dumps are recreated diagnostics; archives, extracted files, shell integration, history, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.rufus.crashdumps",
+      "owner": "Rufus",
+      "default": "local:CrashDumps/rufus.exe.*.dmp",
+      "active_markers": ["programfiles:Rufus/rufus.exe", "programfilesx86:Rufus/rufus.exe", "local:Programs/Rufus/rufus.exe"],
+      "official_cleanup_command": "Remove Rufus before removing reviewed crash dump leftovers.",
+      "rationale": "Rufus crash dumps are recreated diagnostics; ISO images, USB drive contents, downloaded boot images, device selections, logs under review, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.balenaetcher.logs",
+      "owner": "balenaEtcher",
+      "default": "roaming:balenaEtcher/logs",
+      "active_markers": ["local:Programs/balenaEtcher/balenaEtcher.exe", "programfiles:balenaEtcher/balenaEtcher.exe", "programfilesx86:balenaEtcher/balenaEtcher.exe"],
+      "official_cleanup_command": "Uninstall balenaEtcher before removing reviewed diagnostic log leftovers.",
+      "rationale": "balenaEtcher logs are regenerated diagnostics; images, USB drive contents, flash history, downloaded assets, device choices, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.raspberry-pi-imager.logs",
+      "owner": "Raspberry Pi Imager",
+      "default": "roaming:Raspberry Pi Imager/logs",
+      "active_markers": ["local:Programs/Raspberry Pi Imager/rpi-imager.exe", "programfiles:Raspberry Pi Imager/rpi-imager.exe", "programfilesx86:Raspberry Pi Imager/rpi-imager.exe"],
+      "official_cleanup_command": "Uninstall Raspberry Pi Imager before removing reviewed diagnostic log leftovers.",
+      "rationale": "Raspberry Pi Imager logs are regenerated diagnostics; OS images, custom configuration, Wi-Fi credentials, SSH keys, device choices, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ventoy.crashdumps",
+      "owner": "Ventoy",
+      "default": "local:CrashDumps/Ventoy2Disk.exe.*.dmp",
+      "active_markers": ["programfiles:Ventoy/Ventoy2Disk.exe", "programfilesx86:Ventoy/Ventoy2Disk.exe", "local:Programs/Ventoy/Ventoy2Disk.exe"],
+      "official_cleanup_command": "Remove Ventoy before removing reviewed crash dump leftovers.",
+      "rationale": "Ventoy crash dumps are recreated diagnostics; USB drive contents, ISO images, persistence files, plug-ins, device configuration, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.win32diskimager.crashdumps",
+      "owner": "Win32 Disk Imager",
+      "default": "local:CrashDumps/Win32DiskImager.exe.*.dmp",
+      "active_markers": ["programfiles:Win32DiskImager/Win32DiskImager.exe", "programfilesx86:Win32DiskImager/Win32DiskImager.exe", "programfiles:ImageWriter/Win32DiskImager.exe"],
+      "official_cleanup_command": "Uninstall Win32 Disk Imager before removing reviewed crash dump leftovers.",
+      "rationale": "Win32 Disk Imager crash dumps are recreated diagnostics; disk images, removable drive contents, write history, device choices, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.putty.crashdumps",
+      "owner": "PuTTY",
+      "default": "local:CrashDumps/putty.exe.*.dmp",
+      "active_markers": ["programfiles:PuTTY/putty.exe", "programfilesx86:PuTTY/putty.exe", "local:Programs/PuTTY/putty.exe"],
+      "official_cleanup_command": "Uninstall PuTTY before removing reviewed crash dump leftovers.",
+      "rationale": "PuTTY crash dumps are recreated diagnostics; saved sessions, host keys, private keys, terminal logs, connection history, and registry settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.superputty.logs",
+      "owner": "SuperPuTTY",
+      "default": "local:SuperPuTTY/logs",
+      "active_markers": ["programfiles:SuperPuTTY/SuperPuTTY.exe", "programfilesx86:SuperPuTTY/SuperPuTTY.exe", "local:Programs/SuperPuTTY/SuperPuTTY.exe"],
+      "official_cleanup_command": "Uninstall SuperPuTTY before removing reviewed diagnostic log leftovers.",
+      "rationale": "SuperPuTTY logs are regenerated diagnostics; session XML, host keys, credentials, scripts, layouts, connection history, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mremoteng.logs",
+      "owner": "mRemoteNG",
+      "default": "local:mRemoteNG/logs",
+      "active_markers": ["programfiles:mRemoteNG/mRemoteNG.exe", "programfilesx86:mRemoteNG/mRemoteNG.exe", "local:Programs/mRemoteNG/mRemoteNG.exe"],
+      "official_cleanup_command": "Uninstall mRemoteNG before removing reviewed diagnostic log leftovers.",
+      "rationale": "mRemoteNG logs are regenerated diagnostics; connection files, encrypted credentials, SSH keys, screenshots, history, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.termius.logs",
+      "owner": "Termius",
+      "default": "roaming:Termius/logs",
+      "active_markers": ["local:Programs/Termius/Termius.exe", "programfiles:Termius/Termius.exe", "programfilesx86:Termius/Termius.exe"],
+      "official_cleanup_command": "Uninstall Termius before removing reviewed diagnostic log leftovers.",
+      "rationale": "Termius logs are regenerated diagnostics; hosts, vault data, SSH keys, identities, snippets, sync data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mobaxterm.logs",
+      "owner": "MobaXterm",
+      "default": "local:Mobatek/MobaXterm/logs",
+      "active_markers": ["programfiles:Mobatek/MobaXterm/MobaXterm.exe", "programfilesx86:Mobatek/MobaXterm/MobaXterm.exe", "local:Programs/MobaXterm/MobaXterm.exe"],
+      "official_cleanup_command": "Uninstall MobaXterm before removing reviewed diagnostic log leftovers.",
+      "rationale": "MobaXterm logs are regenerated diagnostics; sessions, SSH keys, macros, terminal history, home directory data, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.royal-ts.logs",
+      "owner": "Royal TS",
+      "default": "local:code4ward/Royal TS/Logs",
+      "active_markers": ["programfiles:Royal TS V*/RoyalTS.exe", "programfilesx86:Royal TS V*/RoyalTS.exe", "local:Programs/Royal TS/RoyalTS.exe"],
+      "official_cleanup_command": "Uninstall Royal TS before removing reviewed diagnostic log leftovers.",
+      "rationale": "Royal TS logs are regenerated diagnostics; documents, credentials, plug-ins, connection history, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bitvise-ssh-client.logs",
+      "owner": "Bitvise SSH Client",
+      "default": "local:Bitvise/SSH Client/Logs",
+      "active_markers": ["programfiles:Bitvise SSH Client/BvSsh.exe", "programfilesx86:Bitvise SSH Client/BvSsh.exe"],
+      "official_cleanup_command": "Uninstall Bitvise SSH Client before removing reviewed diagnostic log leftovers.",
+      "rationale": "Bitvise SSH Client logs are regenerated diagnostics; profiles, host keys, client keys, saved passwords, terminal history, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.cygwin-setup.logs",
+      "owner": "Cygwin Setup",
+      "default": "local:cygwin/setup.log",
+      "active_markers": ["programfiles:Cygwin/Cygwin.bat", "programfilesx86:Cygwin/Cygwin.bat", "local:Programs/Cygwin/Cygwin.bat"],
+      "official_cleanup_command": "Uninstall Cygwin before removing reviewed setup log leftovers.",
+      "rationale": "Cygwin setup logs are regenerated installer diagnostics; the Cygwin root, packages, home directories, SSH keys, shell history, and configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.msys2-setup.logs",
+      "owner": "MSYS2",
+      "default": "local:msys2/setup.log",
+      "active_markers": ["programfiles:msys64/msys2.exe", "programfilesx86:msys64/msys2.exe", "local:Programs/msys64/msys2.exe"],
+      "official_cleanup_command": "Uninstall MSYS2 before removing reviewed setup log leftovers.",
+      "rationale": "MSYS2 setup logs are regenerated installer diagnostics; the MSYS2 root, package cache, home directories, SSH keys, shell history, and configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.alacritty.crashdumps",
+      "owner": "Alacritty",
+      "default": "local:CrashDumps/alacritty.exe.*.dmp",
+      "active_markers": ["programfiles:Alacritty/alacritty.exe", "programfilesx86:Alacritty/alacritty.exe", "local:Programs/Alacritty/alacritty.exe"],
+      "official_cleanup_command": "Uninstall Alacritty before removing reviewed crash dump leftovers.",
+      "rationale": "Alacritty crash dumps are recreated diagnostics; terminal configuration, shell history, fonts, themes, working directories, and user files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.streamlabs.logs",
+      "owner": "Streamlabs Desktop",
+      "default": "roaming:slobs-client/node-obs/logs",
+      "active_markers": ["local:Programs/streamlabs-desktop/Streamlabs Desktop.exe", "programfiles:Streamlabs Desktop/Streamlabs Desktop.exe", "programfilesx86:Streamlabs Desktop/Streamlabs Desktop.exe"],
+      "official_cleanup_command": "Uninstall Streamlabs Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Streamlabs Desktop logs are regenerated diagnostics; recordings, scenes, overlays, plug-ins, account data, tokens, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.xsplit.logs",
+      "owner": "XSplit Broadcaster",
+      "default": "local:SplitmediaLabs/XSplit/logs",
+      "active_markers": ["programfiles:SplitmediaLabs/XSplit Broadcaster/XSplit.Core.exe", "programfilesx86:SplitmediaLabs/XSplit Broadcaster/XSplit.Core.exe"],
+      "official_cleanup_command": "Uninstall XSplit Broadcaster before removing reviewed diagnostic log leftovers.",
+      "rationale": "XSplit logs are regenerated diagnostics; recordings, scenes, transitions, plug-ins, account data, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bandicam.logs",
+      "owner": "Bandicam",
+      "default": "local:Bandicam/logs",
+      "active_markers": ["programfiles:Bandicam/bdcam.exe", "programfilesx86:Bandicam/bdcam.exe"],
+      "official_cleanup_command": "Uninstall Bandicam before removing reviewed diagnostic log leftovers.",
+      "rationale": "Bandicam logs are regenerated diagnostics; recordings, screenshots, presets, license data, capture targets, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mirillis-action.logs",
+      "owner": "Action!",
+      "default": "local:Mirillis/Action!/Logs",
+      "active_markers": ["programfiles:Mirillis/Action!/Action.exe", "programfilesx86:Mirillis/Action!/Action.exe"],
+      "official_cleanup_command": "Uninstall Action! before removing reviewed diagnostic log leftovers.",
+      "rationale": "Action! logs are regenerated diagnostics; recordings, screenshots, profiles, streaming accounts, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.reaper.logs",
+      "owner": "REAPER",
+      "default": "roaming:REAPER/CrashLogs",
+      "active_markers": ["programfiles:REAPER (x64)/reaper.exe", "programfilesx86:REAPER/reaper.exe", "local:Programs/REAPER/reaper.exe"],
+      "official_cleanup_command": "Uninstall REAPER before removing reviewed crash log leftovers.",
+      "rationale": "REAPER crash logs are regenerated diagnostics; projects, media items, plug-ins, presets, scripts, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.fl-studio.logs",
+      "owner": "FL Studio",
+      "default": "roaming:Image-Line/FL Studio/Logs",
+      "active_markers": ["programfiles:Image-Line/FL Studio */FL64.exe", "programfilesx86:Image-Line/FL Studio */FL.exe"],
+      "official_cleanup_command": "Uninstall FL Studio before removing reviewed diagnostic log leftovers.",
+      "rationale": "FL Studio logs are regenerated diagnostics; projects, recordings, samples, plug-ins, presets, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ableton-live.crashdumps",
+      "owner": "Ableton Live",
+      "default": "roaming:Ableton/Live Reports",
+      "active_markers": ["programfiles:Ableton/Live */Program/Ableton Live *.exe", "programfilesx86:Ableton/Live */Program/Ableton Live *.exe"],
+      "official_cleanup_command": "Uninstall Ableton Live before removing reviewed crash report leftovers.",
+      "rationale": "Ableton Live crash reports are regenerated diagnostics; Live Sets, samples, packs, plug-ins, templates, authorization data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.steinberg-cubase.logs",
+      "owner": "Steinberg Cubase",
+      "default": "local:Steinberg/CrashDumps",
+      "active_markers": ["programfiles:Steinberg/Cubase */Cubase*.exe", "programfilesx86:Steinberg/Cubase */Cubase*.exe"],
+      "official_cleanup_command": "Uninstall Cubase before removing reviewed crash dump leftovers.",
+      "rationale": "Cubase crash dumps are regenerated diagnostics; projects, audio pools, VST plug-ins, presets, activation data, templates, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.voicemeeter.logs",
+      "owner": "Voicemeeter",
+      "default": "local:VB/Voicemeeter/logs",
+      "active_markers": ["programfiles:VB/Voicemeeter/voicemeeter8.exe", "programfiles:VB/Voicemeeter/voicemeeterpro.exe", "programfilesx86:VB/Voicemeeter/voicemeeter.exe"],
+      "official_cleanup_command": "Uninstall Voicemeeter before removing reviewed diagnostic log leftovers.",
+      "rationale": "Voicemeeter logs are regenerated diagnostics; routing presets, audio device configuration, macros, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.voicemod.logs",
+      "owner": "Voicemod",
+      "default": "local:Voicemod/logs",
+      "active_markers": ["local:Programs/Voicemod Desktop/VoicemodDesktop.exe", "programfiles:Voicemod Desktop/VoicemodDesktop.exe", "programfilesx86:Voicemod Desktop/VoicemodDesktop.exe"],
+      "official_cleanup_command": "Uninstall Voicemod before removing reviewed diagnostic log leftovers.",
+      "rationale": "Voicemod logs are regenerated diagnostics; voices, soundboards, user recordings, account data, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ultimaker-cura.logs",
+      "owner": "UltiMaker Cura",
+      "default": "roaming:cura/*/cura.log",
+      "active_markers": ["programfiles:UltiMaker Cura */UltiMaker-Cura.exe", "programfilesx86:UltiMaker Cura */UltiMaker-Cura.exe", "local:Programs/UltiMaker Cura */UltiMaker-Cura.exe"],
+      "official_cleanup_command": "Uninstall UltiMaker Cura before removing reviewed diagnostic log leftovers.",
+      "rationale": "Cura logs are regenerated diagnostics; printer profiles, materials, plug-ins, models, sliced projects, G-code, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.prusaslicer.logs",
+      "owner": "PrusaSlicer",
+      "default": "roaming:PrusaSlicer/logs",
+      "active_markers": ["programfiles:Prusa3D/PrusaSlicer/prusa-slicer.exe", "programfilesx86:Prusa3D/PrusaSlicer/prusa-slicer.exe", "local:Programs/PrusaSlicer/prusa-slicer.exe"],
+      "official_cleanup_command": "Uninstall PrusaSlicer before removing reviewed diagnostic log leftovers.",
+      "rationale": "PrusaSlicer logs are regenerated diagnostics; printer profiles, filament presets, models, projects, G-code, vendor bundles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bambu-studio.logs",
+      "owner": "Bambu Studio",
+      "default": "roaming:BambuStudio/log",
+      "active_markers": ["programfiles:Bambu Studio/bambu-studio.exe", "programfilesx86:Bambu Studio/bambu-studio.exe", "local:Programs/Bambu Studio/bambu-studio.exe"],
+      "official_cleanup_command": "Uninstall Bambu Studio before removing reviewed diagnostic log leftovers.",
+      "rationale": "Bambu Studio logs are regenerated diagnostics; printer profiles, AMS data, models, projects, G-code, cloud/account data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.orca-slicer.logs",
+      "owner": "OrcaSlicer",
+      "default": "roaming:OrcaSlicer/log",
+      "active_markers": ["programfiles:OrcaSlicer/orca-slicer.exe", "programfilesx86:OrcaSlicer/orca-slicer.exe", "local:Programs/OrcaSlicer/orca-slicer.exe"],
+      "official_cleanup_command": "Uninstall OrcaSlicer before removing reviewed diagnostic log leftovers.",
+      "rationale": "OrcaSlicer logs are regenerated diagnostics; printer profiles, filament presets, models, projects, G-code, network printer data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.chitubox.logs",
+      "owner": "CHITUBOX",
+      "default": "roaming:CHITUBOX/logs",
+      "active_markers": ["programfiles:CHITUBOX/CHITUBOX.exe", "programfilesx86:CHITUBOX/CHITUBOX.exe", "local:Programs/CHITUBOX/CHITUBOX.exe"],
+      "official_cleanup_command": "Uninstall CHITUBOX before removing reviewed diagnostic log leftovers.",
+      "rationale": "CHITUBOX logs are regenerated diagnostics; resin profiles, printer settings, models, sliced files, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.lychee-slicer.logs",
+      "owner": "Lychee Slicer",
+      "default": "roaming:LycheeSlicer/logs",
+      "active_markers": ["local:Programs/LycheeSlicer/LycheeSlicer.exe", "programfiles:LycheeSlicer/LycheeSlicer.exe", "programfilesx86:LycheeSlicer/LycheeSlicer.exe"],
+      "official_cleanup_command": "Uninstall Lychee Slicer before removing reviewed diagnostic log leftovers.",
+      "rationale": "Lychee Slicer logs are regenerated diagnostics; resin profiles, printer settings, scenes, models, sliced files, account data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.freecad.crashdumps",
+      "owner": "FreeCAD",
+      "default": "local:CrashDumps/FreeCAD.exe.*.dmp",
+      "active_markers": ["programfiles:FreeCAD */bin/FreeCAD.exe", "programfilesx86:FreeCAD */bin/FreeCAD.exe", "local:Programs/FreeCAD/bin/FreeCAD.exe"],
+      "official_cleanup_command": "Uninstall FreeCAD before removing reviewed crash dump leftovers.",
+      "rationale": "FreeCAD crash dumps are recreated diagnostics; CAD documents, macros, workbenches, add-ons, templates, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.openscad.logs",
+      "owner": "OpenSCAD",
+      "default": "local:OpenSCAD/logs",
+      "active_markers": ["programfiles:OpenSCAD/openscad.exe", "programfilesx86:OpenSCAD/openscad.exe", "local:Programs/OpenSCAD/openscad.exe"],
+      "official_cleanup_command": "Uninstall OpenSCAD before removing reviewed diagnostic log leftovers.",
+      "rationale": "OpenSCAD logs are regenerated diagnostics; scripts, models, libraries, exports, customizer presets, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.fusion360.logs",
+      "owner": "Autodesk Fusion",
+      "default": "local:Autodesk/Autodesk Fusion 360/logs",
+      "active_markers": ["local:Autodesk/webdeploy/production/*/Fusion360.exe", "programfiles:Autodesk/Fusion 360/Fusion360.exe"],
+      "official_cleanup_command": "Uninstall Autodesk Fusion before removing reviewed diagnostic log leftovers.",
+      "rationale": "Fusion logs are regenerated diagnostics; designs, cloud cache, CAM posts, plug-ins, credentials, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.solidworks.crashdumps",
+      "owner": "SOLIDWORKS",
+      "default": "local:CrashDumps/SLDWORKS.exe.*.dmp",
+      "active_markers": ["programfiles:SOLIDWORKS Corp/SOLIDWORKS/SLDWORKS.exe", "programfilesx86:SOLIDWORKS Corp/SOLIDWORKS/SLDWORKS.exe"],
+      "official_cleanup_command": "Uninstall SOLIDWORKS before removing reviewed crash dump leftovers.",
+      "rationale": "SOLIDWORKS crash dumps are recreated diagnostics; parts, assemblies, drawings, templates, toolbox data, license state, and settings remain outside this rule."
     }
   ]
 }
