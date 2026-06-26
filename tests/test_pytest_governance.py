@@ -18,6 +18,34 @@ PROVIDER_SCHEMA_ALLOWLIST = {
     ("test_ai_contracts.py", "test_cli_ai_tools_and_host_policy_are_valid"),
     ("test_ai_readiness.py", "test_cli_exposes_readiness_self_test_and_runbook"),
 }
+UNITTEST_ASSERTION_METHODS = {
+    "assertAlmostEqual",
+    "assertCountEqual",
+    "assertDictEqual",
+    "assertEqual",
+    "assertFalse",
+    "assertGreater",
+    "assertGreaterEqual",
+    "assertIn",
+    "assertIs",
+    "assertIsInstance",
+    "assertIsNone",
+    "assertLess",
+    "assertLessEqual",
+    "assertListEqual",
+    "assertLogs",
+    "assertNotAlmostEqual",
+    "assertNotEqual",
+    "assertNotIn",
+    "assertNotIsInstance",
+    "assertNotRegex",
+    "assertRaises",
+    "assertRegex",
+    "assertSequenceEqual",
+    "assertSetEqual",
+    "assertTrue",
+    "assertTupleEqual",
+}
 DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 READONLY_BOOLEAN_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 READONLY_BOOLEAN_KEYS = {
@@ -204,6 +232,21 @@ def test_python_test_files_stay_pytest_discoverable(repo_root: Path, assert_exac
             continue
         if not path.name.startswith("test_"):
             violations.append(f"{relative}: test files must use pytest-discoverable test_*.py naming")
+
+    assert_exact_sequence(violations, [])
+
+
+def test_unittest_assertion_apis_do_not_reappear(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
+    violations: list[str] = []
+    for module in iter_test_modules(repo_root):
+        path = module.path
+        for node in ast.walk(module.tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Attribute) and node.func.attr in UNITTEST_ASSERTION_METHODS:
+                violations.append(f"{path.name}: uses unittest-style {node.func.attr}")
+            elif isinstance(node.func, ast.Name) and node.func.id in UNITTEST_ASSERTION_METHODS:
+                violations.append(f"{path.name}: uses unittest-style {node.func.id}")
 
     assert_exact_sequence(violations, [])
 
