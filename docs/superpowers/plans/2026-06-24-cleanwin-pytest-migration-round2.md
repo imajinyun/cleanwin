@@ -1166,6 +1166,109 @@ through the repository `.venv`.
 - Local aiflow governance report was refreshed at `.aiflow/governance.json`;
   this remains untracked local state.
 
+## Round 16 Pytest Governance Plan
+
+**Goal:** Lock in the completed unittest-to-pytest migration by adding stronger
+pytest-only governance around test layout, project config, workflows, Docker,
+Windows smoke, and documentation.
+
+**Architecture:** No runtime behavior changes. Keep this as test, CI/workflow,
+docs, and governance-only work. Since current test files no longer contain
+`unittest.TestCase` or unittest-style assertions, this round focuses on
+machine-readable release gates that prevent regression to unittest execution
+paths.
+
+**Tech Stack:** Python, pytest, AST-based governance tests, Makefile-backed
+`.venv` tooling, local aiflow queue.
+
+Step1 status: completed.
+`BITS_TMP_ROOT=/var/folders/57/pqx08bk577x758hnslxkfhm40000gn/T/tmp.ij2Y7HEoG8`
+
+Step2 status: completed. `LANG=python`; `EXEC_SOURCE` is empty. Project
+conventions require pytest-native tests, shared helpers, and Makefile-backed
+`.venv` tooling. Existing evidence shows test commands must not use system
+Python or `unittest discover`.
+
+Step3 status: completed.
+
+```json
+{
+  "scope_type": "non_diff",
+  "TARGETS": [
+    {
+      "file_path": "tests/test_pytest_governance.py",
+      "target_type": "file",
+      "symbol": "pytest-only governance checks",
+      "locator": "AST and text checks for unittest/TestCase, pytest config, and workflow command contracts",
+      "source": "explicit",
+      "reason": "the repository has no real unittest test residuals, so migration should be protected by stronger pytest-only release gates",
+      "hunks": []
+    },
+    {
+      "file_path": "pyproject.toml Makefile Dockerfile.test .github/workflows/ci.yml .github/workflows/windows-smoke.yml",
+      "target_type": "file",
+      "symbol": "pytest execution entrypoint contracts",
+      "locator": "pytest dev dependency, pytest.ini options, Makefile targets, Linux CI, Docker sandbox, and Windows smoke commands",
+      "source": "explicit",
+      "reason": "test entrypoints should consistently use pytest through the repository virtual environment and must not reintroduce unittest execution",
+      "hunks": []
+    },
+    {
+      "file_path": "AGENTS.md docs/doc/README.md docs/doc/README.CN.md",
+      "target_type": "file",
+      "symbol": "pytest migration workflow documentation",
+      "locator": "test workflow guidance and pytest governance smoke descriptions",
+      "source": "explicit",
+      "reason": "documentation should reflect that unittest replacement is enforced by pytest-only governance gates",
+      "hunks": []
+    },
+    {
+      "file_path": "docs/superpowers/plans/2026-06-24-cleanwin-pytest-migration-round2.md",
+      "target_type": "file",
+      "symbol": "Round 16 plan and completion evidence",
+      "locator": "Round 16 section",
+      "source": "explicit",
+      "reason": "aiflow-managed governance rounds need durable plan and verification evidence",
+      "hunks": []
+    }
+  ],
+  "diff_context": null,
+  "fallback_notes": "Current tests already have no unittest/TestCase/assertEqual residuals; this round prevents regression rather than converting remaining unittest classes."
+}
+```
+
+Step4 status: completed.
+
+```json
+{
+  "BUG_MAP": []
+}
+```
+
+Filtered candidates: no production defect is claimed. The actionable risk is
+future regression from pytest-native tests back to unittest-style test files,
+commands, or documentation.
+
+### Round 16 Tasks
+
+- `PYTEST-GOV-208`: Record this Round 16 plan and submit the next 10 governance tasks to aiflow.
+- `PYTEST-GOV-209`: Add pytest test-file layout governance so new Python tests stay pytest-discoverable.
+- `PYTEST-GOV-210`: Add project pytest configuration governance for `pyproject.toml` and dev dependencies.
+- `PYTEST-GOV-211`: Add Makefile pytest-entrypoint governance and deny unittest command targets.
+- `PYTEST-GOV-212`: Add Linux CI and Docker pytest-entrypoint governance.
+- `PYTEST-GOV-213`: Add Windows smoke pytest-entrypoint governance.
+- `PYTEST-GOV-214`: Add documentation governance for pytest-only workflow guidance.
+- `PYTEST-GOV-215`: Tighten pytest-native AST governance for unittest-style assertion APIs.
+- `PYTEST-GOV-216`: Run focused pytest governance smoke and record migration evidence.
+- `PYTEST-GOV-217`: Run final `make quality`, refresh local aiflow governance report, and complete the round.
+
+### Verification
+
+Each task should run the smallest useful Makefile-backed pytest check before
+committing. The final task must run `make quality` so lint, pytest, type
+checking, compile, packaging, smoke tests, and pytest governance all execute
+through the repository `.venv`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
