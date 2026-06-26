@@ -1269,6 +1269,17 @@ committing. The final task must run `make quality` so lint, pytest, type
 checking, compile, packaging, smoke tests, and pytest governance all execute
 through the repository `.venv`.
 
+### Round 16 Evidence
+
+- `PYTEST-GOV-209`: Added pytest-discoverable `test_*.py` layout governance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 22 tests.
+- `PYTEST-GOV-210`: Added `pyproject.toml` pytest/dev dependency governance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 23 tests.
+- `PYTEST-GOV-211`: Added Makefile `.venv` pytest entrypoint governance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 24 tests after narrowing the check to actual unittest command entrypoints.
+- `PYTEST-GOV-212`: Added Linux CI and Docker pytest entrypoint governance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 25 tests.
+- `PYTEST-GOV-213`: Added Windows smoke pytest entrypoint governance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 26 tests.
+- `PYTEST-GOV-214`: Added documentation governance for pytest-only `.venv` workflow guidance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 27 tests after allowing negative `unittest.TestCase` mentions.
+- `PYTEST-GOV-215`: Added AST governance against unittest-style assertion APIs; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 28 tests.
+- `PYTEST-GOV-216`: `make pytest-governance-smoke` passed through repository `.venv`; focused result was 29 passed.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
