@@ -232,6 +232,39 @@ def test_pyproject_defines_pytest_dev_contract(
     assert_none_match([pyproject], lambda text: "unittest" in text)
 
 
+def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        makefile,
+        [
+            "DEV_PYTHON ?= $(VENV_PYTHON)",
+            "test: dev-install",
+            "pytest: dev-install",
+            "lint: dev-install",
+            "type: dev-install",
+            "compile: dev-install",
+            "pytest-governance-smoke: dev-install",
+            "$(DEV_PYTHON) -m pytest -q",
+            "$(DEV_PYTHON) -m ruff check cleanwin.py cleanwincli tests",
+            "$(DEV_PYTHON) -m mypy cleanwin.py cleanwincli tests",
+            "$(DEV_PYTHON) -m compileall -q cleanwin.py cleanwincli tests",
+            "ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke",
+        ],
+    )
+    command_lines = [line for line in makefile.splitlines() if line.startswith("\t")]
+    assert_none_match(
+        command_lines,
+        lambda line: line.strip().startswith(
+            ("$(DEV_PYTHON) -m unittest", "$(PYTHON) -m unittest", "python -m unittest", "unittest discover")
+        ),
+    )
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
