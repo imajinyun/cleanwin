@@ -208,6 +208,30 @@ def test_python_test_files_stay_pytest_discoverable(repo_root: Path, assert_exac
     assert_exact_sequence(violations, [])
 
 
+def test_pyproject_defines_pytest_dev_contract(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        pyproject,
+        [
+            "[project.optional-dependencies]",
+            "dev = [",
+            '"pytest>=8.3"',
+            '"ruff>=0.8"',
+            '"mypy>=1.13"',
+            "[tool.pytest.ini_options]",
+            'minversion = "8.0"',
+            'testpaths = ["tests"]',
+            'addopts = "--strict-config --strict-markers"',
+        ],
+    )
+    assert_none_match([pyproject], lambda text: "unittest" in text)
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
