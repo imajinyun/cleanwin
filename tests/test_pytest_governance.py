@@ -194,6 +194,20 @@ def test_tests_remain_pytest_native(repo_root: Path, assert_exact_sequence: Asse
     assert_exact_sequence(violations, [])
 
 
+def test_python_test_files_stay_pytest_discoverable(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
+    violations: list[str] = []
+    for path in sorted((repo_root / "tests").rglob("*.py")):
+        relative = path.relative_to(repo_root).as_posix()
+        if path.name in {"__init__.py", "conftest.py"}:
+            continue
+        if path.parent.name == "__pycache__":
+            continue
+        if not path.name.startswith("test_"):
+            violations.append(f"{relative}: test files must use pytest-discoverable test_*.py naming")
+
+    assert_exact_sequence(violations, [])
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
