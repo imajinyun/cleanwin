@@ -343,6 +343,14 @@ def _expand_existing_wildcard_path(path: Path) -> list[Path]:
     return expanded
 
 
+def _rule_specificity(rule: dict[str, object]) -> tuple[int, int, int]:
+    default = str(rule.get("default") or "")
+    segment_count = len([segment for segment in default.split("/", maxsplit=-1) if segment])
+    wildcard_count = sum(default.count(char) for char in "*?[]")
+    literal_count = sum(1 for char in default if char not in "*?[]")
+    return (segment_count, -wildcard_count, literal_count)
+
+
 def _active_marker_exists(marker: str, *, env: dict[str, str]) -> bool:
     local_app_data = env.get("LOCALAPPDATA")
     roaming_app_data = env.get("APPDATA")
@@ -391,15 +399,13 @@ def app_leftover_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, object]
             continue
         for expanded in _expand_existing_wildcard_path(path):
             roots.append((rule, expanded))
-    seen: set[str] = set()
-    deduped: list[tuple[dict[str, object], Path]] = []
+    best_by_path: dict[str, tuple[dict[str, object], Path]] = {}
     for rule, path in roots:
         key = str(path.resolve(strict=False)).lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append((rule, path))
-    return deduped
+        existing = best_by_path.get(key)
+        if existing is None or _rule_specificity(rule) > _rule_specificity(existing[0]):
+            best_by_path[key] = (rule, path)
+    return sorted(best_by_path.values(), key=lambda item: (str(item[1]).lower(), str(item[0].get("rule_id") or "")))
 
 
 def browser_profile_cache_roots(env: dict[str, str]) -> list[tuple[dict[str, str], Path]]:

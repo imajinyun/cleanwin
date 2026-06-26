@@ -625,6 +625,406 @@
       "active_markers": ["programfiles:Razer/Synapse3/Razer Synapse 3.exe", "programfilesx86:Razer/Synapse3/Razer Synapse 3.exe"],
       "official_cleanup_command": "Uninstall Razer Synapse before removing reviewed diagnostic log leftovers.",
       "rationale": "Razer Synapse logs are regenerated diagnostic artifacts; device profiles, firmware, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.skype.media-cache",
+      "owner": "Skype",
+      "default": "roaming:Microsoft/Skype for Desktop/media_messaging/media_cache",
+      "active_markers": ["programfiles:Microsoft/Skype for Desktop/Skype.exe", "programfilesx86:Microsoft/Skype for Desktop/Skype.exe", "local:Microsoft/WindowsApps/Skype.exe"],
+      "official_cleanup_command": "Uninstall Skype or clear cache through Skype settings before removing reviewed media cache leftovers.",
+      "rationale": "Skype media cache contains regenerated preview artifacts; chat history, downloaded files, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.webex.logs",
+      "owner": "Cisco Webex",
+      "default": "local:CiscoSpark/Logs",
+      "active_markers": ["local:Programs/Cisco Spark/CiscoCollabHost.exe", "programfiles:Cisco Spark/CiscoCollabHost.exe", "programfilesx86:Cisco Spark/CiscoCollabHost.exe"],
+      "official_cleanup_command": "Uninstall Webex before removing reviewed diagnostic log leftovers.",
+      "rationale": "Webex logs are regenerated diagnostic artifacts; recordings, meeting content, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.msteams-new.logs",
+      "owner": "Microsoft Teams",
+      "default": "local:Packages/MSTeams_8wekyb3d8bbwe/LocalCache/Microsoft/MSTeams/Logs",
+      "active_markers": ["local:Microsoft/WindowsApps/ms-teams.exe", "programfiles:WindowsApps/MSTeams_*/ms-teams.exe"],
+      "official_cleanup_command": "Uninstall Microsoft Teams or use Teams reset/repair before removing reviewed log leftovers.",
+      "rationale": "New Teams logs are regenerated diagnostics; chats, files, account state, and package data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.todoist.gpu-cache",
+      "owner": "Todoist",
+      "default": "roaming:Todoist/GPUCache",
+      "active_markers": ["local:Programs/Todoist/Todoist.exe", "local:Todoist/Todoist.exe"],
+      "official_cleanup_command": "Uninstall Todoist before removing reviewed renderer cache leftovers.",
+      "rationale": "Todoist GPUCache contains regenerated Electron renderer artifacts; task data, account state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.linear.gpu-cache",
+      "owner": "Linear",
+      "default": "roaming:Linear/GPUCache",
+      "active_markers": ["local:Programs/Linear/Linear.exe", "local:Linear/Linear.exe"],
+      "official_cleanup_command": "Uninstall Linear before removing reviewed renderer cache leftovers.",
+      "rationale": "Linear GPUCache contains regenerated Electron renderer artifacts; workspace data, account state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.canva.gpu-cache",
+      "owner": "Canva",
+      "default": "roaming:Canva/GPUCache",
+      "active_markers": ["local:Programs/Canva/Canva.exe", "local:Canva/Canva.exe"],
+      "official_cleanup_command": "Uninstall Canva before removing reviewed renderer cache leftovers.",
+      "rationale": "Canva GPUCache contains regenerated renderer artifacts; designs, exports, account state, and user media remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.powershell.startup-cache",
+      "owner": "PowerShell",
+      "default": "local:Microsoft/PowerShell/StartupProfileData-NonInteractive",
+      "active_markers": ["programfiles:PowerShell/*/pwsh.exe", "programfilesx86:PowerShell/*/pwsh.exe"],
+      "official_cleanup_command": "Review PowerShell profile performance before removing startup profiling cache leftovers.",
+      "rationale": "PowerShell startup profile data is regenerated performance cache; scripts, modules, profiles, and command history remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.windows-terminal.state-cache",
+      "owner": "Windows Terminal",
+      "default": "local:Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/DiagOutputDir",
+      "active_markers": ["local:Microsoft/WindowsApps/wt.exe", "programfiles:WindowsApps/Microsoft.WindowsTerminal_*/wt.exe"],
+      "official_cleanup_command": "Uninstall or reset Windows Terminal before removing reviewed diagnostic output leftovers.",
+      "rationale": "Windows Terminal diagnostic output is regenerated troubleshooting data; settings, fragments, profiles, and shell history remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.snagit.logs",
+      "owner": "Snagit",
+      "default": "local:TechSmith/Snagit/Logs",
+      "active_markers": ["programfiles:TechSmith/Snagit */SnagitCapture.exe", "programfilesx86:TechSmith/Snagit */SnagitCapture.exe"],
+      "official_cleanup_command": "Uninstall Snagit before removing reviewed diagnostic log leftovers.",
+      "rationale": "Snagit logs are regenerated diagnostic artifacts; captures, library content, presets, and license data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.camtasia.logs",
+      "owner": "Camtasia",
+      "default": "local:TechSmith/Camtasia Studio/Logs",
+      "active_markers": ["programfiles:TechSmith/Camtasia */CamtasiaStudio.exe", "programfilesx86:TechSmith/Camtasia */CamtasiaStudio.exe"],
+      "official_cleanup_command": "Uninstall Camtasia before removing reviewed diagnostic log leftovers.",
+      "rationale": "Camtasia logs are regenerated diagnostic artifacts; recordings, projects, media assets, presets, and license data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.parsec.logs",
+      "owner": "Parsec",
+      "default": "local:Parsec/logs",
+      "active_markers": ["programfiles:Parsec/parsecd.exe", "programfilesx86:Parsec/parsecd.exe", "local:Parsec/parsecd.exe"],
+      "official_cleanup_command": "Uninstall Parsec before removing reviewed diagnostic log leftovers.",
+      "rationale": "Parsec logs are regenerated diagnostic artifacts; account state, host settings, recordings, and user files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.anydesk.logs",
+      "owner": "AnyDesk",
+      "default": "roaming:AnyDesk/ad_svc.trace",
+      "active_markers": ["programfiles:AnyDesk/AnyDesk.exe", "programfilesx86:AnyDesk/AnyDesk.exe"],
+      "official_cleanup_command": "Uninstall AnyDesk before removing reviewed diagnostic trace leftovers.",
+      "rationale": "AnyDesk trace logs are regenerated diagnostics; unattended access configuration, aliases, credentials, and address books remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.teamviewer.logs",
+      "owner": "TeamViewer",
+      "default": "programdata:TeamViewer/Logs",
+      "active_markers": ["programfiles:TeamViewer/TeamViewer.exe", "programfilesx86:TeamViewer/TeamViewer.exe"],
+      "official_cleanup_command": "Uninstall TeamViewer before removing reviewed diagnostic log leftovers.",
+      "rationale": "TeamViewer logs are regenerated diagnostic artifacts; account configuration, remote access settings, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.vpn-openvpn.logs",
+      "owner": "OpenVPN Connect",
+      "default": "local:OpenVPN Connect/logs",
+      "active_markers": ["programfiles:OpenVPN Connect/OpenVPNConnect.exe", "programfilesx86:OpenVPN Connect/OpenVPNConnect.exe", "local:Programs/OpenVPN Connect/OpenVPNConnect.exe"],
+      "official_cleanup_command": "Uninstall OpenVPN Connect before removing reviewed connection log leftovers.",
+      "rationale": "OpenVPN Connect logs are regenerated connection diagnostics; VPN profiles, certificates, keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.warp.logs",
+      "owner": "Cloudflare WARP",
+      "default": "local:Cloudflare/WARP/logs",
+      "active_markers": ["programfiles:Cloudflare/Cloudflare WARP/Cloudflare WARP.exe", "programfilesx86:Cloudflare/Cloudflare WARP/Cloudflare WARP.exe"],
+      "official_cleanup_command": "Uninstall Cloudflare WARP before removing reviewed diagnostic log leftovers.",
+      "rationale": "Cloudflare WARP logs are regenerated diagnostics; device registration, policy state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.wireshark.recent-cache",
+      "owner": "Wireshark",
+      "default": "roaming:Wireshark/recent_common",
+      "active_markers": ["programfiles:Wireshark/Wireshark.exe", "programfilesx86:Wireshark/Wireshark.exe"],
+      "official_cleanup_command": "Uninstall Wireshark or clear recent file state before removing reviewed recent-cache leftovers.",
+      "rationale": "Wireshark recent-cache state is regenerated UI metadata; packet captures, profiles, keys, and dissector configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.filezilla.logs",
+      "owner": "FileZilla",
+      "default": "roaming:FileZilla/logs",
+      "active_markers": ["programfiles:FileZilla FTP Client/filezilla.exe", "programfilesx86:FileZilla FTP Client/filezilla.exe"],
+      "official_cleanup_command": "Uninstall FileZilla before removing reviewed client log leftovers.",
+      "rationale": "FileZilla logs are regenerated diagnostics; site manager entries, transfer queue state, keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.winscp.logs",
+      "owner": "WinSCP",
+      "default": "local:WinSCP/Logs",
+      "active_markers": ["programfiles:WinSCP/WinSCP.exe", "programfilesx86:WinSCP/WinSCP.exe"],
+      "official_cleanup_command": "Uninstall WinSCP before removing reviewed client log leftovers.",
+      "rationale": "WinSCP logs are regenerated transfer diagnostics; sessions, host keys, stored credentials, and transfer queues remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.calibre.cache",
+      "owner": "calibre",
+      "default": "local:calibre-cache",
+      "active_markers": ["programfiles:Calibre2/calibre.exe", "programfilesx86:Calibre2/calibre.exe"],
+      "official_cleanup_command": "Uninstall calibre before removing reviewed cache leftovers.",
+      "rationale": "calibre cache contains regenerated metadata/rendering artifacts; libraries, books, plugins, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.qbittorrent.logs",
+      "owner": "qBittorrent",
+      "default": "local:qBittorrent/logs",
+      "active_markers": ["programfiles:qBittorrent/qbittorrent.exe", "programfilesx86:qBittorrent/qbittorrent.exe"],
+      "official_cleanup_command": "Uninstall qBittorrent before removing reviewed client log leftovers.",
+      "rationale": "qBittorrent logs are regenerated diagnostics; torrents, resume data, downloaded content, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.dbeaver.logs",
+      "owner": "DBeaver",
+      "default": "roaming:DBeaverData/workspace6/.metadata/.log",
+      "active_markers": ["programfiles:DBeaver/dbeaver.exe", "programfilesx86:DBeaver/dbeaver.exe", "local:DBeaver/dbeaver.exe"],
+      "official_cleanup_command": "Uninstall DBeaver before removing reviewed workspace diagnostic log leftovers.",
+      "rationale": "DBeaver metadata logs are regenerated diagnostics; database connections, drivers, SQL scripts, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.datagrip.logs",
+      "owner": "DataGrip",
+      "default": "local:JetBrains/DataGrip*/log",
+      "active_markers": ["programfiles:JetBrains/DataGrip*/bin/datagrip64.exe", "programfilesx86:JetBrains/DataGrip*/bin/datagrip64.exe"],
+      "official_cleanup_command": "Uninstall DataGrip before removing reviewed IDE diagnostic log leftovers.",
+      "rationale": "DataGrip log directories contain regenerated diagnostics; projects, database connection settings, consoles, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mysql-workbench.logs",
+      "owner": "MySQL Workbench",
+      "default": "roaming:MySQL/Workbench/log",
+      "active_markers": ["programfiles:MySQL/MySQL Workbench */MySQLWorkbench.exe", "programfilesx86:MySQL/MySQL Workbench */MySQLWorkbench.exe"],
+      "official_cleanup_command": "Uninstall MySQL Workbench before removing reviewed diagnostic log leftovers.",
+      "rationale": "MySQL Workbench logs are regenerated diagnostics; connections, models, SQL scripts, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.azure-data-studio.cached-data",
+      "owner": "Azure Data Studio",
+      "default": "roaming:azuredatastudio/CachedData",
+      "active_markers": ["local:Programs/Azure Data Studio/azuredatastudio.exe", "programfiles:Azure Data Studio/azuredatastudio.exe", "programfilesx86:Azure Data Studio/azuredatastudio.exe"],
+      "official_cleanup_command": "Uninstall Azure Data Studio before removing reviewed editor cache leftovers.",
+      "rationale": "Azure Data Studio CachedData contains regenerated editor runtime cache; notebooks, connections, extensions, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.insomnia.gpu-cache",
+      "owner": "Insomnia",
+      "default": "roaming:Insomnia/GPUCache",
+      "active_markers": ["local:Programs/Insomnia/Insomnia.exe", "local:Insomnia/Insomnia.exe"],
+      "official_cleanup_command": "Uninstall Insomnia before removing reviewed renderer cache leftovers.",
+      "rationale": "Insomnia GPUCache contains regenerated Electron renderer artifacts; workspaces, requests, environment secrets, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bruno.logs",
+      "owner": "Bruno",
+      "default": "roaming:Bruno/logs",
+      "active_markers": ["local:Programs/Bruno/Bruno.exe", "local:Bruno/Bruno.exe"],
+      "official_cleanup_command": "Uninstall Bruno before removing reviewed diagnostic log leftovers.",
+      "rationale": "Bruno logs are regenerated diagnostics; collections, environments, secrets, and local API project files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.tableau.logs",
+      "owner": "Tableau Desktop",
+      "default": "local:Tableau/Logs",
+      "active_markers": ["programfiles:Tableau/Tableau */bin/tableau.exe", "programfilesx86:Tableau/Tableau */bin/tableau.exe"],
+      "official_cleanup_command": "Uninstall Tableau Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Tableau logs are regenerated diagnostics; workbooks, extracts, data sources, licenses, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.autodesk.logs",
+      "owner": "Autodesk Desktop App",
+      "default": "local:Autodesk/Autodesk Desktop App/Logs",
+      "active_markers": ["programfiles:Autodesk/Autodesk Desktop App/AutodeskDesktopApp.exe", "programfilesx86:Autodesk/Autodesk Desktop App/AutodeskDesktopApp.exe"],
+      "official_cleanup_command": "Uninstall Autodesk Desktop App before removing reviewed diagnostic log leftovers.",
+      "rationale": "Autodesk Desktop App logs are regenerated diagnostics; design files, project caches, licenses, and installed products remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.blender.cache",
+      "owner": "Blender",
+      "default": "local:Blender Foundation/Blender/Cache",
+      "active_markers": ["programfiles:Blender Foundation/Blender */blender.exe", "programfilesx86:Blender Foundation/Blender */blender.exe"],
+      "official_cleanup_command": "Uninstall Blender or clear Blender cache settings before removing reviewed cache leftovers.",
+      "rationale": "Blender cache contains regenerated render or preview artifacts; .blend files, assets, add-ons, and user preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.hp-smart.logs",
+      "owner": "HP Smart",
+      "default": "local:Packages/AD2F1837.HPPrinterControl_*/LocalState/Logs",
+      "active_markers": ["local:Microsoft/WindowsApps/HP.Smart.exe", "programfiles:WindowsApps/AD2F1837.HPPrinterControl_*/HP.Smart.exe"],
+      "official_cleanup_command": "Uninstall or reset HP Smart before removing reviewed diagnostic log leftovers.",
+      "rationale": "HP Smart logs are regenerated diagnostics; scanned documents, printer configuration, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.powertoys.logs",
+      "owner": "PowerToys",
+      "default": "local:Microsoft/PowerToys/Logs",
+      "active_markers": ["local:PowerToys/PowerToys.exe", "local:Programs/PowerToys/PowerToys.exe", "programfiles:PowerToys/PowerToys.exe"],
+      "official_cleanup_command": "Uninstall PowerToys or use its settings before removing reviewed diagnostic log leftovers.",
+      "rationale": "PowerToys logs are regenerated diagnostics; module settings, shortcuts, and user configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.onedrive.logs",
+      "owner": "OneDrive",
+      "default": "local:Microsoft/OneDrive/logs",
+      "active_markers": ["local:Microsoft/OneDrive/OneDrive.exe", "programfiles:Microsoft OneDrive/OneDrive.exe", "programfilesx86:Microsoft OneDrive/OneDrive.exe"],
+      "official_cleanup_command": "Uninstall or reset OneDrive before removing reviewed diagnostic log leftovers.",
+      "rationale": "OneDrive logs are regenerated diagnostics; synced files, account state, credentials, and sync configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.google-drivefs.logs",
+      "owner": "Google Drive for desktop",
+      "default": "local:Google/DriveFS/Logs",
+      "active_markers": ["programfiles:Google/Drive File Stream/*/GoogleDriveFS.exe", "programfiles:Google/Drive File Stream/GoogleDriveFS.exe", "local:Google/DriveFS/GoogleDriveFS.exe"],
+      "official_cleanup_command": "Uninstall or disconnect Google Drive for desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Google Drive for desktop logs are regenerated diagnostics; synced files, DriveFS metadata, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.icloud.logs",
+      "owner": "iCloud for Windows",
+      "default": "local:Apple Inc/iCloud/Logs",
+      "active_markers": ["programfiles:WindowsApps/AppleInc.iCloud_*/iCloud.exe", "local:Microsoft/WindowsApps/iCloud.exe"],
+      "official_cleanup_command": "Uninstall or reset iCloud for Windows before removing reviewed diagnostic log leftovers.",
+      "rationale": "iCloud logs are regenerated diagnostics; photos, synced files, account state, keychain data, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gimp.thumbnails",
+      "owner": "GIMP",
+      "default": "local:gegl-0.4/thumbnails",
+      "active_markers": ["programfiles:GIMP */bin/gimp-*.exe", "programfilesx86:GIMP */bin/gimp-*.exe"],
+      "official_cleanup_command": "Uninstall GIMP or clear image cache settings before removing reviewed thumbnail leftovers.",
+      "rationale": "GIMP thumbnails are regenerated preview artifacts; image source files, plug-ins, brushes, and user preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.inkscape.cache",
+      "owner": "Inkscape",
+      "default": "local:inkscape/cache",
+      "active_markers": ["programfiles:Inkscape/bin/inkscape.exe", "programfilesx86:Inkscape/bin/inkscape.exe"],
+      "official_cleanup_command": "Uninstall Inkscape or clear application cache before removing reviewed cache leftovers.",
+      "rationale": "Inkscape cache contains regenerated application artifacts; SVG files, extensions, templates, and preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.krita.cache",
+      "owner": "Krita",
+      "default": "local:krita/cache",
+      "active_markers": ["programfiles:Krita */bin/krita.exe", "programfilesx86:Krita */bin/krita.exe"],
+      "official_cleanup_command": "Uninstall Krita or clear application cache before removing reviewed cache leftovers.",
+      "rationale": "Krita cache contains regenerated preview and runtime artifacts; artwork, brushes, resources, and preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.audacity.logs",
+      "owner": "Audacity",
+      "default": "roaming:audacity/SessionData",
+      "active_markers": ["programfiles:Audacity/Audacity.exe", "programfilesx86:Audacity/Audacity.exe"],
+      "official_cleanup_command": "Uninstall Audacity or clear recovery/session data from the app before removing reviewed session leftovers.",
+      "rationale": "Audacity SessionData contains recreated recovery/session artifacts; audio project files, recordings, plug-ins, and preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.handbrake.logs",
+      "owner": "HandBrake",
+      "default": "roaming:HandBrake/logs",
+      "active_markers": ["programfiles:HandBrake/HandBrake.exe", "programfilesx86:HandBrake/HandBrake.exe"],
+      "official_cleanup_command": "Uninstall HandBrake before removing reviewed encode log leftovers.",
+      "rationale": "HandBrake logs are regenerated diagnostics; source videos, presets, queues, and encoded output files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.corsair-icue.logs",
+      "owner": "Corsair iCUE",
+      "default": "local:Corsair/CUE/logs",
+      "active_markers": ["programfiles:Corsair/Corsair iCUE5 Software/iCUE.exe", "programfilesx86:Corsair/Corsair iCUE5 Software/iCUE.exe"],
+      "official_cleanup_command": "Uninstall or reset Corsair iCUE before removing reviewed diagnostic log leftovers.",
+      "rationale": "Corsair iCUE logs are regenerated diagnostics; device profiles, lighting settings, firmware data, and macros remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.sourcetree.logs",
+      "owner": "Sourcetree",
+      "default": "local:Atlassian/Sourcetree/sourcetree.log",
+      "active_markers": ["local:SourceTree/SourceTree.exe", "local:Programs/Atlassian/Sourcetree/SourceTree.exe"],
+      "official_cleanup_command": "Uninstall Sourcetree before removing reviewed diagnostic log leftovers.",
+      "rationale": "Sourcetree logs are regenerated diagnostics; repositories, Git configuration, credentials, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gitkraken.gpu-cache",
+      "owner": "GitKraken",
+      "default": "roaming:GitKraken/GPUCache",
+      "active_markers": ["local:gitkraken/gitkraken.exe", "local:Programs/GitKraken/GitKraken.exe"],
+      "official_cleanup_command": "Uninstall GitKraken before removing reviewed renderer cache leftovers.",
+      "rationale": "GitKraken GPUCache contains regenerated Electron renderer artifacts; repositories, profiles, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.tortoisegit.crashdumps",
+      "owner": "TortoiseGit",
+      "default": "local:CrashDumps/TortoiseGitProc.exe.*.dmp",
+      "active_markers": ["programfiles:TortoiseGit/bin/TortoiseGitProc.exe", "programfilesx86:TortoiseGit/bin/TortoiseGitProc.exe"],
+      "official_cleanup_command": "Uninstall TortoiseGit before removing reviewed crash dump leftovers.",
+      "rationale": "TortoiseGit crash dumps are recreated diagnostics; repositories, Git configuration, SSH keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.fork.logs",
+      "owner": "Fork",
+      "default": "local:Fork/logs",
+      "active_markers": ["local:Fork/Fork.exe", "programfiles:Fork/Fork.exe", "programfilesx86:Fork/Fork.exe"],
+      "official_cleanup_command": "Uninstall Fork before removing reviewed diagnostic log leftovers.",
+      "rationale": "Fork logs are regenerated diagnostics; repositories, Git configuration, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.lens.gpu-cache",
+      "owner": "Lens",
+      "default": "roaming:Lens/GPUCache",
+      "active_markers": ["local:Programs/Lens/Lens.exe", "local:Lens/Lens.exe"],
+      "official_cleanup_command": "Uninstall Lens before removing reviewed renderer cache leftovers.",
+      "rationale": "Lens GPUCache contains regenerated Electron renderer artifacts; kubeconfigs, cluster contexts, extensions, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.rancher-desktop.logs",
+      "owner": "Rancher Desktop",
+      "default": "local:rancher-desktop/logs",
+      "active_markers": ["local:Programs/Rancher Desktop/Rancher Desktop.exe", "programfiles:Rancher Desktop/Rancher Desktop.exe"],
+      "official_cleanup_command": "Uninstall Rancher Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Rancher Desktop logs are regenerated diagnostics; container images, Kubernetes state, volumes, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.podman-desktop.gpu-cache",
+      "owner": "Podman Desktop",
+      "default": "roaming:Podman Desktop/GPUCache",
+      "active_markers": ["local:Programs/Podman Desktop/Podman Desktop.exe", "programfiles:Podman Desktop/Podman Desktop.exe"],
+      "official_cleanup_command": "Uninstall Podman Desktop before removing reviewed renderer cache leftovers.",
+      "rationale": "Podman Desktop GPUCache contains regenerated Electron renderer artifacts; containers, images, volumes, extensions, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.heidisql.logs",
+      "owner": "HeidiSQL",
+      "default": "roaming:HeidiSQL/logs",
+      "active_markers": ["programfiles:HeidiSQL/heidisql.exe", "programfilesx86:HeidiSQL/heidisql.exe", "local:Programs/HeidiSQL/heidisql.exe"],
+      "official_cleanup_command": "Uninstall HeidiSQL before removing reviewed diagnostic log leftovers.",
+      "rationale": "HeidiSQL logs are regenerated diagnostics; sessions, connection profiles, SQL files, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ssms.logs",
+      "owner": "SQL Server Management Studio",
+      "default": "roaming:Microsoft/AppEnv/*/ActivityLog.xml",
+      "active_markers": ["programfiles:Microsoft SQL Server Management Studio */Common7/IDE/Ssms.exe", "programfilesx86:Microsoft SQL Server Management Studio */Common7/IDE/Ssms.exe"],
+      "official_cleanup_command": "Uninstall SQL Server Management Studio before removing reviewed IDE activity log leftovers.",
+      "rationale": "SQL Server Management Studio activity logs are regenerated diagnostics; connection profiles, scripts, projects, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.typora.gpu-cache",
+      "owner": "Typora",
+      "default": "roaming:Typora/GPUCache",
+      "active_markers": ["local:Programs/Typora/Typora.exe", "programfiles:Typora/Typora.exe", "programfilesx86:Typora/Typora.exe"],
+      "official_cleanup_command": "Uninstall Typora before removing reviewed renderer cache leftovers.",
+      "rationale": "Typora GPUCache contains regenerated renderer artifacts; Markdown documents, themes, images, and preferences remain outside this rule."
     }
   ]
 }

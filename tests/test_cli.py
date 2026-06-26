@@ -714,6 +714,548 @@ def test_app_leftovers_skips_more_desktop_rules_when_active_marker_exists(
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_contains_none(paths, [str(github_gpu_cache), str(unity_logs)])
 
+def test_app_leftovers_scans_collaboration_terminal_and_capture_caches(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "Microsoft" / "Skype for Desktop" / "media_messaging" / "media_cache" / "thumb.bin", "skype"),
+        (local / "CiscoSpark" / "Logs" / "webex.log", "webex"),
+        (
+            local
+            / "Packages"
+            / "MSTeams_8wekyb3d8bbwe"
+            / "LocalCache"
+            / "Microsoft"
+            / "MSTeams"
+            / "Logs"
+            / "teams.log",
+            "teams",
+        ),
+        (roaming / "Todoist" / "GPUCache" / "shader.bin", "todoist"),
+        (roaming / "Linear" / "GPUCache" / "shader.bin", "linear"),
+        (roaming / "Canva" / "GPUCache" / "shader.bin", "canva"),
+        (local / "Microsoft" / "PowerShell" / "StartupProfileData-NonInteractive" / "cache.bin", "powershell"),
+        (
+            local
+            / "Packages"
+            / "Microsoft.WindowsTerminal_8wekyb3d8bbwe"
+            / "LocalState"
+            / "DiagOutputDir"
+            / "diag.log",
+            "terminal",
+        ),
+        (local / "TechSmith" / "Snagit" / "Logs" / "snagit.log", "snagit"),
+        (local / "TechSmith" / "Camtasia Studio" / "Logs" / "camtasia.log", "camtasia"),
+        (user / "Videos" / "Camtasia" / "project.tscproj", "project"),
+        (user / "Pictures" / "Snagit" / "capture.snagx", "capture"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    (
+        skype_media_cache,
+        webex_logs,
+        teams_logs,
+        todoist_gpu_cache,
+        linear_gpu_cache,
+        canva_gpu_cache,
+        powershell_startup_cache,
+        terminal_diag,
+        snagit_logs,
+        camtasia_logs,
+        camtasia_project,
+        snagit_capture,
+    ) = [path.parent for path, _ in cache_files]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.skype.media-cache"], {"path": str(skype_media_cache)})
+    assert_field_values(by_rule["app-leftovers.webex.logs"], {"path": str(webex_logs)})
+    assert_field_values(by_rule["app-leftovers.msteams-new.logs"], {"path": str(teams_logs)})
+    assert_field_values(by_rule["app-leftovers.todoist.gpu-cache"], {"path": str(todoist_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.linear.gpu-cache"], {"path": str(linear_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.canva.gpu-cache"], {"path": str(canva_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.powershell.startup-cache"], {"path": str(powershell_startup_cache)})
+    assert_field_values(by_rule["app-leftovers.windows-terminal.state-cache"], {"path": str(terminal_diag)})
+    assert_field_values(by_rule["app-leftovers.snagit.logs"], {"path": str(snagit_logs)})
+    assert_field_values(by_rule["app-leftovers.camtasia.logs"], {"path": str(camtasia_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(camtasia_project), str(snagit_capture)])
+
+def test_app_leftovers_skips_collaboration_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    skype_cache = roaming / "Microsoft" / "Skype for Desktop" / "media_messaging" / "media_cache"
+    write_text_file(skype_cache / "thumb.bin", "skype")
+    write_text_file(program_files / "Microsoft" / "Skype for Desktop" / "Skype.exe", "exe")
+
+    todoist_gpu_cache = roaming / "Todoist" / "GPUCache"
+    write_text_file(todoist_gpu_cache / "shader.bin", "todoist")
+    write_text_file(local / "Programs" / "Todoist" / "Todoist.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(skype_cache), str(todoist_gpu_cache)])
+
+def test_app_leftovers_scans_remote_network_and_transfer_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    user = root / "User"
+    cache_files = [
+        (local / "Parsec" / "logs" / "parsec.log", "parsec"),
+        (roaming / "AnyDesk" / "ad_svc.trace", "anydesk"),
+        (program_data / "TeamViewer" / "Logs" / "TeamViewer.log", "teamviewer"),
+        (local / "OpenVPN Connect" / "logs" / "ovpn.log", "openvpn"),
+        (local / "Cloudflare" / "WARP" / "logs" / "warp.log", "warp"),
+        (roaming / "Wireshark" / "recent_common", "recent"),
+        (roaming / "FileZilla" / "logs" / "filezilla.log", "filezilla"),
+        (local / "WinSCP" / "Logs" / "winscp.log", "winscp"),
+        (local / "calibre-cache" / "metadata.db", "calibre"),
+        (local / "qBittorrent" / "logs" / "qbittorrent.log", "qbittorrent"),
+        (user / "Downloads" / "capture.pcapng", "pcap"),
+        (user / "Books" / "library" / "metadata.db", "library"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    parsec_logs = cache_files[0][0].parent
+    anydesk_trace = cache_files[1][0]
+    teamviewer_logs = cache_files[2][0].parent
+    openvpn_logs = cache_files[3][0].parent
+    warp_logs = cache_files[4][0].parent
+    wireshark_recent = cache_files[5][0]
+    filezilla_logs = cache_files[6][0].parent
+    winscp_logs = cache_files[7][0].parent
+    calibre_cache = cache_files[8][0].parent
+    qbittorrent_logs = cache_files[9][0].parent
+    packet_capture = cache_files[10][0]
+    calibre_library = cache_files[11][0].parent
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.parsec.logs"], {"path": str(parsec_logs)})
+    assert_field_values(by_rule["app-leftovers.anydesk.logs"], {"path": str(anydesk_trace)})
+    assert_field_values(by_rule["app-leftovers.teamviewer.logs"], {"path": str(teamviewer_logs)})
+    assert_field_values(by_rule["app-leftovers.vpn-openvpn.logs"], {"path": str(openvpn_logs)})
+    assert_field_values(by_rule["app-leftovers.warp.logs"], {"path": str(warp_logs)})
+    assert_field_values(by_rule["app-leftovers.wireshark.recent-cache"], {"path": str(wireshark_recent)})
+    assert_field_values(by_rule["app-leftovers.filezilla.logs"], {"path": str(filezilla_logs)})
+    assert_field_values(by_rule["app-leftovers.winscp.logs"], {"path": str(winscp_logs)})
+    assert_field_values(by_rule["app-leftovers.calibre.cache"], {"path": str(calibre_cache)})
+    assert_field_values(by_rule["app-leftovers.qbittorrent.logs"], {"path": str(qbittorrent_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(packet_capture), str(calibre_library)])
+
+def test_app_leftovers_skips_remote_access_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    parsec_logs = local / "Parsec" / "logs"
+    write_text_file(parsec_logs / "parsec.log", "parsec")
+    write_text_file(program_files / "Parsec" / "parsecd.exe", "exe")
+
+    openvpn_logs = local / "OpenVPN Connect" / "logs"
+    write_text_file(openvpn_logs / "ovpn.log", "openvpn")
+    write_text_file(program_files / "OpenVPN Connect" / "OpenVPNConnect.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(parsec_logs), str(openvpn_logs)])
+
+def test_app_leftovers_scans_database_api_design_and_printing_caches(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "DBeaverData" / "workspace6" / ".metadata" / ".log", "dbeaver"),
+        (local / "JetBrains" / "DataGrip2025.1" / "log" / "idea.log", "datagrip"),
+        (roaming / "MySQL" / "Workbench" / "log" / "wb.log", "mysql"),
+        (roaming / "azuredatastudio" / "CachedData" / "cache.bin", "ads"),
+        (roaming / "Insomnia" / "GPUCache" / "shader.bin", "insomnia"),
+        (roaming / "Bruno" / "logs" / "bruno.log", "bruno"),
+        (local / "Tableau" / "Logs" / "tableau.log", "tableau"),
+        (local / "Autodesk" / "Autodesk Desktop App" / "Logs" / "desktop.log", "autodesk"),
+        (local / "Blender Foundation" / "Blender" / "Cache" / "preview.bin", "blender"),
+        (local / "Packages" / "AD2F1837.HPPrinterControl_1.0.0" / "LocalState" / "Logs" / "hp.log", "hp"),
+        (user / "Documents" / "SQL" / "query.sql", "sql"),
+        (user / "Documents" / "Tableau" / "workbook.twbx", "tableau-workbook"),
+        (user / "Documents" / "Blender" / "scene.blend", "blend"),
+        (user / "Documents" / "Scans" / "scan.pdf", "scan"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    dbeaver_log = cache_files[0][0]
+    datagrip_logs = cache_files[1][0].parent
+    mysql_logs = cache_files[2][0].parent
+    azure_data_studio_cached_data = cache_files[3][0].parent
+    insomnia_gpu_cache = cache_files[4][0].parent
+    bruno_logs = cache_files[5][0].parent
+    tableau_logs = cache_files[6][0].parent
+    autodesk_logs = cache_files[7][0].parent
+    blender_cache = cache_files[8][0].parent
+    hp_smart_logs = cache_files[9][0].parent
+    sql_script = cache_files[10][0]
+    tableau_workbook = cache_files[11][0]
+    blender_scene = cache_files[12][0]
+    scanned_document = cache_files[13][0]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.dbeaver.logs"], {"path": str(dbeaver_log)})
+    assert_field_values(by_rule["app-leftovers.datagrip.logs"], {"path": str(datagrip_logs)})
+    assert_field_values(by_rule["app-leftovers.mysql-workbench.logs"], {"path": str(mysql_logs)})
+    assert_field_values(
+        by_rule["app-leftovers.azure-data-studio.cached-data"], {"path": str(azure_data_studio_cached_data)}
+    )
+    assert_field_values(by_rule["app-leftovers.insomnia.gpu-cache"], {"path": str(insomnia_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.bruno.logs"], {"path": str(bruno_logs)})
+    assert_field_values(by_rule["app-leftovers.tableau.logs"], {"path": str(tableau_logs)})
+    assert_field_values(by_rule["app-leftovers.autodesk.logs"], {"path": str(autodesk_logs)})
+    assert_field_values(by_rule["app-leftovers.blender.cache"], {"path": str(blender_cache)})
+    assert_field_values(by_rule["app-leftovers.hp-smart.logs"], {"path": str(hp_smart_logs)})
+    assert_contains_none(
+        {candidate["path"] for candidate in payload["candidates"]},
+        [str(sql_script), str(tableau_workbook), str(blender_scene), str(scanned_document)],
+    )
+
+def test_app_leftovers_skips_database_api_design_and_printing_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+    program_files_x86 = root / "ProgramFiles(x86)"
+
+    datagrip_logs = local / "JetBrains" / "DataGrip2025.1" / "log"
+    write_text_file(datagrip_logs / "idea.log", "datagrip")
+    write_text_file(program_files / "JetBrains" / "DataGrip 2025.1" / "bin" / "datagrip64.exe", "exe")
+
+    mysql_logs = roaming / "MySQL" / "Workbench" / "log"
+    write_text_file(mysql_logs / "wb.log", "mysql")
+    write_text_file(program_files_x86 / "MySQL" / "MySQL Workbench 8.0" / "MySQLWorkbench.exe", "exe")
+
+    insomnia_gpu_cache = roaming / "Insomnia" / "GPUCache"
+    write_text_file(insomnia_gpu_cache / "shader.bin", "insomnia")
+    write_text_file(local / "Programs" / "Insomnia" / "Insomnia.exe", "exe")
+
+    blender_cache = local / "Blender Foundation" / "Blender" / "Cache"
+    write_text_file(blender_cache / "preview.bin", "blender")
+    write_text_file(program_files / "Blender Foundation" / "Blender 4.1" / "blender.exe", "exe")
+
+    hp_smart_logs = local / "Packages" / "AD2F1837.HPPrinterControl_1.0.0" / "LocalState" / "Logs"
+    write_text_file(hp_smart_logs / "hp.log", "hp")
+    write_text_file(local / "Microsoft" / "WindowsApps" / "HP.Smart.exe", "exe")
+
+    env = make_windows_cache_env(root) | {"ProgramFiles(x86)": str(program_files_x86)}
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=env,
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(datagrip_logs), str(mysql_logs), str(insomnia_gpu_cache), str(blender_cache)])
+    assert_contains_none({candidate["rule_id"] for candidate in payload["candidates"]}, ["app-leftovers.hp-smart.logs"])
+
+def test_app_leftovers_scans_sync_media_and_peripheral_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "Microsoft" / "PowerToys" / "Logs" / "powertoys.log", "powertoys"),
+        (local / "Microsoft" / "OneDrive" / "logs" / "sync.log", "onedrive"),
+        (local / "Google" / "DriveFS" / "Logs" / "drive.log", "drive"),
+        (local / "Apple Inc" / "iCloud" / "Logs" / "icloud.log", "icloud"),
+        (local / "gegl-0.4" / "thumbnails" / "thumb.png", "gimp"),
+        (local / "inkscape" / "cache" / "entry", "inkscape"),
+        (local / "krita" / "cache" / "preview.bin", "krita"),
+        (roaming / "audacity" / "SessionData" / "autosave.tmp", "audacity"),
+        (roaming / "HandBrake" / "logs" / "encode.log", "handbrake"),
+        (local / "Corsair" / "CUE" / "logs" / "icue.log", "icue"),
+        (user / "OneDrive" / "Documents" / "synced.docx", "synced"),
+        (user / "Google Drive" / "Work" / "sheet.xlsx", "drive-file"),
+        (user / "iCloudDrive" / "Photos" / "photo.jpg", "icloud-file"),
+        (user / "Pictures" / "artwork.xcf", "gimp-file"),
+        (user / "Music" / "audacity-project.aup3", "audacity-project"),
+        (user / "Videos" / "source.mkv", "video-source"),
+        (user / "Documents" / "iCUE" / "profile.cueprofile", "icue-profile"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    powertoys_logs = cache_files[0][0].parent
+    onedrive_logs = cache_files[1][0].parent
+    google_drive_logs = cache_files[2][0].parent
+    icloud_logs = cache_files[3][0].parent
+    gimp_thumbnails = cache_files[4][0].parent
+    inkscape_cache = cache_files[5][0].parent
+    krita_cache = cache_files[6][0].parent
+    audacity_session = cache_files[7][0].parent
+    handbrake_logs = cache_files[8][0].parent
+    corsair_logs = cache_files[9][0].parent
+    protected_user_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.powertoys.logs"], {"path": str(powertoys_logs)})
+    assert_field_values(by_rule["app-leftovers.onedrive.logs"], {"path": str(onedrive_logs)})
+    assert_field_values(by_rule["app-leftovers.google-drivefs.logs"], {"path": str(google_drive_logs)})
+    assert_field_values(by_rule["app-leftovers.icloud.logs"], {"path": str(icloud_logs)})
+    assert_field_values(by_rule["app-leftovers.gimp.thumbnails"], {"path": str(gimp_thumbnails)})
+    assert_field_values(by_rule["app-leftovers.inkscape.cache"], {"path": str(inkscape_cache)})
+    assert_field_values(by_rule["app-leftovers.krita.cache"], {"path": str(krita_cache)})
+    assert_field_values(by_rule["app-leftovers.audacity.logs"], {"path": str(audacity_session)})
+    assert_field_values(by_rule["app-leftovers.handbrake.logs"], {"path": str(handbrake_logs)})
+    assert_field_values(by_rule["app-leftovers.corsair-icue.logs"], {"path": str(corsair_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_user_files])
+
+def test_app_leftovers_skips_sync_media_and_peripheral_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    powertoys_logs = local / "Microsoft" / "PowerToys" / "Logs"
+    write_text_file(powertoys_logs / "powertoys.log", "powertoys")
+    write_text_file(local / "Programs" / "PowerToys" / "PowerToys.exe", "exe")
+
+    google_drive_logs = local / "Google" / "DriveFS" / "Logs"
+    write_text_file(google_drive_logs / "drive.log", "drive")
+    write_text_file(program_files / "Google" / "Drive File Stream" / "99.0" / "GoogleDriveFS.exe", "exe")
+
+    gimp_thumbnails = local / "gegl-0.4" / "thumbnails"
+    write_text_file(gimp_thumbnails / "thumb.png", "gimp")
+    write_text_file(program_files / "GIMP 2" / "bin" / "gimp-2.10.exe", "exe")
+
+    handbrake_logs = roaming / "HandBrake" / "logs"
+    write_text_file(handbrake_logs / "encode.log", "handbrake")
+    write_text_file(program_files / "HandBrake" / "HandBrake.exe", "exe")
+
+    corsair_logs = local / "Corsair" / "CUE" / "logs"
+    write_text_file(corsair_logs / "icue.log", "icue")
+    write_text_file(program_files / "Corsair" / "Corsair iCUE5 Software" / "iCUE.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(powertoys_logs), str(google_drive_logs), str(gimp_thumbnails)])
+    assert_contains_none(paths, [str(handbrake_logs), str(corsair_logs)])
+
+def test_app_leftovers_scans_devops_database_and_markdown_tool_caches(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "Atlassian" / "Sourcetree" / "sourcetree.log", "sourcetree"),
+        (roaming / "GitKraken" / "GPUCache" / "shader.bin", "gitkraken"),
+        (local / "CrashDumps" / "TortoiseGitProc.exe.1234.dmp", "tortoisegit"),
+        (local / "Fork" / "logs" / "fork.log", "fork"),
+        (roaming / "Lens" / "GPUCache" / "shader.bin", "lens"),
+        (local / "rancher-desktop" / "logs" / "rancher.log", "rancher"),
+        (roaming / "Podman Desktop" / "GPUCache" / "shader.bin", "podman"),
+        (roaming / "HeidiSQL" / "logs" / "heidisql.log", "heidisql"),
+        (roaming / "Microsoft" / "AppEnv" / "17.0" / "ActivityLog.xml", "ssms"),
+        (roaming / "Typora" / "GPUCache" / "shader.bin", "typora"),
+        (user / "src" / "repo" / ".git" / "config", "git-config"),
+        (user / ".kube" / "config", "kubeconfig"),
+        (user / ".ssh" / "id_ed25519", "ssh-key"),
+        (user / "Documents" / "database.sql", "sql"),
+        (user / "Documents" / "notes.md", "markdown"),
+        (user / ".local" / "share" / "containers" / "storage" / "overlay" / "layer", "container-layer"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    sourcetree_log = cache_files[0][0]
+    gitkraken_gpu_cache = cache_files[1][0].parent
+    tortoisegit_dump = cache_files[2][0]
+    fork_logs = cache_files[3][0].parent
+    lens_gpu_cache = cache_files[4][0].parent
+    rancher_logs = cache_files[5][0].parent
+    podman_gpu_cache = cache_files[6][0].parent
+    heidisql_logs = cache_files[7][0].parent
+    ssms_activity_log = cache_files[8][0]
+    typora_gpu_cache = cache_files[9][0].parent
+    protected_user_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.sourcetree.logs"], {"path": str(sourcetree_log)})
+    assert_field_values(by_rule["app-leftovers.gitkraken.gpu-cache"], {"path": str(gitkraken_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.tortoisegit.crashdumps"], {"path": str(tortoisegit_dump)})
+    assert_field_values(by_rule["app-leftovers.fork.logs"], {"path": str(fork_logs)})
+    assert_field_values(by_rule["app-leftovers.lens.gpu-cache"], {"path": str(lens_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.rancher-desktop.logs"], {"path": str(rancher_logs)})
+    assert_field_values(by_rule["app-leftovers.podman-desktop.gpu-cache"], {"path": str(podman_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.heidisql.logs"], {"path": str(heidisql_logs)})
+    assert_field_values(by_rule["app-leftovers.ssms.logs"], {"path": str(ssms_activity_log)})
+    assert_field_values(by_rule["app-leftovers.typora.gpu-cache"], {"path": str(typora_gpu_cache)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_user_files])
+
+def test_app_leftovers_skips_devops_database_and_markdown_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    gitkraken_gpu_cache = roaming / "GitKraken" / "GPUCache"
+    write_text_file(gitkraken_gpu_cache / "shader.bin", "gitkraken")
+    write_text_file(local / "Programs" / "GitKraken" / "GitKraken.exe", "exe")
+
+    tortoisegit_dump = local / "CrashDumps" / "TortoiseGitProc.exe.1234.dmp"
+    write_text_file(tortoisegit_dump, "tortoisegit")
+    write_text_file(program_files / "TortoiseGit" / "bin" / "TortoiseGitProc.exe", "exe")
+
+    lens_gpu_cache = roaming / "Lens" / "GPUCache"
+    write_text_file(lens_gpu_cache / "shader.bin", "lens")
+    write_text_file(local / "Programs" / "Lens" / "Lens.exe", "exe")
+
+    rancher_logs = local / "rancher-desktop" / "logs"
+    write_text_file(rancher_logs / "rancher.log", "rancher")
+    write_text_file(local / "Programs" / "Rancher Desktop" / "Rancher Desktop.exe", "exe")
+
+    typora_gpu_cache = roaming / "Typora" / "GPUCache"
+    write_text_file(typora_gpu_cache / "shader.bin", "typora")
+    write_text_file(local / "Programs" / "Typora" / "Typora.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(gitkraken_gpu_cache), str(tortoisegit_dump), str(lens_gpu_cache)])
+    assert_contains_none(paths, [str(rancher_logs), str(typora_gpu_cache)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
