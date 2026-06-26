@@ -410,6 +410,29 @@ def test_docs_describe_pytest_only_venv_workflow(
     assert_none_match(list(docs.values()), lambda text: "python -m unittest" in text or "unittest discover\n" in text)
 
 
+def test_historical_plans_do_not_reintroduce_unittest_workflows(
+    repo_root: Path,
+    assert_exact_sequence: AssertExactSequence,
+) -> None:
+    plan_paths = sorted((repo_root / "docs" / "superpowers" / "plans").glob("2026-06-20-cleanwin-*.md"))
+    violations: list[str] = []
+    for path in plan_paths:
+        text = path.read_text(encoding="utf-8")
+        relative = path.relative_to(repo_root).as_posix()
+        forbidden_fragments = [
+            "python3 -m unittest",
+            "python -m unittest",
+            "unittest discover",
+            "self.assert",
+            "TestCase",
+        ]
+        for fragment in forbidden_fragments:
+            if fragment in text:
+                violations.append(f"{relative}: contains {fragment}")
+
+    assert_exact_sequence(violations, [])
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
