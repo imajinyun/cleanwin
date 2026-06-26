@@ -1402,6 +1402,18 @@ pytest governance check before committing. The final task must run `make
 quality` so lint, pytest, type checking, compile, packaging, smoke tests, and
 pytest governance all execute through the repository `.venv`.
 
+### Round 17 Evidence
+
+- `PYTEST-GOV-218`: Recorded Round 17 historical pytest documentation governance plan, submitted `PYTEST-GOV-218..227`, and validated baseline governance with `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passing 28 tests.
+- `PYTEST-GOV-219`: Updated `2026-06-20-cleanwin-governance.md` to `.venv`/pytest workflow examples and verified no unittest/self.assert residuals remained in that plan.
+- `PYTEST-GOV-220`: Updated `2026-06-20-cleanwin-mvp.md` verification commands to pytest and `.venv/bin/python`, then verified no unittest or bare `python3 cleanwin` residuals remained in that plan.
+- `PYTEST-GOV-221`: Converted uninstall-leftovers historical snippets from unittest-style methods and `self.assert*` calls to pytest functions with plain asserts, then replaced unittest commands with `.venv` pytest commands.
+- `PYTEST-GOV-222`: Updated Windows native identity CI plan wording and verification commands to pytest/`.venv` workflow and verified no unittest residuals remained.
+- `PYTEST-GOV-223`: Updated Windows identity safety plan wording to pytest/`.venv` workflow and verified no unittest residuals remained.
+- `PYTEST-GOV-224`: Updated AI readiness plan wording and verification commands to pytest/`.venv` workflow and verified no unittest residuals remained.
+- `PYTEST-GOV-225`: Added historical plan regression coverage in `tests/test_pytest_governance.py`; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 29 tests.
+- `PYTEST-GOV-226`: Focused docs/governance smoke passed: `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` reported 29 passed, and `rg` found no `python3 -m unittest`, `python -m unittest`, `unittest discover`, `self.assert`, or `TestCase` fragments in `docs/superpowers/plans/2026-06-20-cleanwin-*.md`.
+
 ## Round 12 Pytest Governance Plan
 
 **Goal:** Migrate the remaining compact direct assertions in pytest suites into shared helper patterns for scalar membership, exact counts, and any-of text checks, then document and validate the tightened governance surface.
