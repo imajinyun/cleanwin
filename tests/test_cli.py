@@ -1256,6 +1256,226 @@ def test_app_leftovers_skips_devops_database_and_markdown_rules_when_active_mark
     assert_contains_none(paths, [str(gitkraken_gpu_cache), str(tortoisegit_dump), str(lens_gpu_cache)])
     assert_contains_none(paths, [str(rancher_logs), str(typora_gpu_cache)])
 
+def test_app_leftovers_scans_oem_peripheral_and_creator_utility_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    user = root / "User"
+    cache_files = [
+        (program_data / "Dell" / "SupportAssist" / "Logs" / "supportassist.log", "dell"),
+        (local / "Packages" / "E046963F.LenovoCompanion_1.0.0" / "LocalState" / "Logs" / "vantage.log", "lenovo"),
+        (local / "ASUS" / "ARMOURY CRATE Service" / "Logs" / "armoury.log", "asus"),
+        (local / "MSI" / "MSI Center" / "Log" / "msi.log", "msi"),
+        (program_data / "SteelSeries" / "GG" / "logs" / "gg.log", "steelseries"),
+        (local / "Elgato" / "Logs" / "elgato.log", "elgato"),
+        (roaming / "Elgato" / "StreamDeck" / "logs" / "streamdeck.log", "streamdeck"),
+        (local / "Packages" / "GoPro.GoProPlayer_1.0.0" / "LocalCache" / "GPUCache" / "shader.bin", "gopro"),
+        (program_data / "Garmin" / "Logs" / "express.log", "garmin"),
+        (program_data / "WTablet" / "Logs" / "tablet.log", "wacom"),
+        (user / "Videos" / "Elgato" / "recording.mp4", "recording"),
+        (user / "Videos" / "GoPro" / "clip.360", "gopro-media"),
+        (user / "Documents" / "Stream Deck" / "profile.streamDeckProfile", "streamdeck-profile"),
+        (user / "Documents" / "Wacom" / "pen-settings.json", "wacom-settings"),
+        (user / "Garmin" / "Backups" / "device.fit", "garmin-backup"),
+        (program_data / "Dell" / "Drivers" / "driver.cab", "dell-driver"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    dell_logs = cache_files[0][0].parent
+    lenovo_logs = cache_files[1][0].parent
+    armoury_logs = cache_files[2][0].parent
+    msi_logs = cache_files[3][0].parent
+    steelseries_logs = cache_files[4][0].parent
+    elgato_logs = cache_files[5][0].parent
+    stream_deck_logs = cache_files[6][0].parent
+    gopro_gpu_cache = cache_files[7][0].parent
+    garmin_logs = cache_files[8][0].parent
+    wacom_logs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.dell-supportassist.logs"], {"path": str(dell_logs)})
+    assert_field_values(by_rule["app-leftovers.lenovo-vantage.logs"], {"path": str(lenovo_logs)})
+    assert_field_values(by_rule["app-leftovers.armoury-crate.logs"], {"path": str(armoury_logs)})
+    assert_field_values(by_rule["app-leftovers.msi-center.logs"], {"path": str(msi_logs)})
+    assert_field_values(by_rule["app-leftovers.steelseries-gg.logs"], {"path": str(steelseries_logs)})
+    assert_field_values(by_rule["app-leftovers.elgato.logs"], {"path": str(elgato_logs)})
+    assert_field_values(by_rule["app-leftovers.stream-deck.logs"], {"path": str(stream_deck_logs)})
+    assert_field_values(by_rule["app-leftovers.gopro-player.gpu-cache"], {"path": str(gopro_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.garmin-express.logs"], {"path": str(garmin_logs)})
+    assert_field_values(by_rule["app-leftovers.wacom-tablet.logs"], {"path": str(wacom_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_oem_peripheral_and_creator_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    program_files = root / "ProgramFiles"
+
+    armoury_logs = local / "ASUS" / "ARMOURY CRATE Service" / "Logs"
+    write_text_file(armoury_logs / "armoury.log", "asus")
+    write_text_file(program_files / "ASUS" / "ARMOURY CRATE Service" / "ArmouryCrate.Service.exe", "exe")
+
+    steelseries_logs = program_data / "SteelSeries" / "GG" / "logs"
+    write_text_file(steelseries_logs / "gg.log", "steelseries")
+    write_text_file(program_files / "SteelSeries" / "GG" / "SteelSeriesGG.exe", "exe")
+
+    elgato_logs = local / "Elgato" / "Logs"
+    write_text_file(elgato_logs / "elgato.log", "elgato")
+    write_text_file(program_files / "Elgato" / "Camera Hub" / "CameraHub.exe", "exe")
+
+    garmin_logs = program_data / "Garmin" / "Logs"
+    write_text_file(garmin_logs / "express.log", "garmin")
+    write_text_file(program_files / "Garmin" / "Express" / "GarminExpress.exe", "exe")
+
+    wacom_logs = program_data / "WTablet" / "Logs"
+    write_text_file(wacom_logs / "tablet.log", "wacom")
+    write_text_file(program_files / "Tablet" / "Wacom" / "Wacom_Tablet.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(armoury_logs), str(steelseries_logs), str(elgato_logs)])
+    assert_contains_none(paths, [str(garmin_logs), str(wacom_logs)])
+
+def test_app_leftovers_scans_sync_notes_screenshot_and_scanner_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (local / "Box" / "Box" / "logs" / "box.log", "box"),
+        (local / "MEGAsync" / "logs" / "mega.log", "mega"),
+        (roaming / "Joplin" / "GPUCache" / "shader.bin", "joplin"),
+        (roaming / "Standard Notes" / "GPUCache" / "shader.bin", "standard-notes"),
+        (roaming / "Simplenote" / "GPUCache" / "shader.bin", "simplenote"),
+        (user / "Documents" / "ShareX" / "Logs" / "sharex.log", "sharex"),
+        (roaming / "Greenshot" / "Greenshot.log", "greenshot"),
+        (local / "Skillbrains" / "lightshot" / "logs" / "lightshot.log", "lightshot"),
+        (local / "ScreenToGif" / "Logs" / "screentogif.log", "screentogif"),
+        (roaming / "NAPS2" / "logs" / "naps2.log", "naps2"),
+        (user / "Box" / "Work" / "plan.docx", "box-file"),
+        (user / "MEGA" / "Backup" / "archive.zip", "mega-file"),
+        (user / "Documents" / "Joplin" / "note.md", "joplin-note"),
+        (user / "Pictures" / "Screenshots" / "capture.png", "screenshot"),
+        (user / "Videos" / "ScreenToGif" / "recording.gif", "gif"),
+        (user / "Documents" / "Scans" / "scan.pdf", "scan"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    box_logs = cache_files[0][0].parent
+    mega_logs = cache_files[1][0].parent
+    joplin_gpu_cache = cache_files[2][0].parent
+    standard_notes_gpu_cache = cache_files[3][0].parent
+    simplenote_gpu_cache = cache_files[4][0].parent
+    sharex_logs = cache_files[5][0].parent
+    greenshot_log = cache_files[6][0]
+    lightshot_logs = cache_files[7][0].parent
+    screentogif_logs = cache_files[8][0].parent
+    naps2_logs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.box-drive.logs"], {"path": str(box_logs)})
+    assert_field_values(by_rule["app-leftovers.mega.logs"], {"path": str(mega_logs)})
+    assert_field_values(by_rule["app-leftovers.joplin.gpu-cache"], {"path": str(joplin_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.standard-notes.gpu-cache"], {"path": str(standard_notes_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.simplenote.gpu-cache"], {"path": str(simplenote_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.sharex.logs"], {"path": str(sharex_logs)})
+    assert_field_values(by_rule["app-leftovers.greenshot.logs"], {"path": str(greenshot_log)})
+    assert_field_values(by_rule["app-leftovers.lightshot.logs"], {"path": str(lightshot_logs)})
+    assert_field_values(by_rule["app-leftovers.screentogif.logs"], {"path": str(screentogif_logs)})
+    assert_field_values(by_rule["app-leftovers.naps2.logs"], {"path": str(naps2_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_sync_notes_screenshot_and_scanner_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    program_files = root / "ProgramFiles"
+
+    box_logs = local / "Box" / "Box" / "logs"
+    write_text_file(box_logs / "box.log", "box")
+    write_text_file(program_files / "Box" / "Box" / "Box.exe", "exe")
+
+    joplin_gpu_cache = roaming / "Joplin" / "GPUCache"
+    write_text_file(joplin_gpu_cache / "shader.bin", "joplin")
+    write_text_file(local / "Programs" / "Joplin" / "Joplin.exe", "exe")
+
+    sharex_logs = user / "Documents" / "ShareX" / "Logs"
+    write_text_file(sharex_logs / "sharex.log", "sharex")
+    write_text_file(program_files / "ShareX" / "ShareX.exe", "exe")
+
+    screentogif_logs = local / "ScreenToGif" / "Logs"
+    write_text_file(screentogif_logs / "screentogif.log", "screentogif")
+    write_text_file(local / "Programs" / "ScreenToGif" / "ScreenToGif.exe", "exe")
+
+    naps2_logs = roaming / "NAPS2" / "logs"
+    write_text_file(naps2_logs / "naps2.log", "naps2")
+    write_text_file(program_files / "NAPS2" / "NAPS2.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(box_logs), str(joplin_gpu_cache), str(sharex_logs)])
+    assert_contains_none(paths, [str(screentogif_logs), str(naps2_logs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

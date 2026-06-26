@@ -1025,6 +1025,166 @@
       "active_markers": ["local:Programs/Typora/Typora.exe", "programfiles:Typora/Typora.exe", "programfilesx86:Typora/Typora.exe"],
       "official_cleanup_command": "Uninstall Typora before removing reviewed renderer cache leftovers.",
       "rationale": "Typora GPUCache contains regenerated renderer artifacts; Markdown documents, themes, images, and preferences remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.dell-supportassist.logs",
+      "owner": "Dell SupportAssist",
+      "default": "programdata:Dell/SupportAssist/Logs",
+      "active_markers": ["programfiles:Dell/SupportAssistAgent/bin/SupportAssistAppWire.exe", "programfilesx86:Dell/SupportAssistAgent/bin/SupportAssistAppWire.exe"],
+      "official_cleanup_command": "Uninstall or reset Dell SupportAssist before removing reviewed diagnostic log leftovers.",
+      "rationale": "Dell SupportAssist logs are regenerated diagnostics; service state, driver packages, warranty data, and device configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.lenovo-vantage.logs",
+      "owner": "Lenovo Vantage",
+      "default": "local:Packages/E046963F.LenovoCompanion_*/LocalState/Logs",
+      "active_markers": ["local:Microsoft/WindowsApps/LenovoVantage.exe", "programfiles:WindowsApps/E046963F.LenovoCompanion_*/LenovoVantage.exe"],
+      "official_cleanup_command": "Uninstall or reset Lenovo Vantage before removing reviewed diagnostic log leftovers.",
+      "rationale": "Lenovo Vantage logs are regenerated diagnostics; driver packages, device settings, warranty data, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.armoury-crate.logs",
+      "owner": "Armoury Crate",
+      "default": "local:ASUS/ARMOURY CRATE Service/Logs",
+      "active_markers": ["programfiles:ASUS/ARMOURY CRATE Service/ArmouryCrate.Service.exe", "programfilesx86:ASUS/ARMOURY CRATE Service/ArmouryCrate.Service.exe"],
+      "official_cleanup_command": "Uninstall or reset Armoury Crate before removing reviewed diagnostic log leftovers.",
+      "rationale": "Armoury Crate logs are regenerated diagnostics; device profiles, lighting settings, firmware data, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.msi-center.logs",
+      "owner": "MSI Center",
+      "default": "local:MSI/MSI Center/Log",
+      "active_markers": ["programfiles:MSI/MSI Center/MSI.CentralServer.exe", "programfilesx86:MSI/MSI Center/MSI.CentralServer.exe"],
+      "official_cleanup_command": "Uninstall or reset MSI Center before removing reviewed diagnostic log leftovers.",
+      "rationale": "MSI Center logs are regenerated diagnostics; device profiles, tuning settings, firmware data, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.steelseries-gg.logs",
+      "owner": "SteelSeries GG",
+      "default": "programdata:SteelSeries/GG/logs",
+      "active_markers": ["programfiles:SteelSeries/GG/SteelSeriesGG.exe", "programfilesx86:SteelSeries/GG/SteelSeriesGG.exe"],
+      "official_cleanup_command": "Uninstall SteelSeries GG before removing reviewed diagnostic log leftovers.",
+      "rationale": "SteelSeries GG logs are regenerated diagnostics; device profiles, clips, moments library, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.elgato.logs",
+      "owner": "Elgato",
+      "default": "local:Elgato/Logs",
+      "active_markers": ["programfiles:Elgato/*/*.exe", "programfilesx86:Elgato/*/*.exe"],
+      "official_cleanup_command": "Uninstall Elgato apps before removing reviewed diagnostic log leftovers.",
+      "rationale": "Elgato logs are regenerated diagnostics; recordings, scene collections, device profiles, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.stream-deck.logs",
+      "owner": "Elgato Stream Deck",
+      "default": "roaming:Elgato/StreamDeck/logs",
+      "active_markers": ["programfiles:Elgato/StreamDeck/StreamDeck.exe", "programfilesx86:Elgato/StreamDeck/StreamDeck.exe"],
+      "official_cleanup_command": "Uninstall Stream Deck before removing reviewed diagnostic log leftovers.",
+      "rationale": "Stream Deck logs are regenerated diagnostics; profiles, plug-ins, icons, macros, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gopro-player.gpu-cache",
+      "owner": "GoPro Player",
+      "default": "local:Packages/GoPro.GoProPlayer_*/LocalCache/GPUCache",
+      "active_markers": ["local:Microsoft/WindowsApps/GoProPlayer.exe", "programfiles:WindowsApps/GoPro.GoProPlayer_*/GoProPlayer.exe"],
+      "official_cleanup_command": "Uninstall or reset GoPro Player before removing reviewed renderer cache leftovers.",
+      "rationale": "GoPro Player GPUCache contains regenerated renderer artifacts; videos, exports, media library, and project files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.garmin-express.logs",
+      "owner": "Garmin Express",
+      "default": "programdata:Garmin/Logs",
+      "active_markers": ["programfiles:Garmin/Express/GarminExpress.exe", "programfilesx86:Garmin/Express/GarminExpress.exe"],
+      "official_cleanup_command": "Uninstall Garmin Express before removing reviewed diagnostic log leftovers.",
+      "rationale": "Garmin Express logs are regenerated diagnostics; maps, device backups, account state, and synced fitness data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.wacom-tablet.logs",
+      "owner": "Wacom Tablet",
+      "default": "programdata:WTablet/Logs",
+      "active_markers": ["programfiles:Tablet/Wacom/Wacom_Tablet.exe", "programfilesx86:Tablet/Wacom/Wacom_Tablet.exe"],
+      "official_cleanup_command": "Uninstall Wacom Tablet software before removing reviewed diagnostic log leftovers.",
+      "rationale": "Wacom Tablet logs are regenerated diagnostics; pen settings, device profiles, drivers, and calibration data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.box-drive.logs",
+      "owner": "Box Drive",
+      "default": "local:Box/Box/logs",
+      "active_markers": ["programfiles:Box/Box/Box.exe", "programfilesx86:Box/Box/Box.exe", "local:Box/Box/Box.exe"],
+      "official_cleanup_command": "Uninstall or reset Box Drive before removing reviewed diagnostic log leftovers.",
+      "rationale": "Box Drive logs are regenerated diagnostics; synced files, offline files, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mega.logs",
+      "owner": "MEGAsync",
+      "default": "local:MEGAsync/logs",
+      "active_markers": ["local:MEGAsync/MEGAsync.exe", "programfiles:MEGAsync/MEGAsync.exe", "programfilesx86:MEGAsync/MEGAsync.exe"],
+      "official_cleanup_command": "Uninstall MEGAsync before removing reviewed diagnostic log leftovers.",
+      "rationale": "MEGAsync logs are regenerated diagnostics; synced files, offline cache, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.joplin.gpu-cache",
+      "owner": "Joplin",
+      "default": "roaming:Joplin/GPUCache",
+      "active_markers": ["local:Programs/Joplin/Joplin.exe", "programfiles:Joplin/Joplin.exe", "programfilesx86:Joplin/Joplin.exe"],
+      "official_cleanup_command": "Uninstall Joplin before removing reviewed renderer cache leftovers.",
+      "rationale": "Joplin GPUCache contains regenerated Electron renderer artifacts; notes, notebooks, resources, sync state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.standard-notes.gpu-cache",
+      "owner": "Standard Notes",
+      "default": "roaming:Standard Notes/GPUCache",
+      "active_markers": ["local:Programs/Standard Notes/Standard Notes.exe", "programfiles:Standard Notes/Standard Notes.exe", "programfilesx86:Standard Notes/Standard Notes.exe"],
+      "official_cleanup_command": "Uninstall Standard Notes before removing reviewed renderer cache leftovers.",
+      "rationale": "Standard Notes GPUCache contains regenerated Electron renderer artifacts; encrypted notes, account state, extensions, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.simplenote.gpu-cache",
+      "owner": "Simplenote",
+      "default": "roaming:Simplenote/GPUCache",
+      "active_markers": ["local:Programs/Simplenote/Simplenote.exe", "programfiles:Simplenote/Simplenote.exe", "programfilesx86:Simplenote/Simplenote.exe"],
+      "official_cleanup_command": "Uninstall Simplenote before removing reviewed renderer cache leftovers.",
+      "rationale": "Simplenote GPUCache contains regenerated Electron renderer artifacts; notes, sync state, account data, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.sharex.logs",
+      "owner": "ShareX",
+      "default": "home:Documents/ShareX/Logs",
+      "active_markers": ["programfiles:ShareX/ShareX.exe", "programfilesx86:ShareX/ShareX.exe", "local:Programs/ShareX/ShareX.exe"],
+      "official_cleanup_command": "Uninstall ShareX or clear history through ShareX before removing reviewed log leftovers.",
+      "rationale": "ShareX logs are regenerated diagnostics; screenshots, recordings, workflows, upload destinations, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.greenshot.logs",
+      "owner": "Greenshot",
+      "default": "roaming:Greenshot/Greenshot.log",
+      "active_markers": ["programfiles:Greenshot/Greenshot.exe", "programfilesx86:Greenshot/Greenshot.exe"],
+      "official_cleanup_command": "Uninstall Greenshot before removing reviewed diagnostic log leftovers.",
+      "rationale": "Greenshot logs are regenerated diagnostics; screenshots, capture destinations, plug-ins, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.lightshot.logs",
+      "owner": "Lightshot",
+      "default": "local:Skillbrains/lightshot/logs",
+      "active_markers": ["local:Skillbrains/lightshot/Lightshot.exe", "programfiles:Skillbrains/lightshot/Lightshot.exe", "programfilesx86:Skillbrains/lightshot/Lightshot.exe"],
+      "official_cleanup_command": "Uninstall Lightshot before removing reviewed diagnostic log leftovers.",
+      "rationale": "Lightshot logs are regenerated diagnostics; screenshots, upload history, account state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.screentogif.logs",
+      "owner": "ScreenToGif",
+      "default": "local:ScreenToGif/Logs",
+      "active_markers": ["local:Programs/ScreenToGif/ScreenToGif.exe", "programfiles:ScreenToGif/ScreenToGif.exe", "programfilesx86:ScreenToGif/ScreenToGif.exe"],
+      "official_cleanup_command": "Uninstall ScreenToGif before removing reviewed diagnostic log leftovers.",
+      "rationale": "ScreenToGif logs are regenerated diagnostics; recordings, projects, exports, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.naps2.logs",
+      "owner": "NAPS2",
+      "default": "roaming:NAPS2/logs",
+      "active_markers": ["programfiles:NAPS2/NAPS2.exe", "programfilesx86:NAPS2/NAPS2.exe", "local:Programs/NAPS2/NAPS2.exe"],
+      "official_cleanup_command": "Uninstall NAPS2 before removing reviewed diagnostic log leftovers.",
+      "rationale": "NAPS2 logs are regenerated diagnostics; scanned documents, scan profiles, OCR language data, and settings remain outside this rule."
     }
   ]
 }
