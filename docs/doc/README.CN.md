@@ -341,7 +341,7 @@ make dev-install
 make quality
 ```
 
-`dev-install` target 会创建 `.venv`，安装 `.[dev]`，并用该环境运行 pytest、Ruff、mypy、compile、package、AI 和 MCP 检查。等价手动命令：
+`dev-install` target 会创建 `.venv`，安装 `.[dev]`，并用该环境运行 pytest、Ruff、mypy、compile、package、AI 和 MCP 检查。`make pytest` 和 `make pytest-governance-smoke` 会在测试进程结束后删除 pytest cache、coverage 文件和 `__pycache__`，同时保留 pytest 的退出码；`.venv` 会作为受管理的工具环境保留。`make ci-smoke` 对齐非 packaging CI 门禁，并在结束时执行同样的测试残留清理；`make quality` 会额外运行 install/package smoke，并执行更完整的 `make clean` 清理。等价手动命令：
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -370,7 +370,10 @@ make docker-quality
 
 CI 入口：
 
+- `.github/workflows/ci.yml` 通过 Makefile target 在 Python 3.10 和 3.12 上运行 Linux 质量门禁，因此 pytest 入口会在结束后清理测试残留。
+- `.github/workflows/ci.yml` 还会运行 package install smoke 和可选 Docker sandbox gate。
 - `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
+- `.github/workflows/windows-smoke.yml` 包含 `always()` cleanup step，用于清理 build outputs、tool caches、pytest caches、coverage 文件、`htmlcov` 和 `__pycache__`。
 
 治理路线图：
 

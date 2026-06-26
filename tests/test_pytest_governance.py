@@ -288,15 +288,19 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
             "DEV_PYTHON ?= $(VENV_PYTHON)",
             "test: dev-install",
             "pytest: dev-install",
+            "test-clean:",
             "lint: dev-install",
             "type: dev-install",
             "compile: dev-install",
             "pytest-governance-smoke: dev-install",
             "$(DEV_PYTHON) -m pytest -q",
+            "$(DEV_PYTHON) -m pytest tests/test_pytest_governance.py",
+            "$(MAKE) --no-print-directory test-clean",
+            "'.pytest_cache', '.coverage', 'coverage.xml', 'htmlcov'",
             "$(DEV_PYTHON) -m ruff check cleanwin.py cleanwincli tests",
             "$(DEV_PYTHON) -m mypy cleanwin.py cleanwincli tests",
             "$(DEV_PYTHON) -m compileall -q cleanwin.py cleanwincli tests",
-            "ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke",
+            "ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke test-clean",
         ],
     )
     command_lines = [line for line in makefile.splitlines() if line.startswith("\t")]
@@ -359,6 +363,8 @@ def test_windows_smoke_uses_repo_venv_pytest_entrypoints(
             r".\.venv\Scripts\python.exe -m ruff check cleanwin.py cleanwincli tests",
             r".\.venv\Scripts\python.exe -m mypy cleanwin.py cleanwincli tests",
             r".\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests",
+            "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, dist, cleanwin.egg-info, .mypy_cache, .ruff_cache, .pytest_cache, .coverage, coverage.xml, htmlcov",
+            "Get-ChildItem -Path . -Directory -Recurse -Force -Filter __pycache__",
         ],
     )
     assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
@@ -384,14 +390,30 @@ def test_docs_describe_pytest_only_venv_workflow(
             "make quality",
             "Use pytest-native patterns for new or updated tests",
             "make pytest-governance-smoke",
+            "remove pytest caches, coverage files, and `__pycache__`",
+            "`.venv` is the managed tool environment",
         ],
     )
-    assert_text_contains_all(docs["README.md"], ["make pytest", "make ci-smoke", "make quality"])
+    assert_text_contains_all(
+        docs["README.md"],
+        [
+            "make pytest",
+            "make pytest-governance-smoke",
+            "make ci-smoke",
+            "make quality",
+            "remove pytest caches, coverage files, and",
+            "`.venv`",
+            "make clean",
+        ],
+    )
     assert_text_contains_all(
         docs["docs/doc/README.md"],
         [
             "The `dev-install` target creates `.venv`",
             ".venv/bin/python -m pytest -q",
+            "`make pytest` and `make pytest-governance-smoke` remove pytest caches, coverage files, and `__pycache__` after the test process finishes",
+            "`.github/workflows/ci.yml` runs Linux quality gates",
+            "`.github/workflows/windows-smoke.yml` has an `always()` cleanup step",
             "New tests should prefer pytest function style",
             "make pytest-governance-smoke",
             "do not reintroduce `unittest discover`",
@@ -402,6 +424,9 @@ def test_docs_describe_pytest_only_venv_workflow(
         [
             "`dev-install` target 会创建 `.venv`",
             ".venv/bin/python -m pytest -q",
+            "`make pytest` 和 `make pytest-governance-smoke` 会在测试进程结束后删除 pytest cache、coverage 文件和 `__pycache__`",
+            "`.github/workflows/ci.yml` 通过 Makefile target",
+            "`.github/workflows/windows-smoke.yml` 包含 `always()` cleanup step",
             "新增测试优先使用 pytest 函数风格",
             "make pytest-governance-smoke",
             "重新引入 `unittest discover`",
@@ -474,7 +499,14 @@ def test_workflows_use_makefile_venv_pytest_contract(
 
     assert_text_contains_all(
         makefile,
-        ["pytest: dev-install", "$(DEV_PYTHON) -m pytest -q", "$(DEV_PYTHON) -m ruff check", "$(DEV_PYTHON) -m mypy"],
+        [
+            "pytest: dev-install",
+            "$(DEV_PYTHON) -m pytest -q",
+            "$(MAKE) --no-print-directory test-clean",
+            "test-clean:",
+            "$(DEV_PYTHON) -m ruff check",
+            "$(DEV_PYTHON) -m mypy",
+        ],
     )
     assert_text_contains_all(workflow, ["make pytest"])
     assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)

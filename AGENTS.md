@@ -59,6 +59,11 @@ make docker-quality
 ```
 
 Do not run project tests against the system Python when changing code or tests.
+`make pytest` and `make pytest-governance-smoke` run pytest through `.venv`,
+then remove pytest caches, coverage files, and `__pycache__` while preserving
+the test exit code. `.venv` is the managed tool environment and should not be
+removed as routine test cleanup. Use `make clean` for build/cache cleanup after
+packaging or broader local gates.
 
 ## Test Workflow
 

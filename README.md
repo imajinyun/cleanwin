@@ -106,9 +106,13 @@ make ci-smoke
 ```
 
 `make ci-smoke` mirrors the Linux CI quality gate. `make quality` runs the full
-local gate, including packaging and smoke checks. `make docker-quality` is
-available when Docker is installed and image pulls are allowed. See
-[AGENTS.md](AGENTS.md) for the full agent workflow.
+local gate, including packaging, smoke checks, and cleanup. `make pytest` and
+`make pytest-governance-smoke` remove pytest caches, coverage files, and
+`__pycache__` after pytest finishes while preserving the test exit code. `.venv`
+is kept as the managed tool environment, not treated as a test leftover. Use
+`make clean` for build/cache cleanup and `make docker-quality` when Docker is
+installed and image pulls are allowed. See [AGENTS.md](AGENTS.md) for the full
+agent workflow.
 
 ---
 

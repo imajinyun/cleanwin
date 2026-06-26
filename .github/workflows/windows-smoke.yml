@@ -167,5 +167,5 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, dist, cleanwin.egg-info, .mypy_cache, .ruff_cache
+          Remove-Item -Recurse -Force -ErrorAction SilentlyContinue build, dist, cleanwin.egg-info, .mypy_cache, .ruff_cache, .pytest_cache, .coverage, coverage.xml, htmlcov
           Get-ChildItem -Path . -Directory -Recurse -Force -Filter __pycache__ | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue

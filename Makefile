@@ -9,7 +9,7 @@ endif
 
 DEV_PYTHON ?= $(VENV_PYTHON)
 
-.PHONY: venv dev-install test pytest lint type compile pytest-governance-smoke ci-smoke quality package-smoke package-install-smoke sdist-install-smoke mcp-install-smoke docs-smoke ai-smoke mcp-smoke version-smoke docker-quality clean
+.PHONY: venv dev-install test pytest test-clean lint type compile pytest-governance-smoke ci-smoke quality package-smoke package-install-smoke sdist-install-smoke mcp-install-smoke docs-smoke ai-smoke mcp-smoke version-smoke docker-quality clean
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -19,10 +19,13 @@ dev-install: venv
 	$(DEV_PYTHON) -m pip install -e ".[dev]"
 
 test: dev-install
-	$(DEV_PYTHON) -m pytest -q
+	@status=0; $(DEV_PYTHON) -m pytest -q || status=$$?; $(MAKE) --no-print-directory test-clean; exit $$status
 
 pytest: dev-install
-	$(DEV_PYTHON) -m pytest -q
+	@status=0; $(DEV_PYTHON) -m pytest -q || status=$$?; $(MAKE) --no-print-directory test-clean; exit $$status
+
+test-clean:
+	$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['.pytest_cache', '.coverage', 'coverage.xml', 'htmlcov']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"
 
 lint: dev-install
 	$(DEV_PYTHON) -m ruff check cleanwin.py cleanwincli tests
@@ -34,10 +37,9 @@ compile: dev-install
 	$(DEV_PYTHON) -m compileall -q cleanwin.py cleanwincli tests
 
 pytest-governance-smoke: dev-install
-	$(DEV_PYTHON) -m pytest tests/test_pytest_governance.py tests/test_ai_readiness.py::test_ai_readiness_release_gates_use_pytest_workflow -q
-	$(DEV_PYTHON) -c "from pathlib import Path; makefile=Path('Makefile').read_text(encoding='utf-8'); dockerfile=Path('Dockerfile.test').read_text(encoding='utf-8'); workflow=Path('.github/workflows/ci.yml').read_text(encoding='utf-8'); assert 'ci-smoke:' in makefile; assert 'unittest discover' not in dockerfile; assert 'make pytest-governance-smoke' in workflow; assert 'make docker-quality' in workflow; assert 'python-version' in workflow"
+	@status=0; $(DEV_PYTHON) -m pytest tests/test_pytest_governance.py tests/test_ai_readiness.py::test_ai_readiness_release_gates_use_pytest_workflow -q || status=$$?; if [ $$status -eq 0 ]; then $(DEV_PYTHON) -c "from pathlib import Path; makefile=Path('Makefile').read_text(encoding='utf-8'); dockerfile=Path('Dockerfile.test').read_text(encoding='utf-8'); workflow=Path('.github/workflows/ci.yml').read_text(encoding='utf-8'); assert 'ci-smoke:' in makefile; assert 'unittest discover' not in dockerfile; assert 'make pytest-governance-smoke' in workflow; assert 'make docker-quality' in workflow; assert 'python-version' in workflow" || status=$$?; fi; $(MAKE) --no-print-directory test-clean; exit $$status
 
-ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke
+ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke test-clean
 
 package-smoke: dev-install
 	$(DEV_PYTHON) -m build --sdist --wheel
@@ -74,6 +76,6 @@ docker-quality:
 	docker run --rm cleanwin-test
 
 clean:
-	$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['build', 'dist', 'cleanwin.egg-info', '.mypy_cache', '.ruff_cache']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"
+	$(PYTHON) -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['build', 'dist', 'cleanwin.egg-info', '.mypy_cache', '.ruff_cache', '.pytest_cache', '.coverage', 'coverage.xml', 'htmlcov']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"
 
 quality: ci-smoke mcp-install-smoke clean

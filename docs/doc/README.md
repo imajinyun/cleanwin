@@ -342,7 +342,7 @@ make ci-smoke
 make quality
 ```
 
-The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for pytest, Ruff, mypy, compile, package, AI, and MCP checks. `make ci-smoke` mirrors the non-packaging CI gate, while `make quality` adds install/package smoke checks and cleanup. Equivalent manual commands:
+The `dev-install` target creates `.venv`, installs `.[dev]`, and uses that environment for pytest, Ruff, mypy, compile, package, AI, and MCP checks. `make pytest` and `make pytest-governance-smoke` remove pytest caches, coverage files, and `__pycache__` after the test process finishes while preserving the pytest exit code; `.venv` is retained as the managed tool environment. `make ci-smoke` mirrors the non-packaging CI gate and finishes with the same test cleanup, while `make quality` adds install/package smoke checks and broader `make clean` cleanup. Equivalent manual commands:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -371,8 +371,10 @@ make docker-quality
 
 CI entrypoint:
 
-- `.github/workflows/ci.yml` runs Linux quality gates on Python 3.10 and 3.12, package install smoke checks, and the optional Docker sandbox gate.
+- `.github/workflows/ci.yml` runs Linux quality gates on Python 3.10 and 3.12 through Makefile targets, so pytest entrypoints clean test leftovers after completion.
+- `.github/workflows/ci.yml` also runs package install smoke checks and the optional Docker sandbox gate.
 - `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
+- `.github/workflows/windows-smoke.yml` has an `always()` cleanup step for build outputs, tool caches, pytest caches, coverage files, `htmlcov`, and `__pycache__`.
 
 Governance roadmap:
 
