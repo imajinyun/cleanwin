@@ -25,8 +25,11 @@ python3 cleanwin.py --json plan --categories temp,dev-cache,app-leftovers --olde
 python3 cleanwin.py --json validate-plan --plan-file /tmp/cleanwin-plan.json
 python3 cleanwin.py --json review-plan --plan-file /tmp/cleanwin-plan.json
 
-# 🤖 AI 工具清单（8 个工具）
+# 🤖 AI 工具清单（12 个工具）
 python3 cleanwin.py --json ai-tools --provider anthropic
+
+# 🏗️ MCP stdio server
+python3 -m cleanwincli.mcp_server
 ```
 
 > 🛡️ **安全原则：** 默认不删除。`execute-plan` 不带 `--execute` 永远是 dry-run；真实执行必须同时满足计划校验、`--execute`、`--yes`、操作日志、回收站模式、精确确认短语和 dry-run 确认令牌。
@@ -39,10 +42,10 @@ python3 cleanwin.py --json ai-tools --provider anthropic
 |---|---|
 | 🧹 **Dry-run 优先** | inspect、plan、validate、review 和 dry-run 是默认工作流 |
 | 🪟 **Windows 安全策略** | 保护 Windows 根目录、用户库、凭据、浏览器配置、WSL、Docker 和系统组件存储 |
-| 🗑️ **卸载残留清理增强** | 扩展对常用软件卸载后缓存/日志残留的安全清理覆盖 |
+| 🗑️ **卸载残留清理增强** | 扩展对已审查常用软件卸载后缓存/日志残留的安全清理覆盖，包括 Electron 应用、IDE、Git 客户端、数据库/API 客户端、Kubernetes/容器桌面工具、游戏启动器、同步/备份客户端、搜索工具、密码管理器、PDF 阅读器、笔记应用、协作/聊天工具、终端缓存、远程访问/VPN 工具、传输客户端、截图/扫描工具、图像/媒体工具、设计工具、Markdown 工具、OEM 支持工具、创作辅助工具、打印工具、外设工具和诊断日志 |
 | ♻️ **默认走回收站** | 真实清理路由到 Windows Recycle Bin；非 Windows 环境真实执行默认 fail-closed |
 | 🧾 **计划契约** | `cleanwin.plan.v1` 记录 source fingerprint、主机/用户上下文、规则元数据和文件身份 |
-| 🤖 **AI 原生 · 8 个工具** | 支持 Anthropic / OpenAI 导出、Host Policy 模拟和 readiness 报告 |
+| 🤖 **AI 原生 · 12 个工具** | 支持 Anthropic / OpenAI 导出、workflow routing、environment indexing、Host Policy 模拟和 readiness 报告 |
 | 🏗️ **MCP Server** | 内置 Model Context Protocol stdio server，只接受结构化工具参数 |
 | 🔐 **多层门禁** | 确认短语、dry-run token、操作日志、上下文校验和唯一删除出口 |
 | 📦 **零依赖** | 纯 Python 3.10+，无运行时依赖 |
@@ -96,9 +99,10 @@ make lint
 make pytest
 make type
 make compile
+make ci-smoke
 ```
 
-`make quality` 会运行完整本地质量门，包括打包和 smoke checks。Docker 已安装且允许拉取镜像时，可使用 `make docker-quality` 做沙箱验证。完整 agent 工作流见 [AGENTS.md](AGENTS.md)。
+`make ci-smoke` 对齐 Linux CI 质量门。`make quality` 会运行完整本地质量门，包括打包、smoke checks 和清理。`make pytest` 和 `make pytest-governance-smoke` 会在 pytest 完成后删除 pytest caches、coverage 文件和 `__pycache__`，同时保留测试退出码。`.venv` 是受管理的工具环境，不作为测试残留清理。使用 `make clean` 清理 build/cache，Docker 已安装且允许拉取镜像时，可使用 `make docker-quality` 做沙箱验证。完整 agent 工作流见 [AGENTS.md](AGENTS.md)。
 
 ---
 
