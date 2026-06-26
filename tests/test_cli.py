@@ -619,6 +619,101 @@ def test_app_leftovers_skips_additional_globbed_active_install_markers(
     paths = {candidate["path"] for candidate in payload["candidates"]}
     assert_contains_none(paths, [str(telegram_cache), str(onepassword_logs)])
 
+def test_app_leftovers_scans_more_desktop_and_launcher_caches(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "GitHub Desktop" / "GPUCache" / "shader.bin", "github"),
+        (roaming / "Obsidian" / "GPUCache" / "shader.bin", "obsidian"),
+        (roaming / "UnityHub" / "logs" / "hub.log", "unity"),
+        (local / "UnrealEngineLauncher" / "Saved" / "webcache" / "entry", "unreal"),
+        (local / "Electronic Arts" / "EA Desktop" / "Cache" / "entry", "ea"),
+        (local / "GOG.com" / "Galaxy" / "webcache" / "entry", "gog"),
+        (local / "Ubisoft Game Launcher" / "cache" / "entry", "ubisoft"),
+        (local / "Dropbox" / "logs" / "dropbox.log", "dropbox"),
+        (local / "LGHUB" / "logs" / "lghub.log", "logitech"),
+        (local / "Razer" / "Synapse" / "Logs" / "synapse.log", "razer"),
+        (user / "Documents" / "ObsidianVault" / "note.md", "vault"),
+        (user / "Saved Games" / "ExampleGame" / "save.dat", "save"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    (
+        github_gpu_cache,
+        obsidian_gpu_cache,
+        unity_logs,
+        unreal_webcache,
+        ea_cache,
+        gog_webcache,
+        ubisoft_cache,
+        dropbox_logs,
+        logitech_logs,
+        razer_logs,
+        obsidian_vault,
+        saved_game,
+    ) = [path.parent for path, _ in cache_files]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.github-desktop.gpu-cache"], {"path": str(github_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.obsidian.gpu-cache"], {"path": str(obsidian_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.unity-hub.logs"], {"path": str(unity_logs)})
+    assert_field_values(by_rule["app-leftovers.unreal-engine-launcher.webcache"], {"path": str(unreal_webcache)})
+    assert_field_values(by_rule["app-leftovers.ea-app.cache"], {"path": str(ea_cache)})
+    assert_field_values(by_rule["app-leftovers.gog-galaxy.webcache"], {"path": str(gog_webcache)})
+    assert_field_values(by_rule["app-leftovers.ubisoft-connect.cache"], {"path": str(ubisoft_cache)})
+    assert_field_values(by_rule["app-leftovers.dropbox.logs"], {"path": str(dropbox_logs)})
+    assert_field_values(by_rule["app-leftovers.logitech-g-hub.logs"], {"path": str(logitech_logs)})
+    assert_field_values(by_rule["app-leftovers.razer-synapse.logs"], {"path": str(razer_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(obsidian_vault), str(saved_game)])
+
+def test_app_leftovers_skips_more_desktop_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    github_gpu_cache = roaming / "GitHub Desktop" / "GPUCache"
+    write_text_file(github_gpu_cache / "shader.bin", "github")
+    write_text_file(local / "GitHubDesktop" / "app-3.4.0" / "GitHubDesktop.exe", "exe")
+
+    unity_logs = roaming / "UnityHub" / "logs"
+    write_text_file(unity_logs / "hub.log", "unity")
+    write_text_file(program_files / "Unity Hub" / "Unity Hub.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(github_gpu_cache), str(unity_logs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

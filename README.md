@@ -43,7 +43,7 @@ python3 -m cleanwincli.mcp_server
 |---|---|
 | 🧹 **Dry-run first** | Inspect, plan, validate, review, and dry-run are the default workflow |
 | 🪟 **Windows-aware safety** | Protects Windows roots, user libraries, credentials, browser profiles, WSL, Docker, and servicing stores |
-| 🗑️ **Uninstall leftover cleanup** | Expands safe cleanup for reviewed common app cache/log leftovers after uninstall, including Electron apps, IDEs, game launchers, media tools, and diagnostic logs |
+| 🗑️ **Uninstall leftover cleanup** | Expands safe cleanup for reviewed common app cache/log leftovers after uninstall, including Electron apps, IDEs, game launchers, sync tools, media tools, peripheral utilities, and diagnostic logs |
 | ♻️ **Recycle by default** | Real cleanup routes to Windows Recycle Bin; non-Windows execution fails closed outside test mode |
 | 🧾 **Plan contract** | `cleanwin.plan.v1` captures source fingerprint, host/user context, rule metadata, and filesystem identity |
 | 🤖 **AI-native · 12 tools** | Provider exports for Anthropic / OpenAI plus workflow routing, environment indexing, host-policy simulation, and readiness reports |

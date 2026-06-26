@@ -545,6 +545,86 @@
       "active_markers": ["local:1Password/app/*/1Password.exe", "local:Programs/1Password/1Password.exe"],
       "official_cleanup_command": "Uninstall 1Password before removing reviewed diagnostic log leftovers.",
       "rationale": "1Password logs are regenerated diagnostic artifacts; vault data, credentials, and account state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.github-desktop.gpu-cache",
+      "owner": "GitHub Desktop",
+      "default": "roaming:GitHub Desktop/GPUCache",
+      "active_markers": ["local:GitHubDesktop/GitHubDesktop.exe", "local:GitHubDesktop/app-*/GitHubDesktop.exe"],
+      "official_cleanup_command": "Uninstall GitHub Desktop before removing reviewed renderer cache leftovers.",
+      "rationale": "GitHub Desktop GPUCache contains regenerated Electron renderer artifacts; repositories, credentials, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.obsidian.gpu-cache",
+      "owner": "Obsidian",
+      "default": "roaming:Obsidian/GPUCache",
+      "active_markers": ["local:Programs/Obsidian/Obsidian.exe", "programfiles:Obsidian/Obsidian.exe", "programfilesx86:Obsidian/Obsidian.exe"],
+      "official_cleanup_command": "Uninstall Obsidian before removing reviewed renderer cache leftovers.",
+      "rationale": "Obsidian GPUCache contains regenerated Electron renderer artifacts; vault files, plugins, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.unity-hub.logs",
+      "owner": "Unity Hub",
+      "default": "roaming:UnityHub/logs",
+      "active_markers": ["local:Programs/Unity Hub/Unity Hub.exe", "programfiles:Unity Hub/Unity Hub.exe", "programfilesx86:Unity Hub/Unity Hub.exe"],
+      "official_cleanup_command": "Uninstall Unity Hub before removing reviewed Hub diagnostic log leftovers.",
+      "rationale": "Unity Hub logs are regenerated diagnostic artifacts; Unity projects, editor installs, licenses, and package caches remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.unreal-engine-launcher.webcache",
+      "owner": "Epic Games Launcher",
+      "default": "local:UnrealEngineLauncher/Saved/webcache",
+      "active_markers": ["programfiles:Epic Games/Launcher/Portal/Binaries/Win64/EpicGamesLauncher.exe", "programfilesx86:Epic Games/Launcher/Portal/Binaries/Win64/EpicGamesLauncher.exe"],
+      "official_cleanup_command": "Uninstall Epic Games Launcher before removing reviewed Unreal launcher web cache leftovers.",
+      "rationale": "Unreal Engine Launcher webcache contains regenerated embedded browser cache; installed engines, projects, marketplace assets, and save data remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ea-app.cache",
+      "owner": "EA app",
+      "default": "local:Electronic Arts/EA Desktop/Cache",
+      "active_markers": ["programfiles:Electronic Arts/EA Desktop/EA Desktop/EADesktop.exe", "programfilesx86:Electronic Arts/EA Desktop/EA Desktop/EADesktop.exe"],
+      "official_cleanup_command": "Uninstall EA app before removing reviewed launcher cache leftovers.",
+      "rationale": "EA app Cache contains regenerated launcher artifacts; installed games, saves, and account credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gog-galaxy.webcache",
+      "owner": "GOG Galaxy",
+      "default": "local:GOG.com/Galaxy/webcache",
+      "active_markers": ["programfiles:GOG Galaxy/GalaxyClient.exe", "programfilesx86:GOG Galaxy/GalaxyClient.exe"],
+      "official_cleanup_command": "Uninstall GOG Galaxy before removing reviewed launcher web cache leftovers.",
+      "rationale": "GOG Galaxy webcache contains regenerated embedded browser cache; installed games, saves, and account credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ubisoft-connect.cache",
+      "owner": "Ubisoft Connect",
+      "default": "local:Ubisoft Game Launcher/cache",
+      "active_markers": ["programfiles:Ubisoft/Ubisoft Game Launcher/UbisoftConnect.exe", "programfilesx86:Ubisoft/Ubisoft Game Launcher/UbisoftConnect.exe"],
+      "official_cleanup_command": "Uninstall Ubisoft Connect before removing reviewed launcher cache leftovers.",
+      "rationale": "Ubisoft Connect cache contains regenerated launcher artifacts; installed games, saves, and account credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.dropbox.logs",
+      "owner": "Dropbox",
+      "default": "local:Dropbox/logs",
+      "active_markers": ["programfiles:Dropbox/Client/Dropbox.exe", "programfilesx86:Dropbox/Client/Dropbox.exe", "local:Dropbox/Client/Dropbox.exe"],
+      "official_cleanup_command": "Uninstall Dropbox before removing reviewed diagnostic log leftovers.",
+      "rationale": "Dropbox logs are regenerated diagnostic artifacts; synced folders, account state, and file content remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.logitech-g-hub.logs",
+      "owner": "Logitech G HUB",
+      "default": "local:LGHUB/logs",
+      "active_markers": ["programfiles:LGHUB/lghub.exe", "programfilesx86:LGHUB/lghub.exe"],
+      "official_cleanup_command": "Uninstall Logitech G HUB before removing reviewed diagnostic log leftovers.",
+      "rationale": "Logitech G HUB logs are regenerated diagnostic artifacts; device profiles, firmware, and user presets remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.razer-synapse.logs",
+      "owner": "Razer Synapse",
+      "default": "local:Razer/Synapse/Logs",
+      "active_markers": ["programfiles:Razer/Synapse3/Razer Synapse 3.exe", "programfilesx86:Razer/Synapse3/Razer Synapse 3.exe"],
+      "official_cleanup_command": "Uninstall Razer Synapse before removing reviewed diagnostic log leftovers.",
+      "rationale": "Razer Synapse logs are regenerated diagnostic artifacts; device profiles, firmware, and account state remain outside this rule."
     }
   ]
 }

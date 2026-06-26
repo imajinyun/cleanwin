@@ -72,6 +72,16 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.virtualbox.logs",
         "app-leftovers.vlc.art-cache",
         "app-leftovers.1password.logs",
+        "app-leftovers.github-desktop.gpu-cache",
+        "app-leftovers.obsidian.gpu-cache",
+        "app-leftovers.unity-hub.logs",
+        "app-leftovers.unreal-engine-launcher.webcache",
+        "app-leftovers.ea-app.cache",
+        "app-leftovers.gog-galaxy.webcache",
+        "app-leftovers.ubisoft-connect.cache",
+        "app-leftovers.dropbox.logs",
+        "app-leftovers.logitech-g-hub.logs",
+        "app-leftovers.razer-synapse.logs",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
