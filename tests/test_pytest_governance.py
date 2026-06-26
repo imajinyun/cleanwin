@@ -265,6 +265,40 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
     )
 
 
+def test_linux_ci_and_docker_use_pytest_governance_entrypoints(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    dockerfile = (repo_root / "Dockerfile.test").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        workflow,
+        [
+            "python-version: [\"3.10\", \"3.12\"]",
+            "run: make lint",
+            "run: make pytest",
+            "run: make type",
+            "run: make compile",
+            "run: make pytest-governance-smoke",
+            "run: make docker-quality",
+        ],
+    )
+    assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
+    assert_text_contains_all(
+        dockerfile,
+        [
+            ".venv/bin/python -m ruff check cleanwin.py cleanwincli tests",
+            ".venv/bin/python -m pytest -q",
+            ".venv/bin/python -m mypy cleanwin.py cleanwincli tests",
+            ".venv/bin/python -m compileall -q cleanwin.py cleanwincli tests",
+            ".venv/bin/python -m pytest tests/test_pytest_governance.py",
+        ],
+    )
+    assert_none_match([dockerfile], lambda text: "unittest" in text)
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
