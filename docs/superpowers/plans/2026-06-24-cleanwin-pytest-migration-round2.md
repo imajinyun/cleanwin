@@ -1279,6 +1279,7 @@ through the repository `.venv`.
 - `PYTEST-GOV-214`: Added documentation governance for pytest-only `.venv` workflow guidance; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 27 tests after allowing negative `unittest.TestCase` mentions.
 - `PYTEST-GOV-215`: Added AST governance against unittest-style assertion APIs; `.venv/bin/python -m pytest tests/test_pytest_governance.py -q` passed with 28 tests.
 - `PYTEST-GOV-216`: `make pytest-governance-smoke` passed through repository `.venv`; focused result was 29 passed.
+- `PYTEST-GOV-217`: `make quality` passed through repository `.venv`; full pytest result was 244 passed and 2 skipped, pytest governance smoke was 29 passed, and package install/sdist smoke completed before cleanup. Local aiflow governance report was refreshed at `.aiflow/governance.json`.
 
 ## Round 12 Pytest Governance Plan
 
