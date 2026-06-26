@@ -321,6 +321,52 @@ def test_windows_smoke_uses_repo_venv_pytest_entrypoints(
     assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
 
 
+def test_docs_describe_pytest_only_venv_workflow(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    docs = {
+        "AGENTS.md": (repo_root / "AGENTS.md").read_text(encoding="utf-8"),
+        "README.md": (repo_root / "README.md").read_text(encoding="utf-8"),
+        "docs/doc/README.md": (repo_root / "docs" / "doc" / "README.md").read_text(encoding="utf-8"),
+        "docs/doc/README.CN.md": (repo_root / "docs" / "doc" / "README.CN.md").read_text(encoding="utf-8"),
+    }
+
+    assert_text_contains_all(
+        docs["AGENTS.md"],
+        [
+            "All Python tooling must run through the repository virtual environment",
+            "make pytest",
+            "make quality",
+            "Use pytest-native patterns for new or updated tests",
+            "make pytest-governance-smoke",
+        ],
+    )
+    assert_text_contains_all(docs["README.md"], ["make pytest", "make ci-smoke", "make quality"])
+    assert_text_contains_all(
+        docs["docs/doc/README.md"],
+        [
+            "The `dev-install` target creates `.venv`",
+            ".venv/bin/python -m pytest -q",
+            "New tests should prefer pytest function style",
+            "make pytest-governance-smoke",
+            "do not reintroduce `unittest discover`",
+        ],
+    )
+    assert_text_contains_all(
+        docs["docs/doc/README.CN.md"],
+        [
+            "`dev-install` target 会创建 `.venv`",
+            ".venv/bin/python -m pytest -q",
+            "新增测试优先使用 pytest 函数风格",
+            "make pytest-governance-smoke",
+            "重新引入 `unittest discover`",
+        ],
+    )
+    assert_none_match(list(docs.values()), lambda text: "python -m unittest" in text or "unittest discover\n" in text)
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
