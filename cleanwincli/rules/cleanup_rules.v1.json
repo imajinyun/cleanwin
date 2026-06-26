@@ -1185,6 +1185,86 @@
       "active_markers": ["programfiles:NAPS2/NAPS2.exe", "programfilesx86:NAPS2/NAPS2.exe", "local:Programs/NAPS2/NAPS2.exe"],
       "official_cleanup_command": "Uninstall NAPS2 before removing reviewed diagnostic log leftovers.",
       "rationale": "NAPS2 logs are regenerated diagnostics; scanned documents, scan profiles, OCR language data, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.backblaze.logs",
+      "owner": "Backblaze",
+      "default": "programdata:Backblaze/bzdata/bzlogs",
+      "active_markers": ["programfiles:Backblaze/bzserv.exe", "programfilesx86:Backblaze/bzserv.exe"],
+      "official_cleanup_command": "Uninstall Backblaze before removing reviewed diagnostic log leftovers.",
+      "rationale": "Backblaze logs are regenerated diagnostics; backup state, file selections, restore data, credentials, and backed-up files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.acronis.logs",
+      "owner": "Acronis Cyber Protect Home Office",
+      "default": "programdata:Acronis/Logs",
+      "active_markers": ["programfiles:Acronis/TrueImageHome/TrueImage.exe", "programfilesx86:Acronis/TrueImageHome/TrueImage.exe"],
+      "official_cleanup_command": "Uninstall Acronis or use its cleanup tools before removing reviewed diagnostic log leftovers.",
+      "rationale": "Acronis logs are regenerated diagnostics; backup archives, schedules, vault metadata, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.macrium.logs",
+      "owner": "Macrium Reflect",
+      "default": "programdata:Macrium/Reflect/Logs",
+      "active_markers": ["programfiles:Macrium/Reflect/Reflect.exe", "programfilesx86:Macrium/Reflect/Reflect.exe"],
+      "official_cleanup_command": "Uninstall Macrium Reflect before removing reviewed diagnostic log leftovers.",
+      "rationale": "Macrium Reflect logs are regenerated diagnostics; backup definitions, image files, rescue media, schedules, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.freefilesync.logs",
+      "owner": "FreeFileSync",
+      "default": "roaming:FreeFileSync/Logs",
+      "active_markers": ["programfiles:FreeFileSync/FreeFileSync.exe", "programfilesx86:FreeFileSync/FreeFileSync.exe"],
+      "official_cleanup_command": "Uninstall FreeFileSync before removing reviewed sync log leftovers.",
+      "rationale": "FreeFileSync logs are regenerated diagnostics; sync jobs, source files, target files, credentials, and batch configurations remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.everything.crashdumps",
+      "owner": "Everything",
+      "default": "local:CrashDumps/Everything.exe.*.dmp",
+      "active_markers": ["programfiles:Everything/Everything.exe", "programfilesx86:Everything/Everything.exe"],
+      "official_cleanup_command": "Uninstall Everything before removing reviewed crash dump leftovers.",
+      "rationale": "Everything crash dumps are recreated diagnostics; search indexes, settings, bookmarks, and user files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.keepassxc.crashdumps",
+      "owner": "KeePassXC",
+      "default": "local:CrashDumps/KeePassXC.exe.*.dmp",
+      "active_markers": ["programfiles:KeePassXC/KeePassXC.exe", "programfilesx86:KeePassXC/KeePassXC.exe"],
+      "official_cleanup_command": "Uninstall KeePassXC before removing reviewed crash dump leftovers.",
+      "rationale": "KeePassXC crash dumps are recreated diagnostics; password databases, key files, browser integration state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.sumatrapdf.crashdumps",
+      "owner": "SumatraPDF",
+      "default": "local:CrashDumps/SumatraPDF.exe.*.dmp",
+      "active_markers": ["programfiles:SumatraPDF/SumatraPDF.exe", "programfilesx86:SumatraPDF/SumatraPDF.exe", "local:SumatraPDF/SumatraPDF.exe"],
+      "official_cleanup_command": "Uninstall SumatraPDF before removing reviewed crash dump leftovers.",
+      "rationale": "SumatraPDF crash dumps are recreated diagnostics; PDF/eBook files, reading history, annotations, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.foxit.logs",
+      "owner": "Foxit PDF Reader",
+      "default": "local:Foxit Software/Foxit PDF Reader/Logs",
+      "active_markers": ["programfiles:Foxit Software/Foxit PDF Reader/FoxitPDFReader.exe", "programfilesx86:Foxit Software/Foxit PDF Reader/FoxitPDFReader.exe"],
+      "official_cleanup_command": "Uninstall Foxit PDF Reader before removing reviewed diagnostic log leftovers.",
+      "rationale": "Foxit PDF Reader logs are regenerated diagnostics; PDF files, annotations, signatures, cloud account state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.viber.gpu-cache",
+      "owner": "Viber",
+      "default": "roaming:ViberPC/GPUCache",
+      "active_markers": ["local:Viber/Viber.exe", "programfiles:Viber/Viber.exe", "programfilesx86:Viber/Viber.exe"],
+      "official_cleanup_command": "Uninstall Viber before removing reviewed renderer cache leftovers.",
+      "rationale": "Viber GPUCache contains regenerated renderer artifacts; chats, contacts, media, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.element.gpu-cache",
+      "owner": "Element",
+      "default": "roaming:Element/GPUCache",
+      "active_markers": ["local:Programs/Element/Element.exe", "programfiles:Element/Element.exe", "programfilesx86:Element/Element.exe"],
+      "official_cleanup_command": "Uninstall Element before removing reviewed renderer cache leftovers.",
+      "rationale": "Element GPUCache contains regenerated Electron renderer artifacts; Matrix rooms, encrypted data, keys, account state, and credentials remain outside this rule."
     }
   ]
 }

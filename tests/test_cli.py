@@ -1476,6 +1476,121 @@ def test_app_leftovers_skips_sync_notes_screenshot_and_scanner_rules_when_active
     assert_contains_none(paths, [str(box_logs), str(joplin_gpu_cache), str(sharex_logs)])
     assert_contains_none(paths, [str(screentogif_logs), str(naps2_logs)])
 
+def test_app_leftovers_scans_backup_search_password_pdf_and_chat_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (program_data / "Backblaze" / "bzdata" / "bzlogs" / "bztransmit.log", "backblaze"),
+        (program_data / "Acronis" / "Logs" / "agent.log", "acronis"),
+        (program_data / "Macrium" / "Reflect" / "Logs" / "reflect.log", "macrium"),
+        (roaming / "FreeFileSync" / "Logs" / "freefilesync.log", "freefilesync"),
+        (local / "CrashDumps" / "Everything.exe.1234.dmp", "everything"),
+        (local / "CrashDumps" / "KeePassXC.exe.1234.dmp", "keepassxc"),
+        (local / "CrashDumps" / "SumatraPDF.exe.1234.dmp", "sumatra"),
+        (local / "Foxit Software" / "Foxit PDF Reader" / "Logs" / "reader.log", "foxit"),
+        (roaming / "ViberPC" / "GPUCache" / "shader.bin", "viber"),
+        (roaming / "Element" / "GPUCache" / "shader.bin", "element"),
+        (user / "Backblaze" / "restore" / "restore.zip", "restore"),
+        (user / "Backups" / "system.tib", "acronis-archive"),
+        (user / "Backups" / "system.mrimg", "macrium-image"),
+        (user / "Sync" / "source" / "report.xlsx", "sync-source"),
+        (user / "Everything" / "Everything.db", "search-index"),
+        (user / "Passwords" / "vault.kdbx", "password-db"),
+        (user / "Books" / "manual.pdf", "pdf"),
+        (user / "Documents" / "signed.pdf", "signature"),
+        (user / "Pictures" / "Viber" / "photo.jpg", "viber-media"),
+        (user / "Element" / "rooms" / "session.json", "element-room"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    backblaze_logs = cache_files[0][0].parent
+    acronis_logs = cache_files[1][0].parent
+    macrium_logs = cache_files[2][0].parent
+    freefilesync_logs = cache_files[3][0].parent
+    everything_dump = cache_files[4][0]
+    keepassxc_dump = cache_files[5][0]
+    sumatra_dump = cache_files[6][0]
+    foxit_logs = cache_files[7][0].parent
+    viber_gpu_cache = cache_files[8][0].parent
+    element_gpu_cache = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.backblaze.logs"], {"path": str(backblaze_logs)})
+    assert_field_values(by_rule["app-leftovers.acronis.logs"], {"path": str(acronis_logs)})
+    assert_field_values(by_rule["app-leftovers.macrium.logs"], {"path": str(macrium_logs)})
+    assert_field_values(by_rule["app-leftovers.freefilesync.logs"], {"path": str(freefilesync_logs)})
+    assert_field_values(by_rule["app-leftovers.everything.crashdumps"], {"path": str(everything_dump)})
+    assert_field_values(by_rule["app-leftovers.keepassxc.crashdumps"], {"path": str(keepassxc_dump)})
+    assert_field_values(by_rule["app-leftovers.sumatrapdf.crashdumps"], {"path": str(sumatra_dump)})
+    assert_field_values(by_rule["app-leftovers.foxit.logs"], {"path": str(foxit_logs)})
+    assert_field_values(by_rule["app-leftovers.viber.gpu-cache"], {"path": str(viber_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.element.gpu-cache"], {"path": str(element_gpu_cache)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_backup_search_password_pdf_and_chat_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    backblaze_logs = program_data / "Backblaze" / "bzdata" / "bzlogs"
+    write_text_file(backblaze_logs / "bztransmit.log", "backblaze")
+    write_text_file(program_files / "Backblaze" / "bzserv.exe", "exe")
+
+    freefilesync_logs = roaming / "FreeFileSync" / "Logs"
+    write_text_file(freefilesync_logs / "freefilesync.log", "freefilesync")
+    write_text_file(program_files / "FreeFileSync" / "FreeFileSync.exe", "exe")
+
+    keepassxc_dump = local / "CrashDumps" / "KeePassXC.exe.1234.dmp"
+    write_text_file(keepassxc_dump, "keepassxc")
+    write_text_file(program_files / "KeePassXC" / "KeePassXC.exe", "exe")
+
+    foxit_logs = local / "Foxit Software" / "Foxit PDF Reader" / "Logs"
+    write_text_file(foxit_logs / "reader.log", "foxit")
+    write_text_file(program_files / "Foxit Software" / "Foxit PDF Reader" / "FoxitPDFReader.exe", "exe")
+
+    element_gpu_cache = roaming / "Element" / "GPUCache"
+    write_text_file(element_gpu_cache / "shader.bin", "element")
+    write_text_file(local / "Programs" / "Element" / "Element.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(backblaze_logs), str(freefilesync_logs), str(keepassxc_dump)])
+    assert_contains_none(paths, [str(foxit_logs), str(element_gpu_cache)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

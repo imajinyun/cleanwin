@@ -152,6 +152,16 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.lightshot.logs",
         "app-leftovers.screentogif.logs",
         "app-leftovers.naps2.logs",
+        "app-leftovers.backblaze.logs",
+        "app-leftovers.acronis.logs",
+        "app-leftovers.macrium.logs",
+        "app-leftovers.freefilesync.logs",
+        "app-leftovers.everything.crashdumps",
+        "app-leftovers.keepassxc.crashdumps",
+        "app-leftovers.sumatrapdf.crashdumps",
+        "app-leftovers.foxit.logs",
+        "app-leftovers.viber.gpu-cache",
+        "app-leftovers.element.gpu-cache",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
