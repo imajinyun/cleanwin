@@ -299,6 +299,28 @@ def test_linux_ci_and_docker_use_pytest_governance_entrypoints(
     assert_none_match([dockerfile], lambda text: "unittest" in text)
 
 
+def test_windows_smoke_uses_repo_venv_pytest_entrypoints(
+    repo_root: Path,
+    assert_none_match: AssertNoneMatch,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    workflow = (repo_root / ".github" / "workflows" / "windows-smoke.yml").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        workflow,
+        [
+            "runs-on: windows-latest",
+            "python -m venv .venv",
+            r".\.venv\Scripts\python.exe -m pip install -e .[dev]",
+            r".\.venv\Scripts\python.exe -m pytest -q",
+            r".\.venv\Scripts\python.exe -m ruff check cleanwin.py cleanwincli tests",
+            r".\.venv\Scripts\python.exe -m mypy cleanwin.py cleanwincli tests",
+            r".\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests",
+        ],
+    )
+    assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
+
+
 def test_tests_use_shared_filesystem_fixtures(repo_root: Path, assert_exact_sequence: AssertExactSequence) -> None:
     violations: list[str] = []
     for module in iter_test_modules(repo_root):
