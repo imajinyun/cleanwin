@@ -1425,6 +1425,86 @@
       "active_markers": ["programfiles:Mullvad VPN/Mullvad VPN.exe", "programfilesx86:Mullvad VPN/Mullvad VPN.exe", "local:Programs/Mullvad VPN/Mullvad VPN.exe"],
       "official_cleanup_command": "Uninstall Mullvad VPN before removing reviewed diagnostic log leftovers.",
       "rationale": "Mullvad VPN logs are regenerated diagnostics; VPN profiles, tunnel configuration, account state, certificates, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ccleaner.logs",
+      "owner": "CCleaner",
+      "default": "programdata:CCleaner/LOG",
+      "active_markers": ["programfiles:CCleaner/CCleaner64.exe", "programfiles:CCleaner/CCleaner.exe", "programfilesx86:CCleaner/CCleaner.exe"],
+      "official_cleanup_command": "Uninstall CCleaner before removing reviewed diagnostic log leftovers.",
+      "rationale": "CCleaner logs are regenerated diagnostics; cleaning rules, backups, include/exclude settings, license state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.revo-uninstaller.logs",
+      "owner": "Revo Uninstaller",
+      "default": "roaming:VS Revo Group/Revo Uninstaller Pro/Logs",
+      "active_markers": ["programfiles:VS Revo Group/Revo Uninstaller Pro/RevoUninPro.exe", "programfilesx86:VS Revo Group/Revo Uninstaller Pro/RevoUninPro.exe"],
+      "official_cleanup_command": "Uninstall Revo Uninstaller before removing reviewed diagnostic log leftovers.",
+      "rationale": "Revo Uninstaller logs are regenerated diagnostics; traced program data, restore points, backups, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bleachbit.logs",
+      "owner": "BleachBit",
+      "default": "local:BleachBit/logs",
+      "active_markers": ["programfiles:BleachBit/bleachbit.exe", "programfilesx86:BleachBit/bleachbit.exe", "local:Programs/BleachBit/bleachbit.exe"],
+      "official_cleanup_command": "Uninstall BleachBit before removing reviewed diagnostic log leftovers.",
+      "rationale": "BleachBit logs are regenerated diagnostics; cleaner presets, shredding state, custom paths, reports, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.windirstat.ini",
+      "owner": "WinDirStat",
+      "default": "roaming:windirstat.ini",
+      "active_markers": ["programfiles:WinDirStat/windirstat.exe", "programfilesx86:WinDirStat/windirstat.exe"],
+      "official_cleanup_command": "Uninstall WinDirStat before removing reviewed small preference leftovers.",
+      "rationale": "WinDirStat ini files are recreated preference leftovers; disk contents, scan results, user files, and reports remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.wiztree.logs",
+      "owner": "WizTree",
+      "default": "local:Antibody Software/WizTree/Logs",
+      "active_markers": ["programfiles:WizTree/WizTree64.exe", "programfiles:WizTree/WizTree.exe", "programfilesx86:WizTree/WizTree.exe"],
+      "official_cleanup_command": "Uninstall WizTree before removing reviewed diagnostic log leftovers.",
+      "rationale": "WizTree logs are regenerated diagnostics; disk scan results, exports, user files, settings, and license state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.treesize-free.logs",
+      "owner": "TreeSize Free",
+      "default": "local:JAM Software/TreeSize Free/logs",
+      "active_markers": ["programfiles:JAM Software/TreeSize Free/TreeSizeFree.exe", "programfilesx86:JAM Software/TreeSize Free/TreeSizeFree.exe"],
+      "official_cleanup_command": "Uninstall TreeSize Free before removing reviewed diagnostic log leftovers.",
+      "rationale": "TreeSize Free logs are regenerated diagnostics; disk scan results, exports, user files, settings, and license state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.hwinfo.logs",
+      "owner": "HWiNFO",
+      "default": "local:HWiNFO64/Logs",
+      "active_markers": ["programfiles:HWiNFO64/HWiNFO64.exe", "programfilesx86:HWiNFO64/HWiNFO64.exe", "local:Programs/HWiNFO64/HWiNFO64.exe"],
+      "official_cleanup_command": "Uninstall HWiNFO before removing reviewed diagnostic log leftovers.",
+      "rationale": "HWiNFO logs are regenerated diagnostics; sensor profiles, reports, hardware snapshots, settings, and license state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.cpu-z.logs",
+      "owner": "CPU-Z",
+      "default": "programdata:CPUID/CPU-Z/logs",
+      "active_markers": ["programfiles:CPUID/CPU-Z/cpuz.exe", "programfilesx86:CPUID/CPU-Z/cpuz.exe"],
+      "official_cleanup_command": "Uninstall CPU-Z before removing reviewed diagnostic log leftovers.",
+      "rationale": "CPU-Z logs are regenerated diagnostics; validation exports, hardware snapshots, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gpu-z.logs",
+      "owner": "GPU-Z",
+      "default": "local:TechPowerUp/GPU-Z/logs",
+      "active_markers": ["programfiles:GPU-Z/GPU-Z.exe", "programfilesx86:GPU-Z/GPU-Z.exe", "local:Programs/GPU-Z/GPU-Z.exe"],
+      "official_cleanup_command": "Uninstall GPU-Z before removing reviewed diagnostic log leftovers.",
+      "rationale": "GPU-Z logs are regenerated diagnostics; sensor logs, BIOS backups, validation exports, profiles, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.irfanview.thumbnails",
+      "owner": "IrfanView",
+      "default": "roaming:IrfanView/Thumbs",
+      "active_markers": ["programfiles:IrfanView/i_view64.exe", "programfiles:IrfanView/i_view32.exe", "programfilesx86:IrfanView/i_view32.exe"],
+      "official_cleanup_command": "Uninstall IrfanView before removing reviewed thumbnail cache leftovers.",
+      "rationale": "IrfanView thumbnail cache is regenerated UI state; image files, plug-ins, batch settings, recent paths, and saved edits remain outside this rule."
     }
   ]
 }

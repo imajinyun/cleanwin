@@ -1823,6 +1823,121 @@ def test_app_leftovers_skips_media_library_reader_meeting_password_and_vpn_when_
     assert_contains_none(paths, [str(plex_logs), str(jellyfin_logs), str(bitwarden_gpu_cache)])
     assert_contains_none(paths, [str(protonvpn_logs), str(mullvad_logs)])
 
+def test_app_leftovers_scans_cleaner_disk_hardware_and_viewer_logs(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (program_data / "CCleaner" / "LOG" / "ccleaner.log", "ccleaner"),
+        (roaming / "VS Revo Group" / "Revo Uninstaller Pro" / "Logs" / "revo.log", "revo"),
+        (local / "BleachBit" / "logs" / "bleachbit.log", "bleachbit"),
+        (roaming / "windirstat.ini", "windirstat"),
+        (local / "Antibody Software" / "WizTree" / "Logs" / "wiztree.log", "wiztree"),
+        (local / "JAM Software" / "TreeSize Free" / "logs" / "treesize.log", "treesize"),
+        (local / "HWiNFO64" / "Logs" / "hwinfo.log", "hwinfo"),
+        (program_data / "CPUID" / "CPU-Z" / "logs" / "cpuz.log", "cpuz"),
+        (local / "TechPowerUp" / "GPU-Z" / "logs" / "gpuz.log", "gpuz"),
+        (roaming / "IrfanView" / "Thumbs" / "thumb.db", "irfanview"),
+        (program_data / "CCleaner" / "Backups" / "registry.reg", "ccleaner-backup"),
+        (roaming / "VS Revo Group" / "Revo Uninstaller Pro" / "Backups" / "backup.dat", "revo-backup"),
+        (user / "Documents" / "BleachBit" / "custom-paths.txt", "bleachbit-custom"),
+        (user / "Documents" / "WinDirStat" / "scan.csv", "windirstat-scan"),
+        (user / "Documents" / "WizTree" / "export.csv", "wiztree-export"),
+        (user / "Documents" / "TreeSize" / "report.xlsx", "treesize-report"),
+        (user / "Documents" / "HWiNFO" / "sensors.csv", "hwinfo-report"),
+        (user / "Documents" / "CPU-Z" / "validation.html", "cpuz-validation"),
+        (user / "Documents" / "GPU-Z" / "bios.rom", "gpuz-bios"),
+        (user / "Pictures" / "Photos" / "image.jpg", "image"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    ccleaner_logs = cache_files[0][0].parent
+    revo_logs = cache_files[1][0].parent
+    bleachbit_logs = cache_files[2][0].parent
+    windirstat_ini = cache_files[3][0]
+    wiztree_logs = cache_files[4][0].parent
+    treesize_logs = cache_files[5][0].parent
+    hwinfo_logs = cache_files[6][0].parent
+    cpuz_logs = cache_files[7][0].parent
+    gpuz_logs = cache_files[8][0].parent
+    irfanview_thumbs = cache_files[9][0].parent
+    protected_files = [path for path, _ in cache_files[10:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.ccleaner.logs"], {"path": str(ccleaner_logs)})
+    assert_field_values(by_rule["app-leftovers.revo-uninstaller.logs"], {"path": str(revo_logs)})
+    assert_field_values(by_rule["app-leftovers.bleachbit.logs"], {"path": str(bleachbit_logs)})
+    assert_field_values(by_rule["app-leftovers.windirstat.ini"], {"path": str(windirstat_ini)})
+    assert_field_values(by_rule["app-leftovers.wiztree.logs"], {"path": str(wiztree_logs)})
+    assert_field_values(by_rule["app-leftovers.treesize-free.logs"], {"path": str(treesize_logs)})
+    assert_field_values(by_rule["app-leftovers.hwinfo.logs"], {"path": str(hwinfo_logs)})
+    assert_field_values(by_rule["app-leftovers.cpu-z.logs"], {"path": str(cpuz_logs)})
+    assert_field_values(by_rule["app-leftovers.gpu-z.logs"], {"path": str(gpuz_logs)})
+    assert_field_values(by_rule["app-leftovers.irfanview.thumbnails"], {"path": str(irfanview_thumbs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_cleaner_disk_hardware_and_viewer_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    program_data = root / "ProgramData"
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    ccleaner_logs = program_data / "CCleaner" / "LOG"
+    write_text_file(ccleaner_logs / "ccleaner.log", "ccleaner")
+    write_text_file(program_files / "CCleaner" / "CCleaner64.exe", "exe")
+
+    bleachbit_logs = local / "BleachBit" / "logs"
+    write_text_file(bleachbit_logs / "bleachbit.log", "bleachbit")
+    write_text_file(program_files / "BleachBit" / "bleachbit.exe", "exe")
+
+    wiztree_logs = local / "Antibody Software" / "WizTree" / "Logs"
+    write_text_file(wiztree_logs / "wiztree.log", "wiztree")
+    write_text_file(program_files / "WizTree" / "WizTree64.exe", "exe")
+
+    hwinfo_logs = local / "HWiNFO64" / "Logs"
+    write_text_file(hwinfo_logs / "hwinfo.log", "hwinfo")
+    write_text_file(program_files / "HWiNFO64" / "HWiNFO64.exe", "exe")
+
+    irfanview_thumbs = roaming / "IrfanView" / "Thumbs"
+    write_text_file(irfanview_thumbs / "thumb.db", "irfanview")
+    write_text_file(program_files / "IrfanView" / "i_view64.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(ccleaner_logs), str(bleachbit_logs), str(wiztree_logs)])
+    assert_contains_none(paths, [str(hwinfo_logs), str(irfanview_thumbs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

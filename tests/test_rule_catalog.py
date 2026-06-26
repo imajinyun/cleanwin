@@ -182,6 +182,16 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.bitwarden.gpu-cache",
         "app-leftovers.protonvpn.logs",
         "app-leftovers.mullvad-vpn.logs",
+        "app-leftovers.ccleaner.logs",
+        "app-leftovers.revo-uninstaller.logs",
+        "app-leftovers.bleachbit.logs",
+        "app-leftovers.windirstat.ini",
+        "app-leftovers.wiztree.logs",
+        "app-leftovers.treesize-free.logs",
+        "app-leftovers.hwinfo.logs",
+        "app-leftovers.cpu-z.logs",
+        "app-leftovers.gpu-z.logs",
+        "app-leftovers.irfanview.thumbnails",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
