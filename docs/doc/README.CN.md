@@ -241,6 +241,7 @@ python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
 python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
+python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
@@ -311,6 +312,13 @@ confirmations，但不会启用执行。
 都会记录 upstream provenance、原始 pattern、转换后的 CleanWin review metadata、
 sensitive exclusions、危险路径标记和 `review_required=true`，确保外部规则在未来
 owner review 和 promotion gate 批准前始终保持 report-only。
+
+`rule-pack-catalog` 会把 builtin cleanup rules 暴露成 versioned read-only
+packs，覆盖 developer cache、package cache、browser cache、browser profile
+cache 和 app leftovers。每条规则都会附带 quality score，包含 risk、
+recoverability、owner evidence、official cleanup evidence、sensitive exclusion
+scan、test coverage、provenance 和 review status。该报告不会导入外部 pack、
+不会提升 translated rules，也不会执行 cleanup rules。
 
 ---
 
@@ -460,7 +468,7 @@ CI 入口：
 | `cleanwincli/cli.py` | 参数解析和命令分发 |
 | `cleanwincli/core.py` | inspect/plan/validate/review/execute 编排和报告 |
 | `cleanwincli/collectors.py` | 保守候选项和只读 finding 收集器 |
-| `cleanwincli/rule_catalog.py` | versioned 清理规则 catalog 加载与校验 |
+| `cleanwincli/rule_catalog.py` | versioned 清理规则 catalog 加载、rule pack 报告与 quality scoring |
 | `cleanwincli/rules/cleanup_rules.v1.json` | 治理化清理规则 catalog 数据 |
 | `cleanwincli/recovery.py` | 恢复 readiness 门禁与 snapshot 格式声明 |
 | `cleanwincli/installed_apps.py` | 只读已安装应用 inventory 与 leftover 关联 |

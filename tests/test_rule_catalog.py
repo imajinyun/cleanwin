@@ -5,7 +5,15 @@ from typing import Any
 
 import pytest
 
-from cleanwincli.rule_catalog import CATALOG_SCHEMA, RuleCatalogError, cleanup_rule_catalog
+from cleanwincli.rule_catalog import (
+    CATALOG_SCHEMA,
+    RULE_PACK_CATALOG_SCHEMA,
+    RULE_PACK_SCHEMA,
+    RULE_QUALITY_SCORE_SCHEMA,
+    RuleCatalogError,
+    cleanup_rule_catalog,
+    rule_pack_catalog_report,
+)
 
 JSONPayload = dict[str, Any]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
@@ -17,6 +25,11 @@ AssertUniqueItems = Callable[[Sequence[Any]], Sequence[Any]]
 AssertNonEmpty = Callable[[Sequence[Any]], Sequence[Any]]
 AssertAtLeast = Callable[[int, int], int]
 AssertTextContainsAny = Callable[[str, Sequence[str]], str]
+AssertReadonlyReport = Callable[[JSONPayload, str], JSONPayload]
+AssertCliProviderSchemaSample = Callable[[str, str], JSONPayload]
+AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
+SummaryCounts = dict[str, int]
+AssertSummaryCounts = Callable[[JSONPayload, SummaryCounts], JSONPayload]
 
 
 @pytest.fixture
@@ -54,6 +67,82 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         {rule["rule_id"] for rule in catalog["app_leftover_rules"]},
         ["app-leftovers.vscode.cached-data"],
     )
+    assert_field_values(catalog, {"rule_pack_count": 5})
+    assert_contains_all(
+        {pack["pack_id"] for pack in catalog["rule_packs"]},
+        ["app-leftovers", "browser-cache", "browser-profile-cache", "dev-cache", "package-cache"],
+    )
+
+
+def test_cleanup_rule_catalog_enriches_rules_with_quality_scores(
+    rule_catalog: dict[str, Any],
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    rule = {rule["rule_id"]: rule for rule in catalog_rules(rule_catalog)}["app-leftovers.vscode.cached-data"]
+
+    assert_field_values(rule, {"schema": "cleanwin.cleanup-rule.v1", "rule_pack": "app-leftovers"})
+    quality = assert_payload_schema(rule["quality_score"], RULE_QUALITY_SCORE_SCHEMA)
+    assert_field_values(
+        quality,
+        {
+            "risk": "medium",
+            "recoverability": "high",
+            "owner_evidence": True,
+            "official_cleanup_evidence": True,
+            "rationale_evidence": True,
+            "provenance": "builtin",
+            "review_status": "manual-reviewed",
+        },
+    )
+    assert quality["score"] >= 80
+    assert_contains_all(quality.keys(), ["active_install_marker_count", "sensitive_exclusion_matches", "test_coverage"])
+
+
+def test_rule_pack_catalog_report_is_readonly_and_summarizes_builtin_packs(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_exact_set: Callable[[Collection[Any], Collection[Any]], set[Any]],
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = assert_readonly_report(rule_pack_catalog_report(), RULE_PACK_CATALOG_SCHEMA)
+
+    assert_field_values(
+        report,
+        {
+            "summary.pack_count": 5,
+            "summary.builtin_pack_count": 5,
+            "summary.manual_reviewed_pack_count": 5,
+            "summary.execution_enabled_count": 0,
+            "promotion_gate.external_rule_import_enabled": False,
+            "promotion_gate.requires_quality_score": True,
+        },
+    )
+    assert_exact_set(
+        [pack["pack_id"] for pack in report["packs"]],
+        {"app-leftovers", "browser-cache", "browser-profile-cache", "dev-cache", "package-cache"},
+    )
+    for pack in report["packs"]:
+        assert_payload_schema(pack, RULE_PACK_SCHEMA)
+        assert pack["source"] == "builtin"
+        assert pack["review_status"] == "manual-reviewed"
+        assert pack["rule_count"] == len(pack["rule_ids"])
+        assert pack["quality"]["minimum_score"] > 0
+
+
+def test_rule_pack_catalog_is_exposed_by_cli_provider_and_schema_registry(
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+    assert_schema_samples: AssertSchemaSamples,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_summary_counts: AssertSummaryCounts,
+) -> None:
+    sample = assert_cli_provider_schema_sample("rule-pack-catalog", RULE_PACK_CATALOG_SCHEMA)
+
+    assert_summary_counts(sample, {"pack_count": 5})
+    samples = assert_schema_samples([RULE_PACK_SCHEMA, RULE_QUALITY_SCORE_SCHEMA])
+    assert_payload_schema(samples[RULE_PACK_SCHEMA], RULE_PACK_SCHEMA)
+    assert_payload_schema(samples[RULE_QUALITY_SCORE_SCHEMA], RULE_QUALITY_SCORE_SCHEMA)
 
 
 @pytest.mark.parametrize(

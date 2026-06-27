@@ -7,6 +7,7 @@ from typing import Any
 
 from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
+from cleanwincli.rule_catalog import rule_pack_catalog_report
 from cleanwincli.system_health import system_health_evidence_report
 from cleanwincli.windows_inventory import appx_snapshot_artifact_contract
 from cleanwincli.windows_native_artifacts import (
@@ -74,6 +75,9 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.official-action-contract.v1", 1, "cleanwincli.official_commands", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.preset-catalog.v1", 1, "cleanwincli.presets", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.preset-plan-template.v1", 1, "cleanwincli.presets", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rule-pack-catalog.v1", 1, "cleanwincli.rule_catalog", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.cleanup-rule-pack.v1", 1, "cleanwincli.rule_catalog", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rule-quality-score.v1", 1, "cleanwincli.rule_catalog", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gates.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gate-validation.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1588,6 +1592,27 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_preset_catalog()
     if schema_name == "cleanwin.preset-plan-template.v1":
         return _sample_preset_catalog()["presets"][0]["plan_template"]
+    if schema_name == "cleanwin.rule-pack-catalog.v1":
+        return rule_pack_catalog_report()
+    if schema_name == "cleanwin.cleanup-rule-pack.v1":
+        return rule_pack_catalog_report()["packs"][0]
+    if schema_name == "cleanwin.rule-quality-score.v1":
+        catalog = rule_pack_catalog_report()
+        pack = catalog["packs"][0]
+        return {
+            "schema": "cleanwin.rule-quality-score.v1",
+            "score": pack["quality"]["minimum_score"],
+            "risk": "low",
+            "recoverability": "high",
+            "owner_evidence": True,
+            "official_cleanup_evidence": True,
+            "rationale_evidence": True,
+            "active_install_marker_count": 1,
+            "sensitive_exclusion_matches": [],
+            "test_coverage": "catalog-fixture",
+            "provenance": "builtin",
+            "review_status": "manual-reviewed",
+        }
     if schema_name == "cleanwin.promotion-gates.v1":
         return _sample_promotion_gates()
     if schema_name == "cleanwin.promotion-gate-validation.v1":

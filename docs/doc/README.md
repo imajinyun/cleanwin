@@ -241,6 +241,7 @@ python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
 python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
+python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
@@ -316,6 +317,13 @@ builtin catalog. Each candidate records upstream provenance, original pattern,
 translated CleanWin review metadata, sensitive exclusions, dangerous path
 flags, and `review_required=true` so external rules stay report-only until a
 future owner review and promotion gate approves them.
+
+`rule-pack-catalog` exposes the builtin cleanup rules as versioned read-only
+packs for developer cache, package cache, browser cache, browser profile cache,
+and app leftovers. Each rule includes a quality score with risk,
+recoverability, owner evidence, official cleanup evidence, sensitive exclusion
+scan results, test coverage, provenance, and review status. The report does not
+import external packs, promote translated rules, or execute cleanup rules.
 
 ---
 
@@ -466,7 +474,7 @@ Governance roadmap:
 | `cleanwincli/cli.py` | Argument parsing and command dispatch |
 | `cleanwincli/core.py` | Inspect/plan/validate/review/execute orchestration and reports |
 | `cleanwincli/collectors.py` | Conservative candidate and read-only finding collectors |
-| `cleanwincli/rule_catalog.py` | Versioned cleanup rule catalog loader and validation |
+| `cleanwincli/rule_catalog.py` | Versioned cleanup rule catalog loader, rule pack report, and quality scoring |
 | `cleanwincli/rules/cleanup_rules.v1.json` | Governed cleanup rule catalog data |
 | `cleanwincli/recovery.py` | Recovery readiness gates and snapshot format declarations |
 | `cleanwincli/installed_apps.py` | Read-only installed app inventory and leftover correlation |

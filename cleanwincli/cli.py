@@ -36,6 +36,7 @@ from cleanwincli.core import (
     promotion_gates_command,
     recovery_readiness_command,
     review_plan,
+    rule_pack_catalog_command,
     scan_governance_command,
     startup_service_inventory_command,
     system_health_report_command,
@@ -121,6 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
             "installed-app-inventory",
             "official-command-plan",
             "preset-catalog",
+            "rule-pack-catalog",
             "promotion-gates",
             "browser-profile-inventory",
             "debloat-privacy-report",
@@ -151,6 +153,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("installed-app-inventory", help="show read-only installed app inventory")
     subparsers.add_parser("official-command-plan", help="show read-only official Windows cleanup command plan")
     subparsers.add_parser("preset-catalog", help="show read-only cleanup preset catalog")
+    subparsers.add_parser("rule-pack-catalog", help="show read-only cleanup rule pack catalog and quality scores")
     subparsers.add_parser("promotion-gates", help="show report-to-execution promotion gates")
     subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
@@ -285,6 +288,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "preset-catalog":
             emit(preset_catalog_command(), as_json=args.json)
+            return 0
+        if args.command == "rule-pack-catalog":
+            emit(rule_pack_catalog_command(), as_json=args.json)
             return 0
         if args.command == "promotion-gates":
             emit(promotion_gates_command(), as_json=args.json)

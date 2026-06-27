@@ -44,6 +44,7 @@ from cleanwincli.presets import preset_catalog_report
 from cleanwincli.promotion_gates import promotion_gates_report
 from cleanwincli.protection import validate_filesystem_candidate
 from cleanwincli.recovery import recovery_readiness_report
+from cleanwincli.rule_catalog import rule_pack_catalog_report
 from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
@@ -604,6 +605,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return official_command_plan_report()
     if provider == "preset-catalog":
         return preset_catalog_report()
+    if provider == "rule-pack-catalog":
+        return rule_pack_catalog_report()
     if provider == "promotion-gates":
         return promotion_gates_report()
     if provider == "browser-profile-inventory":
@@ -716,6 +719,10 @@ def official_command_plan_command() -> dict[str, Any]:
 
 def preset_catalog_command() -> dict[str, Any]:
     return preset_catalog_report()
+
+
+def rule_pack_catalog_command() -> dict[str, Any]:
+    return rule_pack_catalog_report()
 
 
 def promotion_gates_command() -> dict[str, Any]:
