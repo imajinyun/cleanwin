@@ -491,6 +491,7 @@ CI entrypoint:
 - `.github/workflows/ci.yml` runs Linux quality gates on Python 3.10 and 3.12 through Makefile targets, so pytest entrypoints clean test leftovers after completion.
 - `.github/workflows/ci.yml` also runs package install smoke checks and the optional Docker sandbox gate.
 - `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
+- `.github/workflows/windows-smoke.yml` uploads a `cleanwin-windows-json-evidence` artifact bundle with JSON reports for `windows-inventory`, `debloat-privacy-report`, `startup-service-inventory`, `system-health-report`, `promotion-gates`, promotion validation, `recovery-readiness`, `windows-smoke-matrix`, plus pytest and compile result summaries.
 - `.github/workflows/windows-smoke.yml` has an `always()` cleanup step for build outputs, tool caches, pytest caches, coverage files, `htmlcov`, and `__pycache__`.
 - `windows-smoke-matrix` tracks required Windows 10/11 evidence for read-only debloat/privacy, startup/service/task, and system-health diagnostics before any execution-model expansion.
 - `system-health-report` remains diagnostic-only and uses scan/review commands such as DISM `ScanHealth`/`CheckHealth`, SFC scan, CHKDSK scan, Settings troubleshooters, and pending reboot registry queries without repair flags.

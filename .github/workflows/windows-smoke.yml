@@ -28,7 +28,18 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONPATH = (Get-Location).Path
+          New-Item -ItemType Directory -Force -Path artifacts/windows-smoke | Out-Null
           .\.venv\Scripts\python.exe -m pytest -q
+          $exitCode = $LASTEXITCODE
+          @{
+            schema = "cleanwin.ci-pytest-result.v1"
+            command = ".\\.venv\\Scripts\\python.exe -m pytest -q"
+            exit_code = $exitCode
+            passed = ($exitCode -eq 0)
+            runner_os = $env:RUNNER_OS
+            github_run_id = $env:GITHUB_RUN_ID
+          } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts/windows-smoke/pytest-result.json
+          if ($exitCode -ne 0) { exit $exitCode }
 
       - name: Lint
         shell: pwsh
@@ -40,7 +51,19 @@ jobs:
 
       - name: Compile Python files
         shell: pwsh
-        run: .\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/windows-smoke | Out-Null
+          .\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests
+          $exitCode = $LASTEXITCODE
+          @{
+            schema = "cleanwin.ci-compile-result.v1"
+            command = ".\\.venv\\Scripts\\python.exe -m compileall -q cleanwin.py cleanwincli tests"
+            exit_code = $exitCode
+            passed = ($exitCode -eq 0)
+            runner_os = $env:RUNNER_OS
+            github_run_id = $env:GITHUB_RUN_ID
+          } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts/windows-smoke/compile-result.json
+          if ($exitCode -ne 0) { exit $exitCode }
 
       - name: Docs smoke
         shell: pwsh
@@ -75,6 +98,43 @@ jobs:
           $versionCheck = $doctor.checks | Where-Object { $_.id -eq "version_consistency" }
           if ($null -eq $versionCheck) { throw "missing version_consistency doctor check" }
           if (-not $versionCheck.passed) { throw "version_consistency doctor check failed" }
+
+      - name: Capture Windows JSON evidence bundle
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/windows-smoke | Out-Null
+          $reports = @(
+            @{ name = "windows-inventory"; args = @("windows-inventory"); file = "windows-inventory.json" },
+            @{ name = "debloat-privacy-report"; args = @("debloat-privacy-report"); file = "debloat-privacy-report.json" },
+            @{ name = "startup-service-inventory"; args = @("startup-service-inventory"); file = "startup-service-inventory.json" },
+            @{ name = "system-health-report"; args = @("system-health-report"); file = "system-health-report.json" },
+            @{ name = "promotion-gates"; args = @("promotion-gates"); file = "promotion-gates.json" },
+            @{ name = "promotion-gate-validation"; args = @("promotion-gates", "--validate-action", "--source-schema", "cleanwin.windows-inventory.v1", "--target-action", "appx-remove-user-package"); file = "promotion-gate-validation.json" },
+            @{ name = "recovery-readiness"; args = @("recovery-readiness"); file = "recovery-readiness.json" },
+            @{ name = "windows-smoke-matrix"; args = @("windows-smoke-matrix"); file = "windows-smoke-matrix.json" }
+          )
+          foreach ($report in $reports) {
+            $output = Join-Path "artifacts/windows-smoke" $report.file
+            & .\.venv\Scripts\python.exe cleanwin.py --json @($report.args) | Set-Content -Encoding utf8 $output
+            if ($LASTEXITCODE -ne 0) { throw "failed to capture $($report.name)" }
+          }
+          @{
+            schema = "cleanwin.windows-ci-artifact-bundle.v1"
+            runner_os = $env:RUNNER_OS
+            github_run_id = $env:GITHUB_RUN_ID
+            artifacts = $reports | ForEach-Object { $_.file }
+            result_artifacts = @("pytest-result.json", "compile-result.json")
+            destructive = $false
+            executes_cleanup = $false
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 artifacts/windows-smoke/manifest.json
+
+      - name: Upload Windows JSON evidence bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanwin-windows-json-evidence
+          path: artifacts/windows-smoke/*.json
+          if-no-files-found: warn
 
       - name: Package build smoke
         shell: pwsh
