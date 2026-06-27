@@ -15,6 +15,230 @@ APPX_REMOVAL_PLAN_SCHEMA = "cleanwin.appx-removal-plan.v1"
 APPX_REMOVAL_CHANGE_SCHEMA = "cleanwin.appx-removal-change.v1"
 APPX_REMOVAL_REVERT_SCHEMA = "cleanwin.appx-removal-revert.v1"
 APPX_REMOVAL_PLAN_VALIDATION_SCHEMA = "cleanwin.appx-removal-plan-validation.v1"
+SERVICE_TASK_DISABLE_PLAN_SCHEMA = "cleanwin.service-task-disable-plan.v1"
+SERVICE_DISABLE_CHANGE_SCHEMA = "cleanwin.service-disable-change.v1"
+TASK_DISABLE_CHANGE_SCHEMA = "cleanwin.scheduled-task-disable-change.v1"
+SERVICE_TASK_REVERT_SCHEMA = "cleanwin.service-task-revert.v1"
+SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA = "cleanwin.service-task-disable-plan-validation.v1"
+
+_PROTECTED_SERVICE_TASK_TOKENS = (
+    "microsoft",
+    "windows",
+    "defender",
+    "security",
+    "driver",
+    "kernel",
+    "wuauserv",
+    "bits",
+    "store",
+)
+_PROTECTED_SERVICE_TASK_PHRASES = (
+    "windows update",
+    "microsoft update",
+    "windows installer",
+)
+
+_THIRD_PARTY_UPDATER_TOKENS = ("updater", "update", "helper", "agent", "launcher")
+
+
+def _service_task_block_reasons(item: dict[str, Any], *, item_type: str) -> list[str]:
+    text = " ".join(
+        str(item.get(field) or "")
+        for field in (
+            "name",
+            "display_name",
+            "publisher",
+            "author",
+            "binary_path",
+            "task_to_run",
+            "service_type",
+            "task_folder",
+        )
+    ).lower()
+    reasons: list[str] = []
+    if any(token in text for token in _PROTECTED_SERVICE_TASK_TOKENS) or any(phrase in text for phrase in _PROTECTED_SERVICE_TASK_PHRASES):
+        reasons.append("protected_vendor_or_core_surface")
+    if item_type == "service" and item.get("is_driver") is True:
+        reasons.append("driver_service")
+    if item_type == "service" and item.get("start_type_classification") in {"boot-or-system"}:
+        reasons.append("boot_or_system_start")
+    if item_type == "task" and str(item.get("run_as_user") or "").upper() in {"SYSTEM", "LOCAL SYSTEM"}:
+        reasons.append("system_principal")
+    if item.get("target_status") not in {"exists", "missing"}:
+        reasons.append("target_status_unresolved")
+    if not any(token in text for token in _THIRD_PARTY_UPDATER_TOKENS):
+        reasons.append("not_curated_third_party_updater")
+    return reasons
+
+
+def _service_disable_change(service: dict[str, Any]) -> dict[str, Any]:
+    name = str(service.get("name") or "")
+    snapshot_ref = f"snapshot://service/{name}.reg"
+    return {
+        "schema": SERVICE_DISABLE_CHANGE_SCHEMA,
+        "id": f"service-disable.change.{name}",
+        "target_action": "service-disable",
+        "service_name": name,
+        "display_name": str(service.get("display_name") or ""),
+        "current_status": str(service.get("status") or ""),
+        "current_start_type": str(service.get("start_type") or ""),
+        "target_start_type": "disabled",
+        "dependencies": list(service.get("dependencies") or []),
+        "trigger_start": service.get("trigger_start"),
+        "recovery_actions": list(service.get("recovery_actions") or []),
+        "snapshot_refs": [snapshot_ref],
+        "required_snapshot_commands": [
+            ["sc.exe", "qc", name],
+            ["reg.exe", "export", rf"HKLM\SYSTEM\CurrentControlSet\Services\{name}", "<service-export.reg>", "/y"],
+        ],
+        "restore_command": ["reg.exe", "import", "<service-export.reg>"],
+        "rollback": {
+            "schema": SERVICE_TASK_REVERT_SCHEMA,
+            "target_type": "service",
+            "object_name": name,
+            "snapshot_refs": [snapshot_ref],
+            "previous_state": str(service.get("status") or ""),
+            "previous_start_type": str(service.get("start_type") or ""),
+            "restore_command": ["reg.exe", "import", "<service-export.reg>"],
+            "verification": ["query sc.exe qc", "query service status"],
+        },
+        "execution_enabled": False,
+        "auto_executable": False,
+        "safe_to_execute": False,
+    }
+
+
+def _task_disable_change(task: dict[str, Any]) -> dict[str, Any]:
+    task_name = str(task.get("task_path") or task.get("name") or "")
+    snapshot_name = task_name.strip("\\").replace("\\", "/")
+    snapshot_ref = f"snapshot://scheduled-task/{snapshot_name}.xml"
+    return {
+        "schema": TASK_DISABLE_CHANGE_SCHEMA,
+        "id": f"scheduled-task-disable.change.{task_name}",
+        "target_action": "scheduled-task-disable",
+        "task_name": task_name,
+        "current_state": str(task.get("state") or ""),
+        "run_as_user": str(task.get("run_as_user") or ""),
+        "run_level": str(task.get("run_level") or ""),
+        "task_to_run": str(task.get("task_to_run") or ""),
+        "snapshot_refs": [snapshot_ref],
+        "required_snapshot_commands": [["schtasks", "/Query", "/TN", task_name, "/XML"]],
+        "restore_command": ["schtasks", "/Create", "/TN", task_name, "/XML", "<task-export.xml>", "/F"],
+        "rollback": {
+            "schema": SERVICE_TASK_REVERT_SCHEMA,
+            "target_type": "scheduled-task",
+            "object_name": task_name,
+            "snapshot_refs": [snapshot_ref],
+            "previous_state": str(task.get("state") or ""),
+            "restore_command": ["schtasks", "/Create", "/TN", task_name, "/XML", "<task-export.xml>", "/F"],
+            "verification": ["query scheduled task state", "compare task XML identity"],
+        },
+        "execution_enabled": False,
+        "auto_executable": False,
+        "safe_to_execute": False,
+    }
+
+
+def service_task_disable_plan_report(source_report: dict[str, Any] | None = None) -> dict[str, Any]:
+    if source_report is None:
+        from cleanwincli.startup_inventory import startup_service_inventory_report
+
+        source_report = startup_service_inventory_report()
+    changes: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for service in source_report.get("services", []):
+        if not isinstance(service, dict):
+            continue
+        reasons = _service_task_block_reasons(service, item_type="service")
+        if reasons:
+            blocked.append({"target_type": "service", "name": service.get("name", ""), "blocked_reasons": reasons, "execution_enabled": False, "safe_to_execute": False})
+            continue
+        changes.append(_service_disable_change(service))
+    for task in source_report.get("scheduled_tasks", []):
+        if not isinstance(task, dict):
+            continue
+        reasons = _service_task_block_reasons(task, item_type="task")
+        if reasons:
+            blocked.append({"target_type": "scheduled-task", "name": task.get("task_path", task.get("name", "")), "blocked_reasons": reasons, "execution_enabled": False, "safe_to_execute": False})
+            continue
+        changes.append(_task_disable_change(task))
+    return {
+        "schema": SERVICE_TASK_DISABLE_PLAN_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "source_report_schema": source_report.get("schema"),
+        "plan_state": "simulation-only",
+        "changes": changes,
+        "blocked_targets": blocked,
+        "summary": {
+            "change_count": len(changes),
+            "blocked_target_count": len(blocked),
+            "service_change_count": sum(1 for change in changes if change["schema"] == SERVICE_DISABLE_CHANGE_SCHEMA),
+            "scheduled_task_change_count": sum(1 for change in changes if change["schema"] == TASK_DISABLE_CHANGE_SCHEMA),
+            "execution_enabled_count": sum(1 for change in changes if change["execution_enabled"]),
+        },
+        "validation": validate_service_task_disable_plan({"schema": SERVICE_TASK_DISABLE_PLAN_SCHEMA, "changes": changes}),
+        "execution_gate": {
+            "service_task_disable_execution_enabled": False,
+            "requires_service_registry_export": True,
+            "requires_service_state_snapshot": True,
+            "requires_task_xml_export": True,
+            "requires_dependency_trigger_recovery_review": True,
+            "requires_restore_command": True,
+            "requires_matching_dry_run_token": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": [
+            "This report does not stop or disable services.",
+            "This report does not disable scheduled tasks.",
+            "This report does not modify service registry keys or task XML.",
+        ],
+    }
+
+
+def validate_service_task_disable_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    violations: list[dict[str, str]] = []
+    if plan.get("schema") != SERVICE_TASK_DISABLE_PLAN_SCHEMA:
+        violations.append({"path": "schema", "code": "INVALID_SCHEMA", "message": f"schema must be {SERVICE_TASK_DISABLE_PLAN_SCHEMA}"})
+    changes = plan.get("changes")
+    if not isinstance(changes, list):
+        violations.append({"path": "changes", "code": "MISSING_CHANGES", "message": "changes must be a list"})
+        changes = []
+    for index, change in enumerate(changes):
+        if not isinstance(change, dict):
+            violations.append({"path": f"changes.{index}", "code": "INVALID_CHANGE", "message": "change must be an object"})
+            continue
+        prefix = f"changes.{index}"
+        schema = change.get("schema")
+        if schema not in {SERVICE_DISABLE_CHANGE_SCHEMA, TASK_DISABLE_CHANGE_SCHEMA}:
+            violations.append({"path": f"{prefix}.schema", "code": "INVALID_CHANGE_SCHEMA", "message": "change schema must be service or scheduled-task disable"})
+        if not change.get("snapshot_refs"):
+            violations.append({"path": f"{prefix}.snapshot_refs", "code": "SNAPSHOT_REQUIRED", "message": "snapshot reference is required"})
+        if not change.get("restore_command"):
+            violations.append({"path": f"{prefix}.restore_command", "code": "RESTORE_COMMAND_REQUIRED", "message": "restore command is required"})
+        rollback = change.get("rollback")
+        if not isinstance(rollback, dict) or rollback.get("schema") != SERVICE_TASK_REVERT_SCHEMA:
+            violations.append({"path": f"{prefix}.rollback", "code": "ROLLBACK_PLAN_REQUIRED", "message": "rollback metadata is required"})
+        if change.get("execution_enabled") is not False:
+            violations.append({"path": f"{prefix}.execution_enabled", "code": "EXECUTION_MUST_STAY_DISABLED", "message": "service/task disable plan must remain simulation-only"})
+        if schema == SERVICE_DISABLE_CHANGE_SCHEMA:
+            if not change.get("service_name"):
+                violations.append({"path": f"{prefix}.service_name", "code": "SERVICE_NAME_REQUIRED", "message": "service name is required"})
+            for field in ("dependencies", "trigger_start", "recovery_actions"):
+                if field not in change:
+                    violations.append({"path": f"{prefix}.{field}", "code": "SERVICE_REVIEW_FIELD_REQUIRED", "message": f"{field} review is required"})
+        if schema == TASK_DISABLE_CHANGE_SCHEMA:
+            if not change.get("task_name"):
+                violations.append({"path": f"{prefix}.task_name", "code": "TASK_NAME_REQUIRED", "message": "task name is required"})
+            if not any("XML" in " ".join(command) for command in change.get("required_snapshot_commands", []) if isinstance(command, list)):
+                violations.append({"path": f"{prefix}.required_snapshot_commands", "code": "TASK_XML_EXPORT_REQUIRED", "message": "scheduled task XML export is required"})
+    return {
+        "schema": SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA,
+        "valid": not violations,
+        "violation_count": len(violations),
+        "violations": violations,
+    }
 
 
 def _registry_privacy_change_from_finding(finding: dict[str, Any]) -> dict[str, Any]:

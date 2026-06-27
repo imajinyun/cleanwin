@@ -245,6 +245,7 @@ python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
+python3 cleanwin.py --json service-task-disable-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -292,6 +293,16 @@ framework、system、dependency、non-removable 或 provisioned target 的 packa
 可以进入 planned changes。Framework、unknown、OEM、system、dependency、
 non-removable 和 provisioned package 会以 blocked 形式输出明确原因。该报告
 不会运行 PowerShell，也不会移除 package。
+
+`service-task-disable-plan` 会把 startup/service inventory findings 转换成
+simulation-only disable/revert plan，只面向经过 curated 的第三方 updater、
+helper、agent 和 launcher 类 service 或 scheduled task。每个 planned change
+都要求 service registry export 或 scheduled task XML export、current state、
+dependency/trigger/recovery review、restore command、rollback metadata 和匹配
+dry-run token，未来才可进入 promotion。Microsoft、security、driver、update、
+boot/system、SYSTEM principal、unresolved 和非 curated target 都会以 blocked
+形式输出明确原因。该报告不会停止 service、禁用 scheduled task、编辑 registry，
+也不会运行 `sc.exe`/`schtasks`。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、

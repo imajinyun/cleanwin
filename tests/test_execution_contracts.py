@@ -19,13 +19,20 @@ from cleanwincli.execution_contracts import (
     REGISTRY_PRIVACY_PLAN_SCHEMA,
     REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
     REGISTRY_PRIVACY_REVERT_SCHEMA,
+    SERVICE_DISABLE_CHANGE_SCHEMA,
+    SERVICE_TASK_DISABLE_PLAN_SCHEMA,
+    SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA,
+    SERVICE_TASK_REVERT_SCHEMA,
+    TASK_DISABLE_CHANGE_SCHEMA,
     appx_removal_plan_report,
     backup_delete_contract_report,
     disable_revert_contract_report,
     permanent_delete_denial_report,
     registry_privacy_change_plan_report,
+    service_task_disable_plan_report,
     validate_appx_removal_plan,
     validate_registry_privacy_change_plan,
+    validate_service_task_disable_plan,
 )
 
 JSONPayload = dict[str, Any]
@@ -421,6 +428,182 @@ def test_appx_removal_plan_validator_reports_protected_or_incomplete_changes(
     )
 
 
+def _service_task_source_report() -> JSONPayload:
+    return {
+        "schema": "cleanwin.startup-service-inventory.v1",
+        "services": [
+            {
+                "name": "ExampleUpdater",
+                "display_name": "Example Updater",
+                "status": "Running",
+                "start_type": "Automatic",
+                "start_type_classification": "auto-start",
+                "service_type": "service",
+                "is_driver": False,
+                "binary_path": r"C:\Program Files\Example\updater.exe",
+                "target_status": "exists",
+                "publisher": "Example Corp",
+                "dependencies": ["RpcSs"],
+                "trigger_start": True,
+                "recovery_actions": ["restart-service"],
+            },
+            {
+                "name": "ExampleDriver",
+                "display_name": "Example Driver",
+                "status": "Running",
+                "start_type": "Manual",
+                "start_type_classification": "manual",
+                "service_type": "Kernel Driver",
+                "is_driver": True,
+                "binary_path": r"C:\Windows\System32\drivers\example.sys",
+                "target_status": "exists",
+                "publisher": "Example Corp",
+                "dependencies": [],
+                "trigger_start": "unknown",
+                "recovery_actions": [],
+            },
+            {
+                "name": "MicrosoftUpdate",
+                "display_name": "Microsoft Update Service",
+                "status": "Running",
+                "start_type": "Automatic",
+                "start_type_classification": "auto-start",
+                "service_type": "service",
+                "is_driver": False,
+                "binary_path": r"C:\Windows\System32\update.exe",
+                "target_status": "exists",
+                "publisher": "Microsoft",
+                "dependencies": [],
+                "trigger_start": "unknown",
+                "recovery_actions": [],
+            },
+        ],
+        "scheduled_tasks": [
+            {
+                "name": r"\Example\Updater",
+                "task_path": r"\Example\Updater",
+                "state": "Ready",
+                "task_to_run": r"C:\Program Files\Example\updater.exe",
+                "target_status": "exists",
+                "publisher": "Example Corp",
+                "run_as_user": "ExampleUser",
+                "run_level": "LeastPrivilege",
+            },
+            {
+                "name": r"\Microsoft\Windows\UpdateTask",
+                "task_path": r"\Microsoft\Windows\UpdateTask",
+                "state": "Ready",
+                "task_to_run": r"C:\Windows\System32\update.exe",
+                "target_status": "exists",
+                "publisher": "Microsoft",
+                "run_as_user": "SYSTEM",
+                "run_level": "Highest",
+            },
+        ],
+    }
+
+
+def test_service_task_disable_plan_allows_only_third_party_simulation(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    report = assert_readonly_report(service_task_disable_plan_report(_service_task_source_report()), SERVICE_TASK_DISABLE_PLAN_SCHEMA)
+
+    assert_summary_counts(
+        report,
+        {
+            "change_count": 2,
+            "blocked_target_count": 3,
+            "service_change_count": 1,
+            "scheduled_task_change_count": 1,
+            "execution_enabled_count": 0,
+        },
+    )
+    assert_field_values(
+        report["execution_gate"],
+        {
+            "service_task_disable_execution_enabled": False,
+            "requires_service_registry_export": True,
+            "requires_service_state_snapshot": True,
+            "requires_task_xml_export": True,
+            "requires_dependency_trigger_recovery_review": True,
+            "requires_restore_command": True,
+        },
+    )
+    service_change = assert_payload_schema(report["changes"][0], SERVICE_DISABLE_CHANGE_SCHEMA)
+    task_change = assert_payload_schema(report["changes"][1], TASK_DISABLE_CHANGE_SCHEMA)
+    assert_execution_disabled(service_change, "auto_executable", "safe_to_execute")
+    assert_execution_disabled(task_change, "auto_executable", "safe_to_execute")
+    assert_field_values(
+        service_change,
+        {
+            "service_name": "ExampleUpdater",
+            "target_start_type": "disabled",
+            "dependencies": ["RpcSs"],
+            "trigger_start": True,
+            "recovery_actions": ["restart-service"],
+        },
+    )
+    assert_contains_all(service_change["required_snapshot_commands"][1], ["reg.exe", "export"])
+    assert_payload_schema(service_change["rollback"], SERVICE_TASK_REVERT_SCHEMA)
+    assert_field_values(task_change, {"task_name": r"\Example\Updater", "run_as_user": "ExampleUser"})
+    assert_contains_all(task_change["required_snapshot_commands"][0], ["schtasks", "/XML"])
+    assert_payload_schema(task_change["rollback"], SERVICE_TASK_REVERT_SCHEMA)
+    blocked_reasons = {reason for blocked in report["blocked_targets"] for reason in blocked["blocked_reasons"]}
+    assert_contains_all(blocked_reasons, ["driver_service", "protected_vendor_or_core_surface", "system_principal"])
+    assert_field_values(report["validation"], {"valid": True})
+
+
+def test_service_task_disable_plan_validator_reports_missing_evidence(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = assert_payload_schema(
+        validate_service_task_disable_plan(
+            {
+                "schema": SERVICE_TASK_DISABLE_PLAN_SCHEMA,
+                "changes": [
+                    {
+                        "schema": SERVICE_DISABLE_CHANGE_SCHEMA,
+                        "service_name": "",
+                        "execution_enabled": True,
+                    },
+                    {
+                        "schema": TASK_DISABLE_CHANGE_SCHEMA,
+                        "task_name": "",
+                        "snapshot_refs": [],
+                        "restore_command": [],
+                        "required_snapshot_commands": [],
+                        "rollback": {},
+                        "execution_enabled": False,
+                    },
+                ],
+            }
+        ),
+        SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA,
+    )
+
+    assert_field_values(validation, {"valid": False})
+    assert_contains_all(
+        {violation["code"] for violation in validation["violations"]},
+        [
+            "SNAPSHOT_REQUIRED",
+            "RESTORE_COMMAND_REQUIRED",
+            "ROLLBACK_PLAN_REQUIRED",
+            "EXECUTION_MUST_STAY_DISABLED",
+            "SERVICE_NAME_REQUIRED",
+            "SERVICE_REVIEW_FIELD_REQUIRED",
+            "TASK_NAME_REQUIRED",
+            "TASK_XML_EXPORT_REQUIRED",
+        ],
+    )
+
+
 @pytest.mark.parametrize(
     ("command", "schema"),
     [
@@ -429,6 +612,7 @@ def test_appx_removal_plan_validator_reports_protected_or_incomplete_changes(
         ("permanent-delete-denial", PERMANENT_DELETE_DENIAL_SCHEMA),
         ("registry-privacy-plan", REGISTRY_PRIVACY_PLAN_SCHEMA),
         ("appx-removal-plan", APPX_REMOVAL_PLAN_SCHEMA),
+        ("service-task-disable-plan", SERVICE_TASK_DISABLE_PLAN_SCHEMA),
     ],
 )
 def test_cli_provider_and_schema_registry_expose_execution_contracts(
@@ -444,6 +628,8 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
         assert_execution_disabled(sample["execution_gate"], "registry_privacy_execution_enabled")
     if schema == APPX_REMOVAL_PLAN_SCHEMA:
         assert_execution_disabled(sample["execution_gate"], "appx_removal_execution_enabled")
+    if schema == SERVICE_TASK_DISABLE_PLAN_SCHEMA:
+        assert_execution_disabled(sample["execution_gate"], "service_task_disable_execution_enabled")
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete(

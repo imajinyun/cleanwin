@@ -8,8 +8,10 @@ from typing import Any
 from cleanwincli.execution_contracts import (
     appx_removal_plan_report,
     registry_privacy_change_plan_report,
+    service_task_disable_plan_report,
     validate_appx_removal_plan,
     validate_registry_privacy_change_plan,
+    validate_service_task_disable_plan,
 )
 from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
@@ -98,6 +100,11 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.appx-removal-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.appx-removal-revert.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.appx-removal-plan-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.service-task-disable-plan.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.service-disable-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.scheduled-task-disable-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.service-task-revert.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.service-task-disable-plan-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "ci")),
@@ -1179,15 +1186,15 @@ def _sample_startup_service_inventory() -> dict[str, Any]:
         ],
         "services": [
             {
-                "name": "ExampleService",
-                "display_name": "Example Service",
+                "name": "ExampleUpdater",
+                "display_name": "Example Updater",
                 "status": "Running",
                 "start_type": "Automatic",
                 "start_type_classification": "auto-start",
                 "service_type": "service",
                 "is_driver": False,
-                "binary_path": r"C:\\Program Files\\Example\\example-service.exe",
-                "target_path": r"C:\\Program Files\\Example\\example-service.exe",
+                "binary_path": r"C:\\Program Files\\Example\\example-updater.exe",
+                "target_path": r"C:\\Program Files\\Example\\example-updater.exe",
                 "target_exists": True,
                 "target_status": "exists",
                 "publisher": "Example Corp",
@@ -1206,17 +1213,17 @@ def _sample_startup_service_inventory() -> dict[str, Any]:
         ],
         "scheduled_tasks": [
             {
-                "name": r"\\Example\\Task",
-                "task_path": r"\\Example\\Task",
+                "name": r"\\Example\\Updater",
+                "task_path": r"\\Example\\Updater",
                 "task_folder": r"\\Example",
                 "state": "Ready",
-                "task_to_run": r"C:\\Program Files\\Example\\example-task.exe",
-                "target_path": r"C:\\Program Files\\Example\\example-task.exe",
+                "task_to_run": r"C:\\Program Files\\Example\\example-updater.exe",
+                "target_path": r"C:\\Program Files\\Example\\example-updater.exe",
                 "target_exists": True,
                 "target_status": "exists",
                 "author": "Example Corp",
                 "publisher": "Example Corp",
-                "run_as_user": "SYSTEM",
+                "run_as_user": "ExampleUser",
                 "run_level": "Highest",
                 "schedule_type": "At logon time",
                 "last_result": "0",
@@ -1665,6 +1672,16 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return appx_removal_plan_report(_sample_windows_inventory())["changes"][0]["rollback"]
     if schema_name == "cleanwin.appx-removal-plan-validation.v1":
         return validate_appx_removal_plan(appx_removal_plan_report(_sample_windows_inventory()))
+    if schema_name == "cleanwin.service-task-disable-plan.v1":
+        return service_task_disable_plan_report(_sample_startup_service_inventory())
+    if schema_name == "cleanwin.service-disable-change.v1":
+        return service_task_disable_plan_report(_sample_startup_service_inventory())["changes"][0]
+    if schema_name == "cleanwin.scheduled-task-disable-change.v1":
+        return service_task_disable_plan_report(_sample_startup_service_inventory())["changes"][1]
+    if schema_name == "cleanwin.service-task-revert.v1":
+        return service_task_disable_plan_report(_sample_startup_service_inventory())["changes"][0]["rollback"]
+    if schema_name == "cleanwin.service-task-disable-plan-validation.v1":
+        return validate_service_task_disable_plan(service_task_disable_plan_report(_sample_startup_service_inventory()))
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":

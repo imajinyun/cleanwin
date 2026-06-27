@@ -245,6 +245,7 @@ python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
+python3 cleanwin.py --json service-task-disable-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -295,6 +296,16 @@ not framework, system, dependency, non-removable, or provisioned targets can
 enter the planned changes. Framework, unknown, OEM, system, dependency,
 non-removable, and provisioned packages are reported as blocked with explicit
 reasons. The report never runs PowerShell or removes packages.
+
+`service-task-disable-plan` turns startup/service inventory findings into a
+simulation-only disable/revert plan for curated third-party updater, helper,
+agent, and launcher style services or scheduled tasks. Each planned change
+requires service registry export or scheduled task XML export, current state,
+dependency/trigger/recovery review, restore command, rollback metadata, and a
+matching dry-run token before any future promotion. Microsoft, security,
+driver, update, boot/system, SYSTEM principal, unresolved, and non-curated
+targets are blocked with explicit reasons. The report never stops services,
+disables scheduled tasks, edits registry values, or runs `sc.exe`/`schtasks`.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
