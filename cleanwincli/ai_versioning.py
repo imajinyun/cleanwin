@@ -8,9 +8,11 @@ from typing import Any
 from cleanwincli.execution_contracts import (
     appx_removal_plan_report,
     registry_privacy_change_plan_report,
+    rollback_drill_report,
     service_task_disable_plan_report,
     validate_appx_removal_plan,
     validate_registry_privacy_change_plan,
+    validate_rollback_drills,
     validate_service_task_disable_plan,
 )
 from cleanwincli.external_rules import external_rule_translation_sample
@@ -105,6 +107,9 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.scheduled-task-disable-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.service-task-revert.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.service-task-disable-plan-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rollback-drill-report.v1", 1, "cleanwincli.execution_contracts", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rollback-drill-case.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rollback-drill-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "ci")),
@@ -1682,6 +1687,12 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return service_task_disable_plan_report(_sample_startup_service_inventory())["changes"][0]["rollback"]
     if schema_name == "cleanwin.service-task-disable-plan-validation.v1":
         return validate_service_task_disable_plan(service_task_disable_plan_report(_sample_startup_service_inventory()))
+    if schema_name == "cleanwin.rollback-drill-report.v1":
+        return rollback_drill_report()
+    if schema_name == "cleanwin.rollback-drill-case.v1":
+        return rollback_drill_report()["drills"][0]
+    if schema_name == "cleanwin.rollback-drill-validation.v1":
+        return validate_rollback_drills(rollback_drill_report())
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":

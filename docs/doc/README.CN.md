@@ -246,6 +246,7 @@ python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
 python3 cleanwin.py --json service-task-disable-plan
+python3 cleanwin.py --json rollback-drill-report
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -303,6 +304,13 @@ dry-run token，未来才可进入 promotion。Microsoft、security、driver、u
 boot/system、SYSTEM principal、unresolved 和非 curated target 都会以 blocked
 形式输出明确原因。该报告不会停止 service、禁用 scheduled task、编辑 registry，
 也不会运行 `sc.exe`/`schtasks`。
+
+`rollback-drill-report` 是 fixture-only 报告，用来验证未来执行面所需的
+rollback metadata 完整性，覆盖 registry privacy import、scheduled task XML
+restore、service start type restore 和 AppX restore metadata。每个 drill 都记录
+snapshot -> action -> rollback -> verification 链路，并包含 snapshot refs、
+restore command、required metadata 和 post-rollback checks。该报告不会导入
+registry 文件、重建 scheduled task、修改 service start type 或重新安装 AppX 包。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、

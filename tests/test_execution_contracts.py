@@ -19,6 +19,9 @@ from cleanwincli.execution_contracts import (
     REGISTRY_PRIVACY_PLAN_SCHEMA,
     REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
     REGISTRY_PRIVACY_REVERT_SCHEMA,
+    ROLLBACK_DRILL_CASE_SCHEMA,
+    ROLLBACK_DRILL_REPORT_SCHEMA,
+    ROLLBACK_DRILL_VALIDATION_SCHEMA,
     SERVICE_DISABLE_CHANGE_SCHEMA,
     SERVICE_TASK_DISABLE_PLAN_SCHEMA,
     SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA,
@@ -29,9 +32,11 @@ from cleanwincli.execution_contracts import (
     disable_revert_contract_report,
     permanent_delete_denial_report,
     registry_privacy_change_plan_report,
+    rollback_drill_report,
     service_task_disable_plan_report,
     validate_appx_removal_plan,
     validate_registry_privacy_change_plan,
+    validate_rollback_drills,
     validate_service_task_disable_plan,
 )
 
@@ -604,6 +609,99 @@ def test_service_task_disable_plan_validator_reports_missing_evidence(
     )
 
 
+def test_rollback_drill_report_covers_fixture_restore_paths(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    report = assert_readonly_report(rollback_drill_report(), ROLLBACK_DRILL_REPORT_SCHEMA)
+
+    assert_summary_counts(report, {"drill_count": 4, "execution_enabled_count": 0, "fixture_only_count": 4})
+    assert_field_values(
+        report["execution_gate"],
+        {
+            "rollback_drill_execution_enabled": False,
+            "requires_snapshot_refs": True,
+            "requires_restore_command": True,
+            "requires_required_metadata": True,
+            "requires_post_rollback_verification": True,
+        },
+    )
+    assert_contains_all(
+        set(report["summary"]["target_types"]),
+        ["registry-privacy", "scheduled-task", "service", "appx-package"],
+    )
+    by_id = {drill["id"]: assert_payload_schema(drill, ROLLBACK_DRILL_CASE_SCHEMA) for drill in report["drills"]}
+    assert_contains_all(
+        by_id,
+        [
+            "rollback-drill.registry-privacy-import",
+            "rollback-drill.scheduled-task-xml-restore",
+            "rollback-drill.service-start-type-restore",
+            "rollback-drill.appx-restore-metadata",
+        ],
+    )
+    registry_drill = by_id["rollback-drill.registry-privacy-import"]
+    task_drill = by_id["rollback-drill.scheduled-task-xml-restore"]
+    service_drill = by_id["rollback-drill.service-start-type-restore"]
+    appx_drill = by_id["rollback-drill.appx-restore-metadata"]
+    for drill in by_id.values():
+        assert_execution_disabled(drill)
+        assert_contains_all(drill["drill_chain"], ["snapshot", "simulate-rollback", "verify-after-rollback"])
+    assert_contains_all(registry_drill["restore_command"], ["reg.exe", "import"])
+    assert_contains_all(task_drill["restore_command"], ["schtasks", "/Create", "/XML"])
+    assert_contains_all(service_drill["restore_command"], ["reg.exe", "import"])
+    assert_contains_all(appx_drill["restore_command"], ["powershell.exe", "Add-AppxPackage"])
+    assert_contains_all(registry_drill["required_metadata"], ["previous_value", "registry_export_ref"])
+    assert_contains_all(task_drill["required_metadata"], ["task_xml_or_export_ref", "restore_command"])
+    assert_contains_all(service_drill["required_metadata"], ["previous_start_type", "snapshot_artifact_ref"])
+    assert_contains_all(appx_drill["required_metadata"], ["package_family_name", "previous_registration_state"])
+    assert_field_values(report["validation"], {"valid": True})
+
+
+def test_rollback_drill_validator_reports_missing_fixture_evidence(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = assert_payload_schema(
+        validate_rollback_drills(
+            {
+                "schema": ROLLBACK_DRILL_REPORT_SCHEMA,
+                "drills": [
+                    {
+                        "schema": ROLLBACK_DRILL_CASE_SCHEMA,
+                        "fixture_only": False,
+                        "execution_enabled": True,
+                        "executes_system_commands": True,
+                        "snapshot_refs": [],
+                        "restore_command": [],
+                        "required_metadata": {},
+                        "verification_steps": [],
+                    }
+                ],
+            }
+        ),
+        ROLLBACK_DRILL_VALIDATION_SCHEMA,
+    )
+
+    assert_field_values(validation, {"valid": False})
+    assert_contains_all(
+        {violation["code"] for violation in validation["violations"]},
+        [
+            "FIXTURE_ONLY_REQUIRED",
+            "EXECUTION_MUST_STAY_DISABLED",
+            "SNAPSHOT_REFS_REQUIRED",
+            "RESTORE_COMMAND_REQUIRED",
+            "ROLLBACK_METADATA_REQUIRED",
+            "POST_ROLLBACK_VERIFICATION_REQUIRED",
+        ],
+    )
+
+
 @pytest.mark.parametrize(
     ("command", "schema"),
     [
@@ -613,6 +711,7 @@ def test_service_task_disable_plan_validator_reports_missing_evidence(
         ("registry-privacy-plan", REGISTRY_PRIVACY_PLAN_SCHEMA),
         ("appx-removal-plan", APPX_REMOVAL_PLAN_SCHEMA),
         ("service-task-disable-plan", SERVICE_TASK_DISABLE_PLAN_SCHEMA),
+        ("rollback-drill-report", ROLLBACK_DRILL_REPORT_SCHEMA),
     ],
 )
 def test_cli_provider_and_schema_registry_expose_execution_contracts(
@@ -630,6 +729,8 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
         assert_execution_disabled(sample["execution_gate"], "appx_removal_execution_enabled")
     if schema == SERVICE_TASK_DISABLE_PLAN_SCHEMA:
         assert_execution_disabled(sample["execution_gate"], "service_task_disable_execution_enabled")
+    if schema == ROLLBACK_DRILL_REPORT_SCHEMA:
+        assert_execution_disabled(sample["execution_gate"], "rollback_drill_execution_enabled")
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete(

@@ -38,6 +38,7 @@ from cleanwincli.core import (
     recovery_readiness_command,
     registry_privacy_plan_command,
     review_plan,
+    rollback_drill_report_command,
     rule_pack_catalog_command,
     scan_governance_command,
     service_task_disable_plan_command,
@@ -134,6 +135,7 @@ def build_parser() -> argparse.ArgumentParser:
             "registry-privacy-plan",
             "appx-removal-plan",
             "service-task-disable-plan",
+            "rollback-drill-report",
             "startup-service-inventory",
             "system-health-report",
             "windows-native-artifacts",
@@ -168,6 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("registry-privacy-plan", help="show simulated registry privacy change/revert plan")
     subparsers.add_parser("appx-removal-plan", help="show simulated AppX per-user remove/revert plan")
     subparsers.add_parser("service-task-disable-plan", help="show simulated service/task disable/revert plan")
+    subparsers.add_parser("rollback-drill-report", help="show fixture-only rollback drill coverage")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
     subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
@@ -324,6 +327,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "service-task-disable-plan":
             emit(service_task_disable_plan_command(), as_json=args.json)
+            return 0
+        if args.command == "rollback-drill-report":
+            emit(rollback_drill_report_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)

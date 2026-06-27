@@ -20,6 +20,9 @@ SERVICE_DISABLE_CHANGE_SCHEMA = "cleanwin.service-disable-change.v1"
 TASK_DISABLE_CHANGE_SCHEMA = "cleanwin.scheduled-task-disable-change.v1"
 SERVICE_TASK_REVERT_SCHEMA = "cleanwin.service-task-revert.v1"
 SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA = "cleanwin.service-task-disable-plan-validation.v1"
+ROLLBACK_DRILL_REPORT_SCHEMA = "cleanwin.rollback-drill-report.v1"
+ROLLBACK_DRILL_CASE_SCHEMA = "cleanwin.rollback-drill-case.v1"
+ROLLBACK_DRILL_VALIDATION_SCHEMA = "cleanwin.rollback-drill-validation.v1"
 
 _PROTECTED_SERVICE_TASK_TOKENS = (
     "microsoft",
@@ -39,6 +42,168 @@ _PROTECTED_SERVICE_TASK_PHRASES = (
 )
 
 _THIRD_PARTY_UPDATER_TOKENS = ("updater", "update", "helper", "agent", "launcher")
+
+
+def _rollback_drill_case(
+    *,
+    drill_id: str,
+    target_type: str,
+    source_schema: str,
+    snapshot_refs: list[str],
+    planned_action: list[str],
+    restore_command: list[str],
+    required_metadata: dict[str, Any],
+    verification_steps: list[str],
+) -> dict[str, Any]:
+    return {
+        "schema": ROLLBACK_DRILL_CASE_SCHEMA,
+        "id": drill_id,
+        "target_type": target_type,
+        "source_plan_schema": source_schema,
+        "fixture_only": True,
+        "snapshot_refs": snapshot_refs,
+        "drill_chain": ["snapshot", "simulate-action", "verify-after-simulation", "simulate-rollback", "verify-after-rollback"],
+        "planned_action": planned_action,
+        "restore_command": restore_command,
+        "required_metadata": required_metadata,
+        "verification_steps": verification_steps,
+        "executes_system_commands": False,
+        "execution_enabled": False,
+        "safe_to_execute": False,
+    }
+
+
+def rollback_drill_report() -> dict[str, Any]:
+    drills = [
+        _rollback_drill_case(
+            drill_id="rollback-drill.registry-privacy-import",
+            target_type="registry-privacy",
+            source_schema=REGISTRY_PRIVACY_PLAN_SCHEMA,
+            snapshot_refs=["snapshot://registry/privacy.telemetry.allow-telemetry.reg"],
+            planned_action=["reg.exe", "add", r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection", "/v", "AllowTelemetry", "/d", "0"],
+            restore_command=["reg.exe", "import", "<export-file.reg>"],
+            required_metadata={
+                "hive": "HKLM",
+                "subkey_path": r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+                "value_name": "AllowTelemetry",
+                "previous_value": "3",
+                "registry_export_ref": "snapshot://registry/privacy.telemetry.allow-telemetry.reg",
+            },
+            verification_steps=["compare previous registry value", "verify import command references registry export"],
+        ),
+        _rollback_drill_case(
+            drill_id="rollback-drill.scheduled-task-xml-restore",
+            target_type="scheduled-task",
+            source_schema=SERVICE_TASK_DISABLE_PLAN_SCHEMA,
+            snapshot_refs=["snapshot://scheduled-task/Example/Updater.xml"],
+            planned_action=["schtasks", "/Change", "/TN", r"\Example\Updater", "/Disable"],
+            restore_command=["schtasks", "/Create", "/TN", r"\Example\Updater", "/XML", "<task-export.xml>", "/F"],
+            required_metadata={
+                "task_name": r"\Example\Updater",
+                "previous_state": "Ready",
+                "task_xml_or_export_ref": "snapshot://scheduled-task/Example/Updater.xml",
+                "restore_command": "schtasks /Create /XML <task-export.xml>",
+            },
+            verification_steps=["compare task XML identity", "verify restored task state"],
+        ),
+        _rollback_drill_case(
+            drill_id="rollback-drill.service-start-type-restore",
+            target_type="service",
+            source_schema=SERVICE_TASK_DISABLE_PLAN_SCHEMA,
+            snapshot_refs=["snapshot://service/ExampleUpdater.reg"],
+            planned_action=["sc.exe", "config", "ExampleUpdater", "start=", "disabled"],
+            restore_command=["reg.exe", "import", "<service-export.reg>"],
+            required_metadata={
+                "service_name": "ExampleUpdater",
+                "previous_status": "Running",
+                "previous_start_type": "Automatic",
+                "snapshot_artifact_ref": "snapshot://service/ExampleUpdater.reg",
+                "restore_command": "reg.exe import <service-export.reg>",
+            },
+            verification_steps=["compare sc.exe qc output", "verify service start type restored"],
+        ),
+        _rollback_drill_case(
+            drill_id="rollback-drill.appx-restore-metadata",
+            target_type="appx-package",
+            source_schema=APPX_REMOVAL_PLAN_SCHEMA,
+            snapshot_refs=["snapshot://appx/Microsoft.BingWeather_8wekyb3d8bbwe.json"],
+            planned_action=["powershell.exe", "Remove-AppxPackage", "-Package", "Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe"],
+            restore_command=["powershell.exe", "Add-AppxPackage", "-Register", r"<InstallLocation>\AppxManifest.xml"],
+            required_metadata={
+                "package_name": "Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe",
+                "package_family_name": "Microsoft.BingWeather_8wekyb3d8bbwe",
+                "previous_registration_state": "registered",
+                "install_location": r"C:\Program Files\WindowsApps\Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe",
+                "restore_command": r"Add-AppxPackage -Register <InstallLocation>\AppxManifest.xml",
+            },
+            verification_steps=["compare package family identity", "verify restore command references install location"],
+        ),
+    ]
+    validation = validate_rollback_drills({"schema": ROLLBACK_DRILL_REPORT_SCHEMA, "drills": drills})
+    return {
+        "schema": ROLLBACK_DRILL_REPORT_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "fixture_only": True,
+        "drills": drills,
+        "summary": {
+            "drill_count": len(drills),
+            "execution_enabled_count": sum(1 for drill in drills if drill["execution_enabled"]),
+            "fixture_only_count": sum(1 for drill in drills if drill["fixture_only"]),
+            "target_types": sorted({str(drill["target_type"]) for drill in drills}),
+        },
+        "validation": validation,
+        "execution_gate": {
+            "rollback_drill_execution_enabled": False,
+            "requires_snapshot_refs": True,
+            "requires_restore_command": True,
+            "requires_required_metadata": True,
+            "requires_post_rollback_verification": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": [
+            "This report does not import registry files.",
+            "This report does not recreate scheduled tasks.",
+            "This report does not change service start types.",
+            "This report does not reinstall AppX packages.",
+        ],
+    }
+
+
+def validate_rollback_drills(report: dict[str, Any]) -> dict[str, Any]:
+    violations: list[dict[str, str]] = []
+    if report.get("schema") != ROLLBACK_DRILL_REPORT_SCHEMA:
+        violations.append({"path": "schema", "code": "INVALID_SCHEMA", "message": f"schema must be {ROLLBACK_DRILL_REPORT_SCHEMA}"})
+    drills = report.get("drills")
+    if not isinstance(drills, list):
+        violations.append({"path": "drills", "code": "MISSING_DRILLS", "message": "drills must be a list"})
+        drills = []
+    for index, drill in enumerate(drills):
+        if not isinstance(drill, dict):
+            violations.append({"path": f"drills.{index}", "code": "INVALID_DRILL", "message": "drill must be an object"})
+            continue
+        prefix = f"drills.{index}"
+        if drill.get("schema") != ROLLBACK_DRILL_CASE_SCHEMA:
+            violations.append({"path": f"{prefix}.schema", "code": "INVALID_DRILL_SCHEMA", "message": f"drill schema must be {ROLLBACK_DRILL_CASE_SCHEMA}"})
+        if drill.get("fixture_only") is not True:
+            violations.append({"path": f"{prefix}.fixture_only", "code": "FIXTURE_ONLY_REQUIRED", "message": "rollback drills must remain fixture-only"})
+        if drill.get("execution_enabled") is not False or drill.get("executes_system_commands") is not False:
+            violations.append({"path": f"{prefix}.execution_enabled", "code": "EXECUTION_MUST_STAY_DISABLED", "message": "rollback drills must not execute commands"})
+        for field, code in (
+            ("snapshot_refs", "SNAPSHOT_REFS_REQUIRED"),
+            ("restore_command", "RESTORE_COMMAND_REQUIRED"),
+            ("required_metadata", "ROLLBACK_METADATA_REQUIRED"),
+            ("verification_steps", "POST_ROLLBACK_VERIFICATION_REQUIRED"),
+        ):
+            if not drill.get(field):
+                violations.append({"path": f"{prefix}.{field}", "code": code, "message": f"{field} is required"})
+    return {
+        "schema": ROLLBACK_DRILL_VALIDATION_SCHEMA,
+        "valid": not violations,
+        "violation_count": len(violations),
+        "violations": violations,
+    }
 
 
 def _service_task_block_reasons(item: dict[str, Any], *, item_type: str) -> list[str]:
