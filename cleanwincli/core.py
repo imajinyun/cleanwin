@@ -30,6 +30,7 @@ from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.environment_index import environment_index_report
 from cleanwincli.execution_contracts import (
+    appx_removal_plan_report,
     backup_delete_contract_report,
     disable_revert_contract_report,
     permanent_delete_denial_report,
@@ -622,6 +623,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return permanent_delete_denial_report()
     if provider == "registry-privacy-plan":
         return registry_privacy_change_plan_report()
+    if provider == "appx-removal-plan":
+        return appx_removal_plan_report()
     if provider == "startup-service-inventory":
         return startup_service_inventory_report()
     if provider == "system-health-report":
@@ -754,6 +757,10 @@ def permanent_delete_denial_command() -> dict[str, Any]:
 
 def registry_privacy_plan_command() -> dict[str, Any]:
     return registry_privacy_change_plan_report()
+
+
+def appx_removal_plan_command() -> dict[str, Any]:
+    return appx_removal_plan_report()
 
 
 def startup_service_inventory_command() -> dict[str, Any]:

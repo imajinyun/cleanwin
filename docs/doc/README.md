@@ -244,6 +244,7 @@ python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
+python3 cleanwin.py --json appx-removal-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -287,6 +288,13 @@ export requirements, previous value, target value, managed-device detection,
 policy owner review, dry-run confirmation token requirements, and a restore
 command. The validator reports missing evidence and keeps registry execution
 disabled.
+
+`appx-removal-plan` turns Windows inventory AppX classifications into a
+simulation-only per-user remove/revert plan. Only consumer-app packages that are
+not framework, system, dependency, non-removable, or provisioned targets can
+enter the planned changes. Framework, unknown, OEM, system, dependency,
+non-removable, and provisioned packages are reported as blocked with explicit
+reasons. The report never runs PowerShell or removes packages.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,

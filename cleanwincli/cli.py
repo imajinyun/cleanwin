@@ -14,6 +14,7 @@ from cleanwincli.core import (
     ai_runbook_command,
     ai_self_test_command,
     ai_tools_report,
+    appx_removal_plan_command,
     backup_delete_contract_command,
     browser_profile_inventory_command,
     build_plan,
@@ -130,6 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
             "disable-revert-contract",
             "permanent-delete-denial",
             "registry-privacy-plan",
+            "appx-removal-plan",
             "startup-service-inventory",
             "system-health-report",
             "windows-native-artifacts",
@@ -162,6 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("disable-revert-contract", help="show non-executable disable/revert action contracts")
     subparsers.add_parser("permanent-delete-denial", help="show permanent deletion denial contract")
     subparsers.add_parser("registry-privacy-plan", help="show simulated registry privacy change/revert plan")
+    subparsers.add_parser("appx-removal-plan", help="show simulated AppX per-user remove/revert plan")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
     subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
@@ -312,6 +315,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "registry-privacy-plan":
             emit(registry_privacy_plan_command(), as_json=args.json)
+            return 0
+        if args.command == "appx-removal-plan":
+            emit(appx_removal_plan_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)

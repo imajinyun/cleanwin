@@ -8,6 +8,10 @@ import pytest
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import tool_catalog
 from cleanwincli.execution_contracts import (
+    APPX_REMOVAL_CHANGE_SCHEMA,
+    APPX_REMOVAL_PLAN_SCHEMA,
+    APPX_REMOVAL_PLAN_VALIDATION_SCHEMA,
+    APPX_REMOVAL_REVERT_SCHEMA,
     BACKUP_DELETE_CONTRACT_SCHEMA,
     DISABLE_REVERT_CONTRACT_SCHEMA,
     PERMANENT_DELETE_DENIAL_SCHEMA,
@@ -15,10 +19,12 @@ from cleanwincli.execution_contracts import (
     REGISTRY_PRIVACY_PLAN_SCHEMA,
     REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
     REGISTRY_PRIVACY_REVERT_SCHEMA,
+    appx_removal_plan_report,
     backup_delete_contract_report,
     disable_revert_contract_report,
     permanent_delete_denial_report,
     registry_privacy_change_plan_report,
+    validate_appx_removal_plan,
     validate_registry_privacy_change_plan,
 )
 
@@ -261,6 +267,160 @@ def test_registry_privacy_plan_validator_reports_missing_evidence(
     )
 
 
+def _appx_source_report() -> JSONPayload:
+    return {
+        "schema": "cleanwin.windows-inventory.v1",
+        "sections": [
+            {
+                "id": "appx-packages",
+                "items": [
+                    {
+                        "Name": "Microsoft.XboxGamingOverlay",
+                        "PackageFullName": "Microsoft.XboxGamingOverlay_1.0.0.0_x64__8wekyb3d8bbwe",
+                        "PackageFamilyName": "Microsoft.XboxGamingOverlay_8wekyb3d8bbwe",
+                        "Publisher": "CN=Microsoft",
+                        "cleanwin_classification": {
+                            "category": "consumer-app",
+                            "protected_by_default": False,
+                            "dependency": False,
+                            "non_removable": False,
+                            "provisioned_state": False,
+                            "safe_to_execute": False,
+                        },
+                    },
+                    {
+                        "Name": "Microsoft.VCLibs.140.00.UWPDesktop",
+                        "PackageFullName": "Microsoft.VCLibs_1.0.0.0_x64__8wekyb3d8bbwe",
+                        "cleanwin_classification": {
+                            "category": "framework",
+                            "protected_by_default": True,
+                            "dependency": True,
+                            "non_removable": False,
+                            "provisioned_state": False,
+                            "safe_to_execute": False,
+                        },
+                    },
+                    {
+                        "Name": "Unknown.Package",
+                        "PackageFullName": "Unknown.Package_1.0.0.0_x64__example",
+                        "cleanwin_classification": {
+                            "category": "unknown",
+                            "protected_by_default": True,
+                            "dependency": False,
+                            "non_removable": False,
+                            "provisioned_state": False,
+                            "safe_to_execute": False,
+                        },
+                    },
+                ],
+            },
+            {
+                "id": "provisioned-appx-packages",
+                "items": [
+                    {
+                        "PackageName": "Microsoft.ZuneMusic_1.0.0.0_neutral_~_8wekyb3d8bbwe",
+                        "DisplayName": "Microsoft.ZuneMusic",
+                        "cleanwin_classification": {
+                            "category": "consumer-app",
+                            "protected_by_default": False,
+                            "dependency": False,
+                            "non_removable": False,
+                            "provisioned_state": True,
+                            "safe_to_execute": False,
+                        },
+                    }
+                ],
+            },
+        ],
+    }
+
+
+def test_appx_removal_plan_allows_only_per_user_consumer_simulation(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    report = assert_readonly_report(appx_removal_plan_report(_appx_source_report()), APPX_REMOVAL_PLAN_SCHEMA)
+
+    assert_summary_counts(
+        report,
+        {
+            "change_count": 1,
+            "blocked_package_count": 3,
+            "execution_enabled_count": 0,
+            "per_user_scope_count": 1,
+        },
+    )
+    assert_field_values(
+        report["execution_gate"],
+        {
+            "appx_removal_execution_enabled": False,
+            "requires_appx_snapshot": True,
+            "requires_consumer_app_classification": True,
+            "requires_non_framework_non_system": True,
+            "requires_non_provisioned_scope": True,
+            "requires_restore_command": True,
+        },
+    )
+    change = assert_payload_schema(report["changes"][0], APPX_REMOVAL_CHANGE_SCHEMA)
+    assert_execution_disabled(change, "auto_executable", "safe_to_execute")
+    assert_field_values(
+        change,
+        {
+            "scope": "per-user",
+            "package.name": "Microsoft.XboxGamingOverlay",
+            "classification.category": "consumer-app",
+        },
+    )
+    assert_contains_all(change["remove_command"], ["powershell.exe", "Remove-AppxPackage"])
+    assert_payload_schema(change["rollback"], APPX_REMOVAL_REVERT_SCHEMA)
+    assert_contains_all(change["rollback"]["restore_command"], ["powershell.exe", "Add-AppxPackage"])
+    blocked_reasons = {reason for blocked in report["blocked_packages"] for reason in blocked["blocked_reasons"]}
+    assert_contains_all(blocked_reasons, ["category:framework", "category:unknown", "provisioned_package"])
+    assert_field_values(report["validation"], {"valid": True})
+
+
+def test_appx_removal_plan_validator_reports_protected_or_incomplete_changes(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = assert_payload_schema(
+        validate_appx_removal_plan(
+            {
+                "schema": APPX_REMOVAL_PLAN_SCHEMA,
+                "changes": [
+                    {
+                        "schema": APPX_REMOVAL_CHANGE_SCHEMA,
+                        "scope": "all-users",
+                        "package": {"package_full_name": ""},
+                        "classification": {"category": "framework", "protected_by_default": True},
+                        "execution_enabled": True,
+                    }
+                ],
+            }
+        ),
+        APPX_REMOVAL_PLAN_VALIDATION_SCHEMA,
+    )
+
+    assert_field_values(validation, {"valid": False})
+    assert_contains_all(
+        {violation["code"] for violation in validation["violations"]},
+        [
+            "PER_USER_SCOPE_REQUIRED",
+            "CONSUMER_APP_REQUIRED",
+            "PACKAGE_IDENTITY_REQUIRED",
+            "APPX_SNAPSHOT_REQUIRED",
+            "ROLLBACK_PLAN_REQUIRED",
+            "RESTORE_COMMAND_REQUIRED",
+            "EXECUTION_MUST_STAY_DISABLED",
+        ],
+    )
+
+
 @pytest.mark.parametrize(
     ("command", "schema"),
     [
@@ -268,6 +428,7 @@ def test_registry_privacy_plan_validator_reports_missing_evidence(
         ("backup-delete-contract", BACKUP_DELETE_CONTRACT_SCHEMA),
         ("permanent-delete-denial", PERMANENT_DELETE_DENIAL_SCHEMA),
         ("registry-privacy-plan", REGISTRY_PRIVACY_PLAN_SCHEMA),
+        ("appx-removal-plan", APPX_REMOVAL_PLAN_SCHEMA),
     ],
 )
 def test_cli_provider_and_schema_registry_expose_execution_contracts(
@@ -281,6 +442,8 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
         assert_execution_disabled(sample["capability"])
     if schema == REGISTRY_PRIVACY_PLAN_SCHEMA:
         assert_execution_disabled(sample["execution_gate"], "registry_privacy_execution_enabled")
+    if schema == APPX_REMOVAL_PLAN_SCHEMA:
+        assert_execution_disabled(sample["execution_gate"], "appx_removal_execution_enabled")
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete(

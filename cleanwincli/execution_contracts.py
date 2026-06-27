@@ -11,6 +11,10 @@ REGISTRY_PRIVACY_PLAN_SCHEMA = "cleanwin.registry-privacy-plan.v1"
 REGISTRY_PRIVACY_CHANGE_SCHEMA = "cleanwin.registry-privacy-change.v1"
 REGISTRY_PRIVACY_REVERT_SCHEMA = "cleanwin.registry-privacy-revert.v1"
 REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA = "cleanwin.registry-privacy-plan-validation.v1"
+APPX_REMOVAL_PLAN_SCHEMA = "cleanwin.appx-removal-plan.v1"
+APPX_REMOVAL_CHANGE_SCHEMA = "cleanwin.appx-removal-change.v1"
+APPX_REMOVAL_REVERT_SCHEMA = "cleanwin.appx-removal-revert.v1"
+APPX_REMOVAL_PLAN_VALIDATION_SCHEMA = "cleanwin.appx-removal-plan-validation.v1"
 
 
 def _registry_privacy_change_from_finding(finding: dict[str, Any]) -> dict[str, Any]:
@@ -157,6 +161,177 @@ def validate_registry_privacy_change_plan(plan: dict[str, Any]) -> dict[str, Any
             violations.append({"path": f"{prefix}.rollback", "code": "ROLLBACK_PLAN_REQUIRED", "message": "rollback metadata is required"})
     return {
         "schema": REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
+        "valid": not violations,
+        "violation_count": len(violations),
+        "violations": violations,
+    }
+
+
+def _appx_item_identity(item: dict[str, Any]) -> dict[str, str]:
+    name = str(item.get("Name") or item.get("name") or item.get("DisplayName") or "")
+    package_full_name = str(item.get("PackageFullName") or item.get("package_full_name") or item.get("PackageName") or name)
+    package_family_name = str(item.get("PackageFamilyName") or item.get("package_family_name") or "")
+    publisher = str(item.get("Publisher") or item.get("publisher") or item.get("PublisherId") or "")
+    return {
+        "name": name,
+        "package_full_name": package_full_name,
+        "package_family_name": package_family_name,
+        "publisher": publisher,
+    }
+
+
+def _appx_block_reasons(item: dict[str, Any], classification: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    category = classification.get("category")
+    if category != "consumer-app":
+        reasons.append(f"category:{category}")
+    if classification.get("protected_by_default") is True:
+        reasons.append("protected_by_default")
+    if classification.get("dependency") is True:
+        reasons.append("dependency_or_framework")
+    if classification.get("non_removable") is True:
+        reasons.append("non_removable")
+    if classification.get("provisioned_state") is True:
+        reasons.append("provisioned_package")
+    if not _appx_item_identity(item)["package_full_name"]:
+        reasons.append("missing_package_identity")
+    return reasons
+
+
+def _appx_removal_change_from_item(item: dict[str, Any], classification: dict[str, Any]) -> dict[str, Any]:
+    identity = _appx_item_identity(item)
+    snapshot_ref = f"snapshot://appx/{identity['package_full_name']}.json"
+    return {
+        "schema": APPX_REMOVAL_CHANGE_SCHEMA,
+        "id": f"appx-removal.change.{identity['name']}",
+        "target_action": "appx-per-user-remove",
+        "scope": "per-user",
+        "package": identity,
+        "classification": classification,
+        "snapshot_refs": [snapshot_ref],
+        "remove_command": ["powershell.exe", "Remove-AppxPackage", "-Package", identity["package_full_name"]],
+        "restore_command": ["powershell.exe", "Add-AppxPackage", "-Register", "<InstallLocation>\\AppxManifest.xml"],
+        "rollback": {
+            "schema": APPX_REMOVAL_REVERT_SCHEMA,
+            "package_full_name": identity["package_full_name"],
+            "package_family_name": identity["package_family_name"],
+            "snapshot_refs": [snapshot_ref],
+            "restore_command": ["powershell.exe", "Add-AppxPackage", "-Register", "<InstallLocation>\\AppxManifest.xml"],
+            "verification": ["query Get-AppxPackage for current user", "compare package family name"],
+        },
+        "execution_enabled": False,
+        "auto_executable": False,
+        "safe_to_execute": False,
+    }
+
+
+def appx_removal_plan_report(source_report: dict[str, Any] | None = None) -> dict[str, Any]:
+    if source_report is None:
+        from cleanwincli.windows_inventory import windows_inventory_report
+
+        source_report = windows_inventory_report()
+    changes: list[dict[str, Any]] = []
+    blocked: list[dict[str, Any]] = []
+    for section in source_report.get("sections", []):
+        if not isinstance(section, dict) or section.get("id") not in {"appx-packages", "provisioned-appx-packages"}:
+            continue
+        for item in section.get("items", []):
+            if not isinstance(item, dict):
+                continue
+            classification = item.get("cleanwin_classification")
+            if not isinstance(classification, dict):
+                continue
+            reasons = _appx_block_reasons(item, classification)
+            if reasons:
+                identity = _appx_item_identity(item)
+                blocked.append(
+                    {
+                        "schema": "cleanwin.appx-removal-block.v1",
+                        "package": identity,
+                        "classification": classification,
+                        "blocked_reasons": reasons,
+                        "execution_enabled": False,
+                        "safe_to_execute": False,
+                    }
+                )
+                continue
+            changes.append(_appx_removal_change_from_item(item, classification))
+    return {
+        "schema": APPX_REMOVAL_PLAN_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "source_report_schema": source_report.get("schema"),
+        "plan_state": "simulation-only",
+        "scope": "per-user",
+        "changes": changes,
+        "blocked_packages": blocked,
+        "summary": {
+            "change_count": len(changes),
+            "blocked_package_count": len(blocked),
+            "execution_enabled_count": sum(1 for change in changes if change["execution_enabled"]),
+            "per_user_scope_count": sum(1 for change in changes if change["scope"] == "per-user"),
+        },
+        "validation": validate_appx_removal_plan({"schema": APPX_REMOVAL_PLAN_SCHEMA, "changes": changes}),
+        "execution_gate": {
+            "appx_removal_execution_enabled": False,
+            "requires_appx_snapshot": True,
+            "requires_consumer_app_classification": True,
+            "requires_non_framework_non_system": True,
+            "requires_non_provisioned_scope": True,
+            "requires_restore_command": True,
+            "requires_matching_dry_run_token": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": [
+            "This report does not remove AppX packages.",
+            "This report does not remove provisioned packages.",
+            "This report does not remove framework, system, dependency, non-removable, OEM, or unknown packages.",
+        ],
+    }
+
+
+def validate_appx_removal_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    violations: list[dict[str, str]] = []
+    if plan.get("schema") != APPX_REMOVAL_PLAN_SCHEMA:
+        violations.append({"path": "schema", "code": "INVALID_SCHEMA", "message": f"schema must be {APPX_REMOVAL_PLAN_SCHEMA}"})
+    changes = plan.get("changes")
+    if not isinstance(changes, list):
+        violations.append({"path": "changes", "code": "MISSING_CHANGES", "message": "changes must be a list"})
+        changes = []
+    for index, change in enumerate(changes):
+        if not isinstance(change, dict):
+            violations.append({"path": f"changes.{index}", "code": "INVALID_CHANGE", "message": "change must be an object"})
+            continue
+        prefix = f"changes.{index}"
+        if change.get("schema") != APPX_REMOVAL_CHANGE_SCHEMA:
+            violations.append({"path": f"{prefix}.schema", "code": "INVALID_CHANGE_SCHEMA", "message": f"schema must be {APPX_REMOVAL_CHANGE_SCHEMA}"})
+        if change.get("scope") != "per-user":
+            violations.append({"path": f"{prefix}.scope", "code": "PER_USER_SCOPE_REQUIRED", "message": "AppX removal plan is limited to per-user scope"})
+        classification = change.get("classification")
+        if not isinstance(classification, dict) or classification.get("category") != "consumer-app":
+            violations.append({"path": f"{prefix}.classification", "code": "CONSUMER_APP_REQUIRED", "message": "only consumer-app classifications may be planned"})
+        elif (
+            classification.get("protected_by_default") is True
+            or classification.get("dependency") is True
+            or classification.get("non_removable") is True
+            or classification.get("provisioned_state") is True
+        ):
+            violations.append({"path": f"{prefix}.classification", "code": "PROTECTED_PACKAGE_BLOCKED", "message": "framework/system/provisioned/dependency packages are blocked"})
+        package = change.get("package")
+        if not isinstance(package, dict) or not package.get("package_full_name"):
+            violations.append({"path": f"{prefix}.package.package_full_name", "code": "PACKAGE_IDENTITY_REQUIRED", "message": "package_full_name is required"})
+        if not change.get("snapshot_refs"):
+            violations.append({"path": f"{prefix}.snapshot_refs", "code": "APPX_SNAPSHOT_REQUIRED", "message": "snapshot reference is required"})
+        rollback = change.get("rollback")
+        if not isinstance(rollback, dict) or rollback.get("schema") != APPX_REMOVAL_REVERT_SCHEMA:
+            violations.append({"path": f"{prefix}.rollback", "code": "ROLLBACK_PLAN_REQUIRED", "message": "rollback metadata is required"})
+        if not change.get("restore_command"):
+            violations.append({"path": f"{prefix}.restore_command", "code": "RESTORE_COMMAND_REQUIRED", "message": "restore command is required"})
+        if change.get("execution_enabled") is not False:
+            violations.append({"path": f"{prefix}.execution_enabled", "code": "EXECUTION_MUST_STAY_DISABLED", "message": "AppX removal plan must remain simulation-only"})
+    return {
+        "schema": APPX_REMOVAL_PLAN_VALIDATION_SCHEMA,
         "valid": not violations,
         "violation_count": len(violations),
         "violations": violations,

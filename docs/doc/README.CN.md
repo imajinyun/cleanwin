@@ -244,6 +244,7 @@ python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
+python3 cleanwin.py --json appx-removal-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -284,6 +285,13 @@ SmartScreen/search/autofill/metrics/prediction policies。它还会对内置 App
 export 要求、previous value、target value、managed-device detection、policy
 owner review、dry-run confirmation token 要求和 restore command。Validator 会
 报告缺失 evidence，并保持 registry execution disabled。
+
+`appx-removal-plan` 会把 Windows inventory 中的 AppX classification 转换成
+simulation-only per-user remove/revert plan。只有 consumer-app 且不是
+framework、system、dependency、non-removable 或 provisioned target 的 package
+可以进入 planned changes。Framework、unknown、OEM、system、dependency、
+non-removable 和 provisioned package 会以 blocked 形式输出明确原因。该报告
+不会运行 PowerShell，也不会移除 package。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、

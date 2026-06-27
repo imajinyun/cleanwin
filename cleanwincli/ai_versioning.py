@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from cleanwincli.execution_contracts import registry_privacy_change_plan_report, validate_registry_privacy_change_plan
+from cleanwincli.execution_contracts import (
+    appx_removal_plan_report,
+    registry_privacy_change_plan_report,
+    validate_appx_removal_plan,
+    validate_registry_privacy_change_plan,
+)
 from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
 from cleanwincli.rule_catalog import rule_pack_catalog_report
@@ -89,6 +94,10 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.registry-privacy-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-revert.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-plan-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.appx-removal-plan.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.appx-removal-change.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.appx-removal-revert.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.appx-removal-plan-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "ci")),
@@ -1648,6 +1657,14 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return registry_privacy_change_plan_report(_sample_debloat_privacy_report())["changes"][0]["rollback"]
     if schema_name == "cleanwin.registry-privacy-plan-validation.v1":
         return validate_registry_privacy_change_plan(registry_privacy_change_plan_report(_sample_debloat_privacy_report()))
+    if schema_name == "cleanwin.appx-removal-plan.v1":
+        return appx_removal_plan_report(_sample_windows_inventory())
+    if schema_name == "cleanwin.appx-removal-change.v1":
+        return appx_removal_plan_report(_sample_windows_inventory())["changes"][0]
+    if schema_name == "cleanwin.appx-removal-revert.v1":
+        return appx_removal_plan_report(_sample_windows_inventory())["changes"][0]["rollback"]
+    if schema_name == "cleanwin.appx-removal-plan-validation.v1":
+        return validate_appx_removal_plan(appx_removal_plan_report(_sample_windows_inventory()))
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":
