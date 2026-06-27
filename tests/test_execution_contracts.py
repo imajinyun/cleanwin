@@ -61,8 +61,17 @@ def test_disable_revert_contracts_require_snapshots_and_revert_metadata(
         ],
     )
     assert_contains_all(by_id["disable-revert.startup-entry"]["required_snapshots"], ["registry-export"])
-    assert_contains_all(by_id["disable-revert.service"]["required_snapshots"], ["service-state"])
-    assert_contains_all(by_id["disable-revert.scheduled-task"]["required_snapshots"], ["scheduled-task-state"])
+    assert_contains_all(by_id["disable-revert.startup-entry"]["required_review_evidence"], ["target_path", "target_status"])
+    assert_contains_all(by_id["disable-revert.service"]["required_snapshots"], ["service-state", "service-registry-export"])
+    assert_contains_all(
+        by_id["disable-revert.service"]["required_review_evidence"],
+        ["target_status", "start_type_classification", "dependencies", "trigger_start", "recovery_actions"],
+    )
+    assert_contains_all(by_id["disable-revert.scheduled-task"]["required_snapshots"], ["scheduled-task-state", "scheduled-task-xml-export"])
+    assert_contains_all(
+        by_id["disable-revert.scheduled-task"]["required_review_evidence"],
+        ["target_status", "run_as_user", "run_level", "xml_snapshot_required"],
+    )
     assert_contains_all(by_id["disable-revert.policy"]["required_rollback_metadata"], ["previous_value"])
     for contract in report["action_contracts"]:
         assert_execution_disabled(contract)

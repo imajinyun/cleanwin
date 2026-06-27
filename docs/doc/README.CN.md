@@ -245,21 +245,54 @@ python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 ```
 
+`installed-app-inventory` 是只读报告，会先关联 registry uninstall entries、
+Scoop、Chocolatey、portable app locations 与 cleanup rule ownership，再判断
+leftover 是否可能是卸载残留。Leftover correlations 会输出结构化 evidence
+links，覆盖 publisher、install location、uninstall key、product code、winget
+id、Scoop/Chocolatey package id 和 package manager source，同时保持所有卸载
+和清理动作禁用。
+
+`windows-inventory` 是只读报告，并为每个 Windows-native evidence source
+输出 collection plan。每个 section 都记录预期 command argv、collection
+method、Windows-only 状态、admin 要求、expected artifact schema、promotion
+gate 和 failure modes，同时保持 `executes_by_report=false`。AppX 和
+provisioned AppX entries 会输出 CleanWin classification contract，覆盖
+`framework`、`system`、`consumer-app`、`oem` 和 `unknown`，并记录默认保护、
+人工 review 建议，以及 provisioned package 对未来用户 profile 的影响。
+AppX collection plans 也会暴露 `cleanwin.appx-package-snapshot.v1` 和
+`cleanwin.provisioned-appx-package-snapshot.v1` artifact contract，覆盖
+identity fields、required snapshot fields、classification inputs、rollback
+reference fields 和 golden fixture 要求。这些 contract 仍然只读，不执行
+PowerShell，也不移除 package。
+
 `debloat-privacy-report` 仍然是只读报告，覆盖更完整的 Windows 隐私
 policy 基线，包括 telemetry、Advertising ID、consumer features、Copilot、
 Recall/WindowsAI、tailored experiences、activity history、feedback prompts、
-Cortana/Search 和 Spotlight。它还会对内置 AppX 包进行人工 review 分类，
-但不会卸载应用或修改 policy。
+Cortana/Search、Diagnostic Data Viewer、Spotlight/lock-screen content、
+location/Find My Device、speech/input personalization、app permissions、
+SmartScreen、cloud search、Start/Settings/third-party suggestions、silent app
+suggestions、Widgets、Edge personalization/shopping suggestions。它还会对内置
+AppX 包进行人工 review 分类，但不会卸载应用或修改 policy。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、
-services、driver services 和 scheduled tasks。该报告不会禁用启动项、
-停止服务、编辑 registry，也不会执行 `schtasks`/`sc.exe`。
+services、driver services 和 scheduled tasks。Service 和 scheduled task
+entries 会输出 target existence/status、start-type 或 run-level 分类、
+dependency、trigger/recovery，以及 `sc.exe qc`、`Get-CimInstance
+Win32_Service`、scheduled task XML export 等 snapshot evidence 要求。该报告
+不会禁用启动项、停止服务、编辑 registry，也不会执行 `schtasks`/`sc.exe`。
 
 `promotion-gates` 定义 report-to-execution 契约。Windows inventory 中的
 AppX/provisioned package、Windows Feature、Component Store、Installer cache
 和 Recycle Bin 发现项，在缺少 snapshot evidence、rollback metadata、专项测试
 和明确人工 review 前，都保持 report-only。
+Startup、service 和 scheduled task promotion gates 现在要求与
+`startup-service-inventory` 输出一致的 evidence，包括 target status、service
+dependency/trigger/recovery review、service registry export 和 scheduled task
+XML export。这些 gates 仍然只是不可执行契约。
+Promotion gate validator 可以比较 source report schema 和 proposed action
+contract，并返回缺失的 evidence、snapshot、rollback metadata、tests 和 human
+confirmations，但不会启用执行。
 
 ---
 
@@ -391,6 +424,9 @@ CI 入口：
 - `.github/workflows/ci.yml` 还会运行 package install smoke 和可选 Docker sandbox gate。
 - `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
 - `.github/workflows/windows-smoke.yml` 包含 `always()` cleanup step，用于清理 build outputs、tool caches、pytest caches、coverage 文件、`htmlcov` 和 `__pycache__`。
+- `windows-smoke-matrix` 跟踪 Windows 10/11 上 read-only debloat/privacy、startup/service/task 和 system-health diagnostics 的必备证据，作为后续 execution model 扩展前的门禁。
+- `system-health-report` 保持 diagnostic-only，只使用 DISM `ScanHealth`/`CheckHealth`、SFC scan、CHKDSK scan、Settings troubleshooters 和 pending reboot registry query 等扫描/复核命令，不包含 repair flags。
+- `system-health-evidence` parser contracts 会把已捕获的 DISM 和 pending reboot registry-query 输出转换为结构化 findings，但不会运行 DISM、registry command 或 repair action。
 
 治理路线图：
 

@@ -78,6 +78,7 @@ def test_extended_privacy_policy_surface_is_reported(
             r"HKCU\Software\Policies\Microsoft\Windows\WindowsAI\DisableAIDataAnalysis": 1,
             r"HKCU\Software\Microsoft\Windows\CurrentVersion\Privacy\TailoredExperiencesWithDiagnosticDataEnabled": 1,
             r"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DisableDiagnosticDataViewer": 1,
         },
         raw_appx_packages=[],
         env={},
@@ -87,12 +88,57 @@ def test_extended_privacy_policy_surface_is_reported(
     recall = by_id["privacy.recall.disabled"]
     tailored = by_id["privacy.tailored-experiences.disabled"]
     upload = by_id["privacy.activity-history.upload-disabled"]
+    viewer = by_id["privacy.diagnostic-data-viewer.disabled"]
     assert_field_values(recall, {"state": "privacy-hardened", "risk": "high"})
     assert_field_values(tailored, {"state": "review-recommended"})
     assert_field_values(upload, {"state": "review-recommended"})
+    assert_field_values(viewer, {"state": "privacy-hardened"})
     assert_payload_schema(recall["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(tailored)
-    assert_summary_counts(report, {"registry_policy_count": 11, "privacy_hardened_count": 1})
+    assert_summary_counts(report, {"registry_policy_count": 35, "privacy_hardened_count": 2})
+
+
+def test_privatezilla_style_privacy_baseline_is_reported(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = debloat_privacy_report(
+        raw_registry_values={
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors\DisableLocation": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\Value": "Allow",
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\EnableSmartScreen": 0,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SilentInstalledAppsEnabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Dsh\AllowNewsAndInterests": 0,
+            r"HKCU\Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy\HasAccepted": 0,
+            r"HKCU\Software\Policies\Microsoft\InputPersonalization\RestrictImplicitTextCollection": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\FindMyDevice\AllowFindMyDevice": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\RotatingLockScreenEnabled": 0,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\SubscribedContent-338389Enabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\PersonalizationReportingEnabled": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\EdgeShoppingAssistantEnabled": 1,
+        },
+        raw_appx_packages=[],
+        env={},
+    )
+    by_id = {finding["id"]: finding for finding in report["findings"]}
+
+    assert_field_values(by_id["privacy.location.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.webcam-access.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.smartscreen.enabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.silent-installed-apps.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.widgets.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.online-speech.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.implicit-text-collection.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.find-my-device.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.lock-screen-spotlight.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.third-party-suggestions.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.edge-personalization-reporting.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.edge-shopping-assistant.disabled"], {"state": "review-recommended"})
+    assert_payload_schema(by_id["privacy.webcam-access.disabled"]["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
+    assert_safe_to_execute_disabled(by_id["privacy.smartscreen.enabled"])
+    assert_summary_counts(report, {"registry_policy_count": 35, "privacy_hardened_count": 5})
 
 
 def test_appx_and_oem_findings_are_review_only(

@@ -45,6 +45,9 @@ def test_windows_smoke_matrix_covers_expected_edge_scenarios(assert_contains_all
         [
             "win10-win11-standard-user-safe-preview",
             "admin-official-command-and-recovery-readiness",
+            "debloat-privacy-readonly-baseline",
+            "startup-service-task-readonly-inventory",
+            "system-health-readonly-diagnostics",
             "onedrive-known-folders-and-user-data-protection",
             "browser-profile-lock-and-sensitive-exclusion",
             "wsl-docker-visual-studio-report-only",
@@ -61,6 +64,23 @@ def test_windows_smoke_matrix_covers_expected_edge_scenarios(assert_contains_all
     browser = by_id["browser-profile-lock-and-sensitive-exclusion"]
     assert_contains_all(browser["commands"], [["python", "cleanwin.py", "--json", "browser-profile-inventory"]])
     assert_contains_all(browser["required_evidence"], ["sensitive_exclusions"])
+
+
+def test_windows_smoke_matrix_covers_readonly_debloat_startup_and_health(assert_contains_all: AssertContainsAll) -> None:
+    report = windows_smoke_matrix_report()
+    by_id = {scenario["id"]: scenario for scenario in report["scenarios"]}
+
+    privacy = by_id["debloat-privacy-readonly-baseline"]
+    assert_contains_all(privacy["commands"], [["python", "cleanwin.py", "--json", "debloat-privacy-report"]])
+    assert_contains_all(privacy["required_evidence"], ["registry_privacy_evidence_schema", "registry_export_required"])
+
+    startup = by_id["startup-service-task-readonly-inventory"]
+    assert_contains_all(startup["commands"], [["python", "cleanwin.py", "--json", "startup-service-inventory"]])
+    assert_contains_all(startup["required_evidence"], ["service_registry_export_required", "scheduled_task_xml_export_required"])
+
+    health = by_id["system-health-readonly-diagnostics"]
+    assert_contains_all(health["commands"], [["python", "cleanwin.py", "--json", "system-health-report"]])
+    assert_contains_all(health["required_evidence"], ["dism_scanhealth_only", "repair_flags_absent"])
 
 
 def test_cli_ai_provider_and_schema_registry_expose_windows_smoke_matrix(

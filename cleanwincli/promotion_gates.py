@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 PROMOTION_GATES_SCHEMA = "cleanwin.promotion-gates.v1"
+PROMOTION_GATE_VALIDATION_SCHEMA = "cleanwin.promotion-gate-validation.v1"
 
 
 def _gate(
@@ -65,14 +67,22 @@ def promotion_gates_report() -> dict[str, Any]:
             required_evidence=[
                 "startup_location",
                 "entry_name",
+                "command",
                 "target_path",
+                "target_status",
                 "target_exists",
                 "publisher_or_signature_status",
                 "risk_reason",
+                "snapshot_requirements",
             ],
             required_snapshots=["registry-export", "startup-folder-snapshot"],
             rollback_metadata=["startup_location", "entry_name", "previous_command", "restore_action"],
-            required_tests=["fixture-missing-target", "fixture-existing-target", "rollback-metadata-validation"],
+            required_tests=[
+                "fixture-missing-target",
+                "fixture-existing-target",
+                "fixture-environment-expansion-required",
+                "rollback-metadata-validation",
+            ],
             human_confirmations=["explicit-startup-disable-review", "matching-dry-run-token"],
             rationale="Startup changes alter user login behavior and need reversible state before CleanWin can disable anything.",
         ),
@@ -85,13 +95,35 @@ def promotion_gates_report() -> dict[str, Any]:
                 "service_or_task_name",
                 "current_state",
                 "startup_type_or_task_state",
+                "start_type_classification_or_run_level",
                 "publisher_or_author",
                 "target_path",
+                "target_status",
+                "dependency_or_trigger_review",
+                "recovery_or_xml_snapshot_requirement",
                 "risk_reason",
             ],
-            required_snapshots=["system-restore-point", "service-state", "scheduled-task-state"],
-            rollback_metadata=["object_name", "previous_state", "previous_start_type", "restore_command"],
-            required_tests=["fixture-service-state", "fixture-scheduled-task-state", "rollback-metadata-validation"],
+            required_snapshots=[
+                "system-restore-point",
+                "service-state",
+                "service-registry-export",
+                "scheduled-task-state",
+                "scheduled-task-xml-export",
+            ],
+            rollback_metadata=[
+                "object_name",
+                "previous_state",
+                "previous_start_type_or_task_xml",
+                "restore_command",
+                "snapshot_artifact_ref",
+            ],
+            required_tests=[
+                "fixture-service-state",
+                "fixture-scheduled-task-state",
+                "fixture-service-target-status",
+                "fixture-scheduled-task-xml-required",
+                "rollback-metadata-validation",
+            ],
             human_confirmations=["explicit-service-task-review", "matching-dry-run-token"],
             rationale="Service and task changes can break update, security, or vendor maintenance flows and must be reversible.",
         ),
@@ -252,4 +284,97 @@ def promotion_gates_report() -> dict[str, Any]:
             "This report does not enable registry, startup, service, scheduled task, debloat, or official-command execution.",
             "This report does not weaken CleanWin dry-run, recycle, confirmation phrase, operation log, or AI host policy gates.",
         ],
+    }
+
+
+def _values_from_mapping(payload: Mapping[str, Any], key: str) -> set[str]:
+    value = payload.get(key)
+    if isinstance(value, Mapping):
+        return {str(item) for item in value.keys()}
+    if isinstance(value, Iterable) and not isinstance(value, str | bytes):
+        return {str(item) for item in value}
+    return set()
+
+
+def _gate_for_action(gates: list[dict[str, Any]], proposed_action: Mapping[str, Any]) -> dict[str, Any] | None:
+    gate_id = str(proposed_action.get("gate_id") or "")
+    target_action = str(proposed_action.get("target_action") or "")
+    for gate in gates:
+        if gate_id and gate["id"] == gate_id:
+            return gate
+        if target_action and gate["target_action"] == target_action:
+            return gate
+    return None
+
+
+def validate_promotion_gate_action(
+    *,
+    source_report: Mapping[str, Any],
+    proposed_action: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate whether a proposed action has the evidence required by a gate."""
+    gates = promotion_gates_report()["gates"]
+    gate = _gate_for_action(gates, proposed_action)
+    source_schema = str(source_report.get("schema") or proposed_action.get("source_report_schema") or "")
+    provided_evidence = _values_from_mapping(proposed_action, "evidence")
+    provided_snapshots = _values_from_mapping(proposed_action, "snapshots")
+    provided_rollback_metadata = _values_from_mapping(proposed_action, "rollback_metadata")
+    provided_tests = _values_from_mapping(proposed_action, "tests")
+    provided_confirmations = _values_from_mapping(proposed_action, "human_confirmations")
+
+    if gate is None:
+        return {
+            "schema": PROMOTION_GATE_VALIDATION_SCHEMA,
+            "valid": False,
+            "destructive": False,
+            "dry_run": True,
+            "execution_enabled": False,
+            "gate_id": "",
+            "target_action": str(proposed_action.get("target_action") or ""),
+            "source_report_schema": source_schema,
+            "missing_source_reports": [],
+            "missing_evidence": [],
+            "missing_snapshots": [],
+            "missing_rollback_metadata": [],
+            "missing_tests": [],
+            "missing_human_confirmations": [],
+            "errors": [{"code": "UNKNOWN_PROMOTION_GATE", "detail": "No promotion gate matches the proposed action."}],
+            "safe_to_execute": False,
+        }
+
+    missing_source_reports = [] if source_schema in gate["source_reports"] else list(gate["source_reports"])
+    missing_evidence = [item for item in gate["required_evidence"] if item not in provided_evidence]
+    missing_snapshots = [item for item in gate["required_snapshots"] if item not in provided_snapshots]
+    missing_rollback_metadata = [item for item in gate["rollback_metadata"] if item not in provided_rollback_metadata]
+    missing_tests = [item for item in gate["required_tests"] if item not in provided_tests]
+    missing_confirmations = [item for item in gate["human_confirmations"] if item not in provided_confirmations]
+    errors = []
+    for code, missing in [
+        ("MISSING_SOURCE_REPORT", missing_source_reports),
+        ("MISSING_REQUIRED_EVIDENCE", missing_evidence),
+        ("MISSING_REQUIRED_SNAPSHOTS", missing_snapshots),
+        ("MISSING_ROLLBACK_METADATA", missing_rollback_metadata),
+        ("MISSING_REQUIRED_TESTS", missing_tests),
+        ("MISSING_HUMAN_CONFIRMATIONS", missing_confirmations),
+    ]:
+        if missing:
+            errors.append({"code": code, "detail": ", ".join(missing)})
+
+    return {
+        "schema": PROMOTION_GATE_VALIDATION_SCHEMA,
+        "valid": not errors,
+        "destructive": False,
+        "dry_run": True,
+        "execution_enabled": False,
+        "gate_id": gate["id"],
+        "target_action": gate["target_action"],
+        "source_report_schema": source_schema,
+        "missing_source_reports": missing_source_reports,
+        "missing_evidence": missing_evidence,
+        "missing_snapshots": missing_snapshots,
+        "missing_rollback_metadata": missing_rollback_metadata,
+        "missing_tests": missing_tests,
+        "missing_human_confirmations": missing_confirmations,
+        "errors": errors,
+        "safe_to_execute": False,
     }

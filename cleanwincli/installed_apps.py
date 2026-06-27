@@ -28,6 +28,24 @@ def _normalize_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
 
+def _product_code_from_entry(entry: Mapping[str, Any]) -> str:
+    key_path = str(entry.get("key_path") or "")
+    product_code = str(entry.get("ProductCode") or entry.get("product_code") or "").strip()
+    if product_code:
+        return product_code
+    match = re.search(r"\{[0-9a-fA-F-]{36}\}", key_path)
+    return match.group(0).upper() if match else ""
+
+
+def _package_id_from_entry(entry: Mapping[str, Any], *, source: str, display_name: str) -> str:
+    explicit = str(entry.get("package_id") or entry.get("PackageIdentifier") or entry.get("winget_id") or entry.get("id") or "").strip()
+    if explicit:
+        return explicit
+    if source in {"scoop", "chocolatey", "winget"}:
+        return display_name
+    return ""
+
+
 def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, Any] | None:
     display_name = str(entry.get("DisplayName") or entry.get("display_name") or "").strip()
     if not display_name:
@@ -47,6 +65,9 @@ def _normalize_app_entry(entry: Mapping[str, Any], *, source: str) -> dict[str, 
         "display_version": str(entry.get("DisplayVersion") or entry.get("display_version") or "").strip(),
         "publisher": str(entry.get("Publisher") or entry.get("publisher") or "").strip(),
         "install_location": str(entry.get("InstallLocation") or entry.get("install_location") or "").strip(),
+        "product_code": _product_code_from_entry(entry),
+        "package_id": _package_id_from_entry(entry, source=normalized_source, display_name=display_name),
+        "winget_id": str(entry.get("winget_id") or entry.get("PackageIdentifier") or "").strip(),
         "uninstall_string_present": bool(entry.get("UninstallString") or entry.get("uninstall_string")),
         "quiet_uninstall_string_present": bool(entry.get("QuietUninstallString") or entry.get("quiet_uninstall_string")),
         "estimated_size_kb": estimated_size_kb,
@@ -207,9 +228,12 @@ def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict
                 "key_path": str(child),
                 "display_name": child.name,
                 "display_version": "",
-                "publisher": "Scoop",
-                "install_location": str(child),
-                "uninstall_string_present": False,
+            "publisher": "Scoop",
+            "install_location": str(child),
+            "product_code": "",
+            "package_id": child.name,
+            "winget_id": "",
+            "uninstall_string_present": False,
                 "quiet_uninstall_string_present": False,
                 "estimated_size_kb": None,
                 "windows_installer": False,
@@ -252,6 +276,9 @@ def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list
             "display_version": version,
             "publisher": "Chocolatey",
             "install_location": str(package_dir),
+            "product_code": "",
+            "package_id": display_name,
+            "winget_id": "",
             "uninstall_string_present": False,
             "quiet_uninstall_string_present": False,
             "estimated_size_kb": None,
@@ -287,6 +314,9 @@ def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], l
                 "display_version": "",
                 "publisher": "",
                 "install_location": str(child),
+                "product_code": "",
+                "package_id": "",
+                "winget_id": "",
                 "uninstall_string_present": False,
                 "quiet_uninstall_string_present": False,
                 "estimated_size_kb": None,
@@ -303,8 +333,39 @@ def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], l
 
 def _app_matches_owner(app: Mapping[str, Any], owner: str) -> bool:
     owner_token = _normalize_token(owner)
-    haystack = _normalize_token(f"{app.get('display_name', '')} {app.get('publisher', '')}")
+    haystack = _normalize_token(
+        f"{app.get('display_name', '')} {app.get('publisher', '')} {app.get('package_id', '')} {app.get('winget_id', '')}"
+    )
     return bool(owner_token and owner_token in haystack)
+
+
+def _application_evidence_link(app: Mapping[str, Any], *, owner: str) -> dict[str, Any]:
+    package_id = str(app.get("package_id") or "")
+    winget_id = str(app.get("winget_id") or "")
+    source = str(app.get("source") or "")
+    package_manager = source if source in {"winget", "scoop", "chocolatey"} else ""
+    matched_fields = [
+        field
+        for field in ["display_name", "publisher", "install_location", "product_code", "package_id", "winget_id", "key_path"]
+        if str(app.get(field) or "")
+    ]
+    return {
+        "schema": "cleanwin.installed-app-leftover-evidence-link.v1",
+        "owner": owner,
+        "match_basis": "owner-token",
+        "matched_fields": matched_fields,
+        "display_name": str(app.get("display_name") or ""),
+        "publisher": str(app.get("publisher") or ""),
+        "install_location": str(app.get("install_location") or ""),
+        "uninstall_key": str(app.get("key_path") or ""),
+        "product_code": str(app.get("product_code") or ""),
+        "winget_id": winget_id if source == "winget" else "",
+        "package_manager": package_manager,
+        "package_id": package_id,
+        "source": source,
+        "safe_to_execute": False,
+        "executes_by_report": False,
+    }
 
 
 def _leftover_correlations(apps: list[dict[str, Any]], env: Mapping[str, str]) -> list[dict[str, Any]]:
@@ -335,9 +396,15 @@ def _leftover_correlations(apps: list[dict[str, Any]], env: Mapping[str, str]) -
                         "display_name": app["display_name"],
                         "publisher": app["publisher"],
                         "source": app["source"],
+                        "install_location": app["install_location"],
+                        "uninstall_key": app["key_path"],
+                        "product_code": app["product_code"],
+                        "package_id": app["package_id"],
+                        "winget_id": app["winget_id"],
                     }
                     for app in matches
                 ],
+                "evidence_links": [_application_evidence_link(app, owner=owner) for app in matches],
             }
         )
     return correlations

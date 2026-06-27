@@ -41,6 +41,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
     assert_payload_schema: AssertPayloadSchema,
     assert_summary_counts: AssertSummaryCounts,
     assert_field_values: AssertFieldValues,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = installed_app_inventory_report(
         raw_registry_entries=[
@@ -53,6 +54,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
                 "EstimatedSize": "250000",
                 "InstallDate": "20260620",
                 "key_path": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Slack",
+                "ProductCode": "{11111111-2222-3333-4444-555555555555}",
             }
         ],
         env={},
@@ -67,6 +69,7 @@ def test_registry_entries_are_normalized_without_uninstalling(
             "publisher": "Slack Technologies LLC",
             "uninstall_string_present": True,
             "estimated_size_kb": 250000,
+            "product_code": "{11111111-2222-3333-4444-555555555555}",
         },
     )
     assert_payload_schema(app["uninstall_strategy"], "cleanwin.uninstall-strategy.v1")
@@ -80,6 +83,31 @@ def test_registry_entries_are_normalized_without_uninstalling(
             "recommendation": "skip-leftover-cleanup-until-uninstalled",
         },
     )
+    assert_field_values(
+        correlation["matched_applications"][0],
+        {
+            "install_location": r"C:\Users\tester\AppData\Local\slack",
+            "uninstall_key": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Slack",
+            "product_code": "{11111111-2222-3333-4444-555555555555}",
+        },
+    )
+    evidence = correlation["evidence_links"][0]
+    assert_payload_schema(evidence, "cleanwin.installed-app-leftover-evidence-link.v1")
+    assert_field_values(
+        evidence,
+        {
+            "owner": "Slack",
+            "match_basis": "owner-token",
+            "display_name": "Slack",
+            "publisher": "Slack Technologies LLC",
+            "install_location": r"C:\Users\tester\AppData\Local\slack",
+            "uninstall_key": r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Slack",
+            "product_code": "{11111111-2222-3333-4444-555555555555}",
+            "source": "registry-uninstall",
+        },
+    )
+    assert_contains_all(evidence["matched_fields"], ["display_name", "publisher", "install_location", "product_code", "key_path"])
+    assert_execution_disabled(evidence)
 
 
 def test_filesystem_package_sources_and_leftover_correlation(
@@ -135,6 +163,43 @@ def test_filesystem_package_sources_and_leftover_correlation(
         report,
         {"uninstall_strategy_counts.scoop-uninstall": 1, "manual_review_strategy_count": 1},
     )
+
+
+def test_leftover_correlation_links_package_manager_identity(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    profile = tmp_path / "Profile"
+    app_data = tmp_path / "Roaming"
+    write_text_file(profile / "scoop" / "apps" / "slack" / "manifest.json", "{}")
+    write_text_file(app_data / "Slack" / "GPUCache" / "entry", "cache")
+
+    report = installed_app_inventory_report(
+        raw_registry_entries=[],
+        env={
+            "USERPROFILE": str(profile),
+            "HOME": str(profile),
+            "APPDATA": str(app_data),
+        },
+    )
+
+    correlation = next(item for item in report["leftover_correlations"] if item["rule_id"] == "app-leftovers.slack.gpu-cache")
+    evidence = correlation["evidence_links"][0]
+    assert_payload_schema(evidence, "cleanwin.installed-app-leftover-evidence-link.v1")
+    assert_field_values(
+        evidence,
+        {
+            "source": "scoop",
+            "package_manager": "scoop",
+            "package_id": "slack",
+            "display_name": "slack",
+            "publisher": "Scoop",
+        },
+    )
+    assert_execution_disabled(evidence)
 
 
 def test_uninstall_strategy_classifies_msi_store_winget_steam_and_orphans(

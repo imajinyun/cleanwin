@@ -160,6 +160,20 @@ def _command_target_exists(command: str) -> bool:
     return Path(target).exists()
 
 
+def _command_target_status(command: str) -> dict[str, Any]:
+    target = _strip_command_target(command)
+    if not target:
+        status = "missing-command"
+        exists = False
+    elif "%" in target:
+        status = "environment-expansion-required"
+        exists = False
+    else:
+        exists = Path(target).exists()
+        status = "exists" if exists else "missing"
+    return {"target": target, "exists": exists, "status": status}
+
+
 def _startup_folder_entries(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     roots = [
         ("user-startup-folder", Path(env["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup") if env.get("APPDATA") else None,
@@ -196,22 +210,77 @@ def _startup_folder_entries(env: Mapping[str, str]) -> tuple[list[dict[str, Any]
 def _service_entries(raw_services: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if raw_services is None:
         return [], _source_status("services", available=False, reason="external-command-not-executed", evidence={"command": "Get-Service | Select Name,Status,StartType"})
-    entries = [
-        {
-            "name": str(service.get("Name") or service.get("name") or ""),
-            "display_name": str(service.get("DisplayName") or service.get("display_name") or ""),
-            "status": str(service.get("Status") or service.get("status") or ""),
-            "start_type": str(service.get("StartType") or service.get("start_type") or ""),
-            "service_type": str(service.get("ServiceType") or service.get("service_type") or "service"),
-            "binary_path": str(service.get("PathName") or service.get("BinaryPathName") or service.get("binary_path") or ""),
-            "publisher": str(service.get("Publisher") or service.get("publisher") or ""),
-            "signature_status": "not-checked",
-            "risk": _service_risk(service),
-            "safe_to_execute": False,
-        }
-        for service in raw_services
-    ]
+    entries = []
+    for service in raw_services:
+        binary_path = str(service.get("PathName") or service.get("BinaryPathName") or service.get("binary_path") or "")
+        target = _command_target_status(binary_path)
+        service_type = str(service.get("ServiceType") or service.get("service_type") or "service")
+        entries.append(
+            {
+                "name": str(service.get("Name") or service.get("name") or ""),
+                "display_name": str(service.get("DisplayName") or service.get("display_name") or ""),
+                "status": str(service.get("Status") or service.get("status") or ""),
+                "start_type": str(service.get("StartType") or service.get("start_type") or ""),
+                "start_type_classification": _service_start_type_classification(service),
+                "service_type": service_type,
+                "is_driver": "driver" in service_type.lower(),
+                "binary_path": binary_path,
+                "target_path": target["target"],
+                "target_exists": target["exists"],
+                "target_status": target["status"],
+                "publisher": str(service.get("Publisher") or service.get("publisher") or ""),
+                "signature_status": "not-checked",
+                "dependencies": _string_list(_first_present(service, "Dependencies", "dependencies")),
+                "trigger_start": _bool_or_unknown(_first_present(service, "TriggerStart", "trigger_start")),
+                "recovery_actions": _string_list(_first_present(service, "RecoveryActions", "recovery_actions")),
+                "snapshot_requirements": [
+                    "sc.exe qc",
+                    "Get-CimInstance Win32_Service",
+                    "registry export HKLM\\SYSTEM\\CurrentControlSet\\Services",
+                ],
+                "risk": _service_risk(service),
+                "safe_to_execute": False,
+            }
+        )
     return [entry for entry in entries if entry["name"]], _source_status("services", available=True, reason="test-fixture")
+
+
+def _first_present(values: Mapping[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in values:
+            return values[key]
+    return None
+
+
+def _string_list(raw_value: Any) -> list[str]:
+    if raw_value is None or raw_value == "":
+        return []
+    if isinstance(raw_value, str):
+        return [raw_value]
+    if isinstance(raw_value, Iterable):
+        return [str(item) for item in raw_value]
+    return [str(raw_value)]
+
+
+def _bool_or_unknown(raw_value: Any) -> bool | str:
+    if isinstance(raw_value, bool):
+        return raw_value
+    if raw_value is None or raw_value == "":
+        return "unknown"
+    return str(raw_value).lower() in {"1", "true", "yes", "enabled"}
+
+
+def _service_start_type_classification(service: Mapping[str, Any]) -> str:
+    start_type = str(service.get("StartType") or service.get("start_type") or "").lower()
+    if "auto" in start_type:
+        return "auto-start"
+    if "boot" in start_type or "system" in start_type:
+        return "boot-or-system"
+    if "disabled" in start_type:
+        return "disabled"
+    if "manual" in start_type or "demand" in start_type:
+        return "manual"
+    return "unknown"
 
 
 def _service_risk(service: Mapping[str, Any]) -> str:
@@ -219,7 +288,7 @@ def _service_risk(service: Mapping[str, Any]) -> str:
     service_type = str(service.get("ServiceType") or service.get("service_type") or "").lower()
     if "driver" in service_type:
         return "high"
-    if start_type == "automatic":
+    if "automatic" in start_type or "auto" in start_type:
         return "high"
     return "medium"
 
@@ -227,19 +296,41 @@ def _service_risk(service: Mapping[str, Any]) -> str:
 def _scheduled_task_entries(raw_tasks: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if raw_tasks is None:
         return [], _source_status("scheduled-tasks", available=False, reason="external-command-not-executed", evidence={"command": "schtasks /Query /FO CSV /V"})
-    entries = [
-        {
-            "name": str(task.get("TaskName") or task.get("name") or ""),
-            "state": str(task.get("Status") or task.get("state") or ""),
-            "task_to_run": str(task.get("Task To Run") or task.get("task_to_run") or ""),
-            "publisher": str(task.get("Author") or task.get("publisher") or ""),
-            "target_exists": _command_target_exists(str(task.get("Task To Run") or task.get("task_to_run") or "")),
-            "risk": "medium",
-            "safe_to_execute": False,
-        }
-        for task in raw_tasks
-    ]
+    entries = []
+    for task in raw_tasks:
+        task_name = str(task.get("TaskName") or task.get("name") or "")
+        task_to_run = str(task.get("Task To Run") or task.get("task_to_run") or "")
+        target = _command_target_status(task_to_run)
+        entries.append(
+            {
+                "name": str(task.get("TaskName") or task.get("name") or ""),
+                "task_path": task_name,
+                "task_folder": _scheduled_task_folder(task_name),
+                "state": str(task.get("Status") or task.get("state") or ""),
+                "task_to_run": task_to_run,
+                "target_path": target["target"],
+                "target_exists": target["exists"],
+                "target_status": target["status"],
+                "author": str(task.get("Author") or task.get("author") or ""),
+                "publisher": str(task.get("Author") or task.get("publisher") or ""),
+                "run_as_user": str(task.get("Run As User") or task.get("run_as_user") or ""),
+                "run_level": str(task.get("RunLevel") or task.get("run_level") or "unknown"),
+                "schedule_type": str(task.get("Schedule Type") or task.get("schedule_type") or ""),
+                "last_result": str(task.get("Last Result") or task.get("last_result") or ""),
+                "xml_snapshot_required": True,
+                "snapshot_requirements": ["schtasks /Query /XML", "schtasks /Query /FO CSV /V"],
+                "risk": "medium",
+                "safe_to_execute": False,
+            }
+        )
     return [entry for entry in entries if entry["name"]], _source_status("scheduled-tasks", available=True, reason="test-fixture")
+
+
+def _scheduled_task_folder(task_name: str) -> str:
+    if "\\" not in task_name:
+        return "\\"
+    folder = task_name.rsplit("\\", 1)[0]
+    return folder or "\\"
 
 
 def startup_service_inventory_report(
@@ -273,8 +364,11 @@ def startup_service_inventory_report(
             "high_risk_extension_count": sum(1 for entry in registry_extension_entries if entry["risk"] == "high"),
             "service_count": len(services),
             "driver_service_count": sum(1 for service in services if "driver" in service.get("service_type", "").lower()),
+            "auto_start_service_count": sum(1 for service in services if service.get("start_type_classification") == "auto-start"),
             "scheduled_task_count": len(tasks),
+            "elevated_task_count": sum(1 for task in tasks if str(task.get("run_level", "")).lower() in {"highest", "highestavailable"}),
             "missing_target_count": sum(1 for entry in [*registry_entries, *folder_entries, *tasks] if not entry.get("target_exists")),
+            "missing_service_target_count": sum(1 for service in services if not service.get("target_exists")),
             "auto_executable_count": 0,
         },
         "execution_gate": {

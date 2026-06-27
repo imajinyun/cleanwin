@@ -245,22 +245,58 @@ python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 ```
 
+`installed-app-inventory` is read-only and correlates registry uninstall
+entries, Scoop, Chocolatey, portable app locations, and cleanup rule ownership
+before treating leftovers as cleanup candidates. Leftover correlations include
+structured evidence links for publisher, install location, uninstall key,
+product code, winget id, Scoop/Chocolatey package id, and package manager
+source, while keeping all uninstall and cleanup actions disabled.
+
+`windows-inventory` is read-only and includes a collection plan for every
+Windows-native evidence source. Each section records the intended command argv,
+collection method, Windows-only status, admin requirement, expected artifact
+schema, promotion gate, and failure modes while keeping `executes_by_report`
+false. AppX and provisioned AppX entries include a CleanWin classification
+contract for `framework`, `system`, `consumer-app`, `oem`, and `unknown`
+packages, with default protection, manual-review guidance, and future user
+profile impact for provisioned packages. The AppX collection plans also expose
+artifact contracts for `cleanwin.appx-package-snapshot.v1` and
+`cleanwin.provisioned-appx-package-snapshot.v1`, including identity fields,
+required snapshot fields, classification inputs, rollback reference fields, and
+golden-fixture requirements. These contracts are report-only and do not run
+PowerShell or remove packages.
+
 `debloat-privacy-report` is report-only and now covers a broader Windows privacy
 policy baseline including telemetry, Advertising ID, consumer features, Copilot,
 Recall/WindowsAI, tailored experiences, activity history, feedback prompts,
-Cortana/Search, and Spotlight. It also classifies bundled AppX packages for
-manual review without uninstalling or changing policy.
+Diagnostic Data Viewer, Cortana/Search, Spotlight and lock-screen content,
+location and Find My Device, speech and input personalization, app permissions,
+SmartScreen, cloud search, Start/Settings/third-party suggestions, silent app
+suggestions, Widgets, and Edge personalization/shopping suggestions. It also
+classifies bundled AppX packages for manual review without uninstalling or
+changing policy.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
-services, driver services, and scheduled tasks. The report never disables
-entries, stops services, edits registry values, or executes `schtasks`/`sc.exe`.
+services, driver services, and scheduled tasks. Service and task entries include
+target existence/status, start-type or run-level classification, dependency,
+trigger/recovery, and required snapshot evidence fields such as `sc.exe qc`,
+`Get-CimInstance Win32_Service`, and scheduled task XML exports. The report
+never disables entries, stops services, edits registry values, or executes
+`schtasks`/`sc.exe`.
 
 `promotion-gates` defines report-to-execution contracts for high-risk surfaces.
 Windows inventory findings for AppX/provisioned packages, Windows Features,
 Component Store, Installer cache, and Recycle Bin remain report-only until
 snapshot evidence, rollback metadata, focused tests, and explicit human review
 are present.
+Startup, service, and scheduled task promotion gates now require the same
+evidence emitted by `startup-service-inventory`, including target status,
+service dependency/trigger/recovery review, service registry export, and
+scheduled task XML export. These gates are still non-executable contracts.
+The promotion gate validator can compare a source report schema and a proposed
+action contract, then return missing evidence, snapshots, rollback metadata,
+tests, and human confirmations without enabling execution.
 
 ---
 
@@ -393,6 +429,9 @@ CI entrypoint:
 - `.github/workflows/ci.yml` also runs package install smoke checks and the optional Docker sandbox gate.
 - `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 - `.github/workflows/windows-smoke.yml` has an `always()` cleanup step for build outputs, tool caches, pytest caches, coverage files, `htmlcov`, and `__pycache__`.
+- `windows-smoke-matrix` tracks required Windows 10/11 evidence for read-only debloat/privacy, startup/service/task, and system-health diagnostics before any execution-model expansion.
+- `system-health-report` remains diagnostic-only and uses scan/review commands such as DISM `ScanHealth`/`CheckHealth`, SFC scan, CHKDSK scan, Settings troubleshooters, and pending reboot registry queries without repair flags.
+- `system-health-evidence` parser contracts convert captured DISM and pending reboot registry-query output into structured findings without running DISM, registry commands, or repair actions.
 
 Governance roadmap:
 

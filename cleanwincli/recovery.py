@@ -77,12 +77,28 @@ def recovery_readiness_report() -> dict[str, Any]:
             rollback_use="Restore previous service startup type and state from captured JSON.",
         ),
         _snapshot_spec(
+            "service-registry-export",
+            purpose="Export exact service registry keys before changing service start type, trigger behavior, or recovery actions.",
+            command=["reg", "export", r"HKLM\SYSTEM\CurrentControlSet\Services\<service-name>", "<snapshot-file.reg>", "/y"],
+            output_schema="cleanwin.snapshot.service-registry-export.v1",
+            required_before=["service-change", "debloat"],
+            rollback_use="Import the exported service registry key after review to restore service configuration.",
+        ),
+        _snapshot_spec(
             "scheduled-task-state",
             purpose="Capture scheduled task state before disabling or deleting tasks.",
             command=["schtasks", "/Query", "/FO", "CSV", "/V"],
             output_schema="cleanwin.snapshot.scheduled-task-state.v1",
             required_before=["scheduled-task-change", "debloat"],
             rollback_use="Re-enable or recreate scheduled tasks from captured metadata.",
+        ),
+        _snapshot_spec(
+            "scheduled-task-xml-export",
+            purpose="Export scheduled task XML before disabling or deleting tasks.",
+            command=["schtasks", "/Query", "/TN", "<task-name>", "/XML"],
+            output_schema="cleanwin.snapshot.scheduled-task-xml-export.v1",
+            required_before=["scheduled-task-change", "debloat"],
+            rollback_use="Recreate the scheduled task from the XML export if rollback is required.",
         ),
         _snapshot_spec(
             "appx-inventory",
@@ -121,10 +137,22 @@ def recovery_readiness_report() -> dict[str, Any]:
             evidence={"command": "Get-Service"},
         ),
         _capability(
+            "service_registry_export_supported",
+            available=is_windows,
+            reason=windows_reason,
+            evidence={"command": r"reg export HKLM\SYSTEM\CurrentControlSet\Services\<service-name>"},
+        ),
+        _capability(
             "scheduled_task_snapshot_supported",
             available=is_windows,
             reason=windows_reason,
             evidence={"command": "schtasks /Query"},
+        ),
+        _capability(
+            "scheduled_task_xml_export_supported",
+            available=is_windows,
+            reason=windows_reason,
+            evidence={"command": "schtasks /Query /TN <task-name> /XML"},
         ),
         _capability(
             "appx_inventory_supported",
