@@ -516,6 +516,7 @@ CI 入口：
 - `windows-smoke-matrix` 跟踪 Windows 10/11 上 read-only debloat/privacy、startup/service/task 和 system-health diagnostics 的必备证据，作为后续 execution model 扩展前的门禁。
 - `system-health-report` 保持 diagnostic-only，只使用 DISM `ScanHealth`/`CheckHealth`、SFC scan、CHKDSK scan、Settings troubleshooters 和 pending reboot registry query 等扫描/复核命令，不包含 repair flags。
 - `system-health-evidence` parser contracts 会把已捕获的 DISM 和 pending reboot registry-query 输出转换为结构化 findings，但不会运行 DISM、registry command 或 repair action。
+- `windows-evidence-bundle` 会输出由调用方管理的 JSONL evidence chain，串联 report refs、snapshot refs、simulated plan refs、rollback drill refs、promotion gate refs、recovery readiness refs 和 Windows smoke CI refs。该命令不会写文件、采集 Windows artifact，也不会运行 cleanup、registry、AppX、service、task、DISM 或 PowerShell 命令。
 
 治理路线图：
 

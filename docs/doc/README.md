@@ -527,6 +527,7 @@ CI entrypoint:
 - `windows-smoke-matrix` tracks required Windows 10/11 evidence for read-only debloat/privacy, startup/service/task, and system-health diagnostics before any execution-model expansion.
 - `system-health-report` remains diagnostic-only and uses scan/review commands such as DISM `ScanHealth`/`CheckHealth`, SFC scan, CHKDSK scan, Settings troubleshooters, and pending reboot registry queries without repair flags.
 - `system-health-evidence` parser contracts convert captured DISM and pending reboot registry-query output into structured findings without running DISM, registry commands, or repair actions.
+- `windows-evidence-bundle` emits a caller-managed JSONL evidence chain that links report refs, snapshot refs, simulated plan refs, rollback drill refs, promotion gate refs, recovery readiness refs, and Windows smoke CI refs. It does not write files, collect Windows artifacts, or run cleanup, registry, AppX, service, task, DISM, or PowerShell commands.
 
 Governance roadmap:
 

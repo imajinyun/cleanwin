@@ -46,6 +46,7 @@ from cleanwincli.core import (
     startup_service_inventory_command,
     system_health_report_command,
     validate_plan_payload,
+    windows_evidence_bundle_command,
     windows_inventory_command,
     windows_native_artifacts_command,
     windows_smoke_matrix_command,
@@ -144,6 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
             "windows-native-artifacts",
             "windows-inventory",
             "windows-smoke-matrix",
+            "windows-evidence-bundle",
             "review-sample",
         ],
         default="catalog",
@@ -180,6 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
     subparsers.add_parser("windows-inventory", help="show read-only Windows inventory baseline")
     subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
+    subparsers.add_parser("windows-evidence-bundle", help="show Windows evidence JSONL bundle")
 
     host_policy_parser = subparsers.add_parser("host-policy", help="show AI host allow/deny policy")
     host_policy_parser.add_argument("--validate", action="store_true")
@@ -352,6 +355,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "windows-smoke-matrix":
             emit(windows_smoke_matrix_command(), as_json=args.json)
+            return 0
+        if args.command == "windows-evidence-bundle":
+            emit(windows_evidence_bundle_command(), as_json=args.json)
             return 0
         if args.command == "host-policy":
             emit(host_policy_report(validate=args.validate), as_json=args.json)

@@ -29,6 +29,7 @@ from cleanwincli.collectors import collect_candidates, collect_findings
 from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.environment_index import environment_index_report
+from cleanwincli.evidence_bundle import windows_evidence_bundle_report
 from cleanwincli.execution_contracts import (
     appx_removal_plan_report,
     backup_delete_contract_report,
@@ -657,6 +658,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return windows_inventory_report()
     if provider == "windows-smoke-matrix":
         return windows_smoke_matrix_report()
+    if provider == "windows-evidence-bundle":
+        return windows_evidence_bundle_report()
     if provider == "review-sample":
         sample = schema_registry().get("samples", {}).get("cleanwin.review.v1")
         if isinstance(sample, dict):
@@ -815,6 +818,10 @@ def windows_inventory_command() -> dict[str, Any]:
 
 def windows_smoke_matrix_command() -> dict[str, Any]:
     return windows_smoke_matrix_report()
+
+
+def windows_evidence_bundle_command() -> dict[str, Any]:
+    return windows_evidence_bundle_report()
 
 
 def policy_simulate(
