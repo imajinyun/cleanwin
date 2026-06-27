@@ -1913,6 +1913,94 @@
       "active_markers": ["programfiles:SOLIDWORKS Corp/SOLIDWORKS/SLDWORKS.exe", "programfilesx86:SOLIDWORKS Corp/SOLIDWORKS/SLDWORKS.exe"],
       "official_cleanup_command": "Uninstall SOLIDWORKS before removing reviewed crash dump leftovers.",
       "rationale": "SOLIDWORKS crash dumps are recreated diagnostics; parts, assemblies, drawings, templates, toolbox data, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.vmware-workstation.logs",
+      "owner": "VMware Workstation",
+      "default": "local:VMware/vmware-ui*.log",
+      "active_markers": ["programfiles:VMware/VMware Workstation/vmware.exe", "programfilesx86:VMware/VMware Workstation/vmware.exe"],
+      "official_cleanup_command": "Uninstall VMware Workstation before removing reviewed UI log leftovers.",
+      "rationale": "VMware Workstation UI logs are regenerated diagnostics; virtual disks, VMX files, snapshots, ISO images, credentials, networks, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.vmware-player.logs",
+      "owner": "VMware Player",
+      "default": "local:VMware/vmplayer*.log",
+      "active_markers": ["programfiles:VMware/VMware Player/vmplayer.exe", "programfilesx86:VMware/VMware Player/vmplayer.exe"],
+      "official_cleanup_command": "Uninstall VMware Player before removing reviewed UI log leftovers.",
+      "rationale": "VMware Player UI logs are regenerated diagnostics; virtual disks, VMX files, snapshots, ISO images, credentials, networks, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.genymotion.logs",
+      "owner": "Genymotion",
+      "default": "local:Genymobile/Genymotion/logs",
+      "active_markers": ["programfiles:Genymobile/Genymotion/genymotion.exe", "programfilesx86:Genymobile/Genymotion/genymotion.exe", "local:Programs/Genymotion/genymotion.exe"],
+      "official_cleanup_command": "Uninstall Genymotion before removing reviewed diagnostic log leftovers.",
+      "rationale": "Genymotion logs are regenerated diagnostics; virtual devices, Android images, app data, accounts, shared folders, credentials, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.bluestacks.logs",
+      "owner": "BlueStacks",
+      "default": "programdata:BlueStacks_nxt/Logs",
+      "active_markers": ["programfiles:BlueStacks_nxt/HD-Player.exe", "programfilesx86:BlueStacks_nxt/HD-Player.exe"],
+      "official_cleanup_command": "Uninstall BlueStacks before removing reviewed diagnostic log leftovers.",
+      "rationale": "BlueStacks logs are regenerated diagnostics; emulator images, Android app data, accounts, keymaps, screenshots, downloads, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.noxplayer.logs",
+      "owner": "NoxPlayer",
+      "default": "local:Nox/Logs",
+      "active_markers": ["programfiles:Nox/bin/Nox.exe", "programfilesx86:Nox/bin/Nox.exe"],
+      "official_cleanup_command": "Uninstall NoxPlayer before removing reviewed diagnostic log leftovers.",
+      "rationale": "NoxPlayer logs are regenerated diagnostics; emulator images, Android app data, accounts, keymaps, screenshots, shared folders, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ldplayer.logs",
+      "owner": "LDPlayer",
+      "default": "local:leidian/Log",
+      "active_markers": ["programfiles:LDPlayer/LDPlayer9/dnplayer.exe", "programfilesx86:LDPlayer/LDPlayer9/dnplayer.exe"],
+      "official_cleanup_command": "Uninstall LDPlayer before removing reviewed diagnostic log leftovers.",
+      "rationale": "LDPlayer logs are regenerated diagnostics; emulator disks, Android app data, accounts, keymaps, screenshots, shared folders, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.ollama.logs",
+      "owner": "Ollama",
+      "default": "local:Ollama/logs",
+      "active_markers": ["local:Programs/Ollama/ollama.exe", "programfiles:Ollama/ollama.exe"],
+      "official_cleanup_command": "Uninstall Ollama before removing reviewed diagnostic log leftovers.",
+      "rationale": "Ollama logs are regenerated diagnostics; model blobs, manifests, prompts, chat history, API keys, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.lm-studio.logs",
+      "owner": "LM Studio",
+      "default": "roaming:LM Studio/logs",
+      "active_markers": ["local:Programs/LM Studio/LM Studio.exe", "programfiles:LM Studio/LM Studio.exe", "programfilesx86:LM Studio/LM Studio.exe"],
+      "official_cleanup_command": "Uninstall LM Studio before removing reviewed diagnostic log leftovers.",
+      "rationale": "LM Studio logs are regenerated diagnostics; model files, downloads, chats, prompts, local server settings, accounts, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.jan.logs",
+      "owner": "Jan",
+      "default": "roaming:Jan/logs",
+      "active_markers": ["local:Programs/Jan/Jan.exe", "programfiles:Jan/Jan.exe", "programfilesx86:Jan/Jan.exe"],
+      "official_cleanup_command": "Uninstall Jan before removing reviewed diagnostic log leftovers.",
+      "rationale": "Jan logs are regenerated diagnostics; models, threads, prompts, extensions, API keys, accounts, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gpt4all.logs",
+      "owner": "GPT4All",
+      "default": "local:nomic.ai/GPT4All/logs",
+      "active_markers": ["local:Programs/GPT4All/bin/chat.exe", "programfiles:GPT4All/bin/chat.exe", "programfilesx86:GPT4All/bin/chat.exe"],
+      "official_cleanup_command": "Uninstall GPT4All before removing reviewed diagnostic log leftovers.",
+      "rationale": "GPT4All logs are regenerated diagnostics; models, chats, prompts, localdocs indexes, API keys, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.pinokio.cache",
+      "owner": "Pinokio",
+      "default": "local:Pinokio/cache",
+      "active_markers": ["local:Programs/Pinokio/Pinokio.exe", "programfiles:Pinokio/Pinokio.exe", "programfilesx86:Pinokio/Pinokio.exe"],
+      "official_cleanup_command": "Uninstall Pinokio before removing reviewed cache leftovers.",
+      "rationale": "Pinokio cache contains regenerated app shell artifacts; installed apps, repositories, models, environments, API keys, accounts, and settings remain outside this rule."
     }
   ]
 }

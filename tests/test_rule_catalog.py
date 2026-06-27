@@ -243,6 +243,17 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.openscad.logs",
         "app-leftovers.fusion360.logs",
         "app-leftovers.solidworks.crashdumps",
+        "app-leftovers.vmware-workstation.logs",
+        "app-leftovers.vmware-player.logs",
+        "app-leftovers.genymotion.logs",
+        "app-leftovers.bluestacks.logs",
+        "app-leftovers.noxplayer.logs",
+        "app-leftovers.ldplayer.logs",
+        "app-leftovers.ollama.logs",
+        "app-leftovers.lm-studio.logs",
+        "app-leftovers.jan.logs",
+        "app-leftovers.gpt4all.logs",
+        "app-leftovers.pinokio.cache",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(

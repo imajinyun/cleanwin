@@ -2610,6 +2610,150 @@ def test_app_leftovers_skips_3d_printing_modeling_and_cad_rules_when_active_mark
     assert_contains_none(paths, [str(chitubox_logs), str(lychee_logs), str(freecad_dump), str(openscad_logs)])
     assert_contains_none(paths, [str(fusion_logs), str(solidworks_dump)])
 
+def test_app_leftovers_scans_virtualization_emulator_and_local_ai_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    user = root / "User"
+    cache_files = [
+        (local / "VMware" / "vmware-ui-123.log", "vmware-workstation"),
+        (local / "VMware" / "vmplayer-123.log", "vmware-player"),
+        (local / "Genymobile" / "Genymotion" / "logs" / "genymotion.log", "genymotion"),
+        (program_data / "BlueStacks_nxt" / "Logs" / "bluestacks.log", "bluestacks"),
+        (local / "Nox" / "Logs" / "nox.log", "nox"),
+        (local / "leidian" / "Log" / "ldplayer.log", "ldplayer"),
+        (local / "Ollama" / "logs" / "ollama.log", "ollama"),
+        (roaming / "LM Studio" / "logs" / "lmstudio.log", "lmstudio"),
+        (roaming / "Jan" / "logs" / "jan.log", "jan"),
+        (local / "nomic.ai" / "GPT4All" / "logs" / "gpt4all.log", "gpt4all"),
+        (local / "Pinokio" / "cache" / "entry", "pinokio"),
+        (user / "Virtual Machines" / "DevVM" / "disk.vmdk", "vmdk"),
+        (user / "Virtual Machines" / "DevVM" / "config.vmx", "vmx"),
+        (user / "Downloads" / "isos" / "installer.iso", "iso"),
+        (program_data / "BlueStacks_nxt" / "Engine" / "Android" / "Data.vhdx", "android-disk"),
+        (local / "Nox" / "bin" / "BignoxVMS" / "nox.vmdk", "nox-disk"),
+        (local / "leidian" / "vms" / "leidian0" / "disk.vmdk", "ld-disk"),
+        (user / ".ollama" / "models" / "blobs" / "sha256-model", "ollama-model"),
+        (roaming / "LM Studio" / "models" / "model.gguf", "lm-model"),
+        (roaming / "Jan" / "threads" / "chat.json", "jan-chat"),
+        (local / "nomic.ai" / "GPT4All" / "LocalDocs" / "index.db", "localdocs"),
+        (local / "Pinokio" / "api-keys.json", "api-keys"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    vmware_workstation_log = cache_files[0][0]
+    vmware_player_log = cache_files[1][0]
+    genymotion_logs = cache_files[2][0].parent
+    bluestacks_logs = cache_files[3][0].parent
+    nox_logs = cache_files[4][0].parent
+    ldplayer_logs = cache_files[5][0].parent
+    ollama_logs = cache_files[6][0].parent
+    lm_studio_logs = cache_files[7][0].parent
+    jan_logs = cache_files[8][0].parent
+    gpt4all_logs = cache_files[9][0].parent
+    pinokio_cache = cache_files[10][0].parent
+    protected_files = [path for path, _ in cache_files[11:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.vmware-workstation.logs"], {"path": str(vmware_workstation_log)})
+    assert_field_values(by_rule["app-leftovers.vmware-player.logs"], {"path": str(vmware_player_log)})
+    assert_field_values(by_rule["app-leftovers.genymotion.logs"], {"path": str(genymotion_logs)})
+    assert_field_values(by_rule["app-leftovers.bluestacks.logs"], {"path": str(bluestacks_logs)})
+    assert_field_values(by_rule["app-leftovers.noxplayer.logs"], {"path": str(nox_logs)})
+    assert_field_values(by_rule["app-leftovers.ldplayer.logs"], {"path": str(ldplayer_logs)})
+    assert_field_values(by_rule["app-leftovers.ollama.logs"], {"path": str(ollama_logs)})
+    assert_field_values(by_rule["app-leftovers.lm-studio.logs"], {"path": str(lm_studio_logs)})
+    assert_field_values(by_rule["app-leftovers.jan.logs"], {"path": str(jan_logs)})
+    assert_field_values(by_rule["app-leftovers.gpt4all.logs"], {"path": str(gpt4all_logs)})
+    assert_field_values(by_rule["app-leftovers.pinokio.cache"], {"path": str(pinokio_cache)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_virtualization_emulator_and_local_ai_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    program_files = root / "ProgramFiles"
+
+    vmware_workstation_log = local / "VMware" / "vmware-ui-123.log"
+    write_text_file(vmware_workstation_log, "vmware-workstation")
+    write_text_file(program_files / "VMware" / "VMware Workstation" / "vmware.exe", "exe")
+
+    vmware_player_log = local / "VMware" / "vmplayer-123.log"
+    write_text_file(vmware_player_log, "vmware-player")
+    write_text_file(program_files / "VMware" / "VMware Player" / "vmplayer.exe", "exe")
+
+    genymotion_logs = local / "Genymobile" / "Genymotion" / "logs"
+    write_text_file(genymotion_logs / "genymotion.log", "genymotion")
+    write_text_file(program_files / "Genymobile" / "Genymotion" / "genymotion.exe", "exe")
+
+    bluestacks_logs = program_data / "BlueStacks_nxt" / "Logs"
+    write_text_file(bluestacks_logs / "bluestacks.log", "bluestacks")
+    write_text_file(program_files / "BlueStacks_nxt" / "HD-Player.exe", "exe")
+
+    nox_logs = local / "Nox" / "Logs"
+    write_text_file(nox_logs / "nox.log", "nox")
+    write_text_file(program_files / "Nox" / "bin" / "Nox.exe", "exe")
+
+    ldplayer_logs = local / "leidian" / "Log"
+    write_text_file(ldplayer_logs / "ldplayer.log", "ldplayer")
+    write_text_file(program_files / "LDPlayer" / "LDPlayer9" / "dnplayer.exe", "exe")
+
+    ollama_logs = local / "Ollama" / "logs"
+    write_text_file(ollama_logs / "ollama.log", "ollama")
+    write_text_file(local / "Programs" / "Ollama" / "ollama.exe", "exe")
+
+    lm_studio_logs = roaming / "LM Studio" / "logs"
+    write_text_file(lm_studio_logs / "lmstudio.log", "lmstudio")
+    write_text_file(local / "Programs" / "LM Studio" / "LM Studio.exe", "exe")
+
+    jan_logs = roaming / "Jan" / "logs"
+    write_text_file(jan_logs / "jan.log", "jan")
+    write_text_file(local / "Programs" / "Jan" / "Jan.exe", "exe")
+
+    gpt4all_logs = local / "nomic.ai" / "GPT4All" / "logs"
+    write_text_file(gpt4all_logs / "gpt4all.log", "gpt4all")
+    write_text_file(local / "Programs" / "GPT4All" / "bin" / "chat.exe", "exe")
+
+    pinokio_cache = local / "Pinokio" / "cache"
+    write_text_file(pinokio_cache / "entry", "pinokio")
+    write_text_file(local / "Programs" / "Pinokio" / "Pinokio.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(vmware_workstation_log), str(vmware_player_log), str(genymotion_logs)])
+    assert_contains_none(paths, [str(bluestacks_logs), str(nox_logs), str(ldplayer_logs), str(ollama_logs)])
+    assert_contains_none(paths, [str(lm_studio_logs), str(jan_logs), str(gpt4all_logs), str(pinokio_cache)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
