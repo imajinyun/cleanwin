@@ -23,6 +23,7 @@ SERVICE_TASK_DISABLE_PLAN_VALIDATION_SCHEMA = "cleanwin.service-task-disable-pla
 ROLLBACK_DRILL_REPORT_SCHEMA = "cleanwin.rollback-drill-report.v1"
 ROLLBACK_DRILL_CASE_SCHEMA = "cleanwin.rollback-drill-case.v1"
 ROLLBACK_DRILL_VALIDATION_SCHEMA = "cleanwin.rollback-drill-validation.v1"
+REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA = "cleanwin.registry-privacy-rollback-drill.v1"
 
 _PROTECTED_SERVICE_TASK_TOKENS = (
     "microsoft",
@@ -74,6 +75,26 @@ def _rollback_drill_case(
 
 
 def rollback_drill_report() -> dict[str, Any]:
+    registry_rollback_fixture = {
+        "schema": REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA,
+        "fixture_only": True,
+        "dry_run": True,
+        "execution_enabled": False,
+        "registry_export_ref": "snapshot://registry/privacy.telemetry.allow-telemetry.reg",
+        "export_command": ["reg.exe", "export", r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection", "<export-file.reg>", "/y"],
+        "import_command": ["reg.exe", "import", "<export-file.reg>"],
+        "before_value": {"hive": "HKLM", "subkey_path": r"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "value_name": "AllowTelemetry", "value_type": "REG_DWORD", "data": "3"},
+        "simulated_target_value": {"value_type": "REG_DWORD", "data": "0"},
+        "after_rollback_value": {"value_type": "REG_DWORD", "data": "3"},
+        "required_reviews": ["managed-device-detection", "policy-owner-review", "registry-export-present", "dry-run-token-match"],
+        "dry_run_confirmation_token": "fixture-dry-run-token-registry-privacy",
+        "post_rollback_assertions": [
+            "registry export ref is present before simulated mutation",
+            "restore command uses reg.exe import with the same export ref",
+            "after rollback value equals before value",
+        ],
+        "safe_to_execute": False,
+    }
     drills = [
         _rollback_drill_case(
             drill_id="rollback-drill.registry-privacy-import",
@@ -90,7 +111,8 @@ def rollback_drill_report() -> dict[str, Any]:
                 "registry_export_ref": "snapshot://registry/privacy.telemetry.allow-telemetry.reg",
             },
             verification_steps=["compare previous registry value", "verify import command references registry export"],
-        ),
+        )
+        | {"registry_rollback_fixture": registry_rollback_fixture},
         _rollback_drill_case(
             drill_id="rollback-drill.scheduled-task-xml-restore",
             target_type="scheduled-task",
@@ -198,6 +220,46 @@ def validate_rollback_drills(report: dict[str, Any]) -> dict[str, Any]:
         ):
             if not drill.get(field):
                 violations.append({"path": f"{prefix}.{field}", "code": code, "message": f"{field} is required"})
+        if drill.get("target_type") == "registry-privacy":
+            fixture = drill.get("registry_rollback_fixture")
+            if not isinstance(fixture, dict) or fixture.get("schema") != REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA:
+                violations.append(
+                    {
+                        "path": f"{prefix}.registry_rollback_fixture",
+                        "code": "REGISTRY_ROLLBACK_FIXTURE_REQUIRED",
+                        "message": f"registry privacy drills must include {REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA}",
+                    }
+                )
+            else:
+                for field, code in (
+                    ("registry_export_ref", "REGISTRY_EXPORT_REF_REQUIRED"),
+                    ("export_command", "REGISTRY_EXPORT_COMMAND_REQUIRED"),
+                    ("import_command", "REGISTRY_IMPORT_COMMAND_REQUIRED"),
+                    ("before_value", "REGISTRY_BEFORE_VALUE_REQUIRED"),
+                    ("after_rollback_value", "REGISTRY_AFTER_ROLLBACK_VALUE_REQUIRED"),
+                    ("dry_run_confirmation_token", "DRY_RUN_TOKEN_REQUIRED"),
+                    ("post_rollback_assertions", "POST_ROLLBACK_ASSERTIONS_REQUIRED"),
+                ):
+                    if not fixture.get(field):
+                        violations.append({"path": f"{prefix}.registry_rollback_fixture.{field}", "code": code, "message": f"{field} is required"})
+                if fixture.get("execution_enabled") is not False:
+                    violations.append(
+                        {
+                            "path": f"{prefix}.registry_rollback_fixture.execution_enabled",
+                            "code": "REGISTRY_ROLLBACK_EXECUTION_MUST_STAY_DISABLED",
+                            "message": "registry rollback drill must not execute commands",
+                        }
+                    )
+                before_value = fixture.get("before_value")
+                after_value = fixture.get("after_rollback_value")
+                if isinstance(before_value, dict) and isinstance(after_value, dict) and before_value.get("data") != after_value.get("data"):
+                    violations.append(
+                        {
+                            "path": f"{prefix}.registry_rollback_fixture.after_rollback_value",
+                            "code": "REGISTRY_ROLLBACK_VALUE_MISMATCH",
+                            "message": "after rollback value must match the fixture before value",
+                        }
+                    )
     return {
         "schema": ROLLBACK_DRILL_VALIDATION_SCHEMA,
         "valid": not violations,

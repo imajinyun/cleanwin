@@ -19,6 +19,7 @@ from cleanwincli.execution_contracts import (
     REGISTRY_PRIVACY_PLAN_SCHEMA,
     REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
     REGISTRY_PRIVACY_REVERT_SCHEMA,
+    REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA,
     ROLLBACK_DRILL_CASE_SCHEMA,
     ROLLBACK_DRILL_REPORT_SCHEMA,
     ROLLBACK_DRILL_VALIDATION_SCHEMA,
@@ -53,6 +54,7 @@ AssertAnyTextContains = Callable[[Sequence[str], str], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
 AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
+AssertSchemaSamples = Callable[[Sequence[str]], dict[str, JSONPayload]]
 
 
 def test_disable_revert_contract_is_non_executable(
@@ -652,6 +654,30 @@ def test_rollback_drill_report_covers_fixture_restore_paths(
         assert_execution_disabled(drill)
         assert_contains_all(drill["drill_chain"], ["snapshot", "simulate-rollback", "verify-after-rollback"])
     assert_contains_all(registry_drill["restore_command"], ["reg.exe", "import"])
+    registry_fixture = assert_payload_schema(
+        registry_drill["registry_rollback_fixture"], REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA
+    )
+    assert_field_values(
+        registry_fixture,
+        {
+            "fixture_only": True,
+            "execution_enabled": False,
+            "before_value.data": "3",
+            "simulated_target_value.data": "0",
+            "after_rollback_value.data": "3",
+            "dry_run_confirmation_token": "fixture-dry-run-token-registry-privacy",
+        },
+    )
+    assert_contains_all(
+        registry_fixture["required_reviews"],
+        ["managed-device-detection", "policy-owner-review", "registry-export-present", "dry-run-token-match"],
+    )
+    assert_contains_all(registry_fixture["export_command"], ["reg.exe", "export"])
+    assert_contains_all(registry_fixture["import_command"], ["reg.exe", "import"])
+    assert_contains_all(
+        registry_fixture["post_rollback_assertions"],
+        ["after rollback value equals before value"],
+    )
     assert_contains_all(task_drill["restore_command"], ["schtasks", "/Create", "/XML"])
     assert_contains_all(service_drill["restore_command"], ["reg.exe", "import"])
     assert_contains_all(appx_drill["restore_command"], ["powershell.exe", "Add-AppxPackage"])
@@ -672,11 +698,12 @@ def test_rollback_drill_validator_reports_missing_fixture_evidence(
             {
                 "schema": ROLLBACK_DRILL_REPORT_SCHEMA,
                 "drills": [
-                    {
-                        "schema": ROLLBACK_DRILL_CASE_SCHEMA,
-                        "fixture_only": False,
-                        "execution_enabled": True,
-                        "executes_system_commands": True,
+                        {
+                            "schema": ROLLBACK_DRILL_CASE_SCHEMA,
+                            "target_type": "registry-privacy",
+                            "fixture_only": False,
+                            "execution_enabled": True,
+                            "executes_system_commands": True,
                         "snapshot_refs": [],
                         "restore_command": [],
                         "required_metadata": {},
@@ -698,8 +725,22 @@ def test_rollback_drill_validator_reports_missing_fixture_evidence(
             "RESTORE_COMMAND_REQUIRED",
             "ROLLBACK_METADATA_REQUIRED",
             "POST_ROLLBACK_VERIFICATION_REQUIRED",
+            "REGISTRY_ROLLBACK_FIXTURE_REQUIRED",
         ],
     )
+
+
+def test_schema_registry_exposes_registry_privacy_rollback_drill_fixture(
+    assert_schema_samples: AssertSchemaSamples,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    samples = assert_schema_samples([REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA])
+    fixture = assert_payload_schema(samples[REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA], REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA)
+
+    assert_execution_disabled(fixture)
+    assert_field_values(fixture, {"fixture_only": True, "before_value.data": "3", "after_rollback_value.data": "3"})
 
 
 @pytest.mark.parametrize(

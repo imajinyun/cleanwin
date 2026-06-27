@@ -322,8 +322,12 @@ completeness for the future execution surfaces: registry privacy import,
 scheduled task XML restore, service start type restore, and AppX restore
 metadata. Each drill records a snapshot-to-action-to-rollback-to-verification
 chain with snapshot refs, restore command, required metadata, and post-rollback
-checks. The report never imports registry files, recreates scheduled tasks,
-changes service start types, or reinstalls AppX packages.
+checks. The registry privacy drill also exposes a
+`cleanwin.registry-privacy-rollback-drill.v1` fixture with export/import
+commands, before/target/after values, dry-run token evidence, managed-device and
+policy-owner review requirements, and post-rollback assertions. The report never
+imports registry files, recreates scheduled tasks, changes service start types,
+or reinstalls AppX packages.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
