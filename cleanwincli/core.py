@@ -48,6 +48,7 @@ from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
 from cleanwincli.windows_inventory import windows_inventory_report
+from cleanwincli.windows_native_artifacts import windows_native_artifacts_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
 from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
@@ -619,6 +620,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return startup_service_inventory_report()
     if provider == "system-health-report":
         return system_health_report()
+    if provider == "windows-native-artifacts":
+        return windows_native_artifacts_report()
     if provider == "windows-inventory":
         return windows_inventory_report()
     if provider == "windows-smoke-matrix":
@@ -745,6 +748,10 @@ def startup_service_inventory_command() -> dict[str, Any]:
 
 def system_health_report_command() -> dict[str, Any]:
     return system_health_report()
+
+
+def windows_native_artifacts_command() -> dict[str, Any]:
+    return windows_native_artifacts_report()
 
 
 def windows_inventory_command() -> dict[str, Any]:

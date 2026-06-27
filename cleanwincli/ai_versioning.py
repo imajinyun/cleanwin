@@ -9,6 +9,10 @@ from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
 from cleanwincli.system_health import system_health_evidence_report
 from cleanwincli.windows_inventory import appx_snapshot_artifact_contract
+from cleanwincli.windows_native_artifacts import (
+    windows_native_artifact_parse_sample,
+    windows_native_artifacts_report,
+)
 
 
 @dataclass(frozen=True)
@@ -82,6 +86,9 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.dism-component-store-analysis.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.dism-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.pending-reboot-registry-evidence.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
+    ("cleanwin.windows-native-artifacts.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-native-artifact-contract.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-native-artifact-parse.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.windows-smoke-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.mcp-tool-error.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
     ("cleanwin.mcp-text-output.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
@@ -1615,6 +1622,12 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_system_health_evidence_report()["evidence"][1]
     if schema_name == "cleanwin.pending-reboot-registry-evidence.v1":
         return _sample_system_health_evidence_report()["evidence"][3]
+    if schema_name == "cleanwin.windows-native-artifacts.v1":
+        return windows_native_artifacts_report()
+    if schema_name == "cleanwin.windows-native-artifact-contract.v1":
+        return windows_native_artifacts_report()["contracts"][0]
+    if schema_name == "cleanwin.windows-native-artifact-parse.v1":
+        return windows_native_artifact_parse_sample()
     if schema_name == "cleanwin.windows-smoke-matrix.v1":
         return _sample_windows_smoke_matrix()
     if schema_name == "cleanwin.workflow-router.v1":

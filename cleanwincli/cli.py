@@ -41,6 +41,7 @@ from cleanwincli.core import (
     system_health_report_command,
     validate_plan_payload,
     windows_inventory_command,
+    windows_native_artifacts_command,
     windows_smoke_matrix_command,
     workflow_decision_command,
     workflow_router_command,
@@ -127,6 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
             "permanent-delete-denial",
             "startup-service-inventory",
             "system-health-report",
+            "windows-native-artifacts",
             "windows-inventory",
             "windows-smoke-matrix",
             "review-sample",
@@ -156,6 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("permanent-delete-denial", help="show permanent deletion denial contract")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
+    subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
     subparsers.add_parser("windows-inventory", help="show read-only Windows inventory baseline")
     subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
 
@@ -303,6 +306,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "system-health-report":
             emit(system_health_report_command(), as_json=args.json)
+            return 0
+        if args.command == "windows-native-artifacts":
+            emit(windows_native_artifacts_command(), as_json=args.json)
             return 0
         if args.command == "windows-inventory":
             emit(windows_inventory_command(), as_json=args.json)

@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
+python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
 ```
 
@@ -286,6 +287,14 @@ trigger/recovery, and required snapshot evidence fields such as `sc.exe qc`,
 `Get-CimInstance Win32_Service`, and scheduled task XML exports. The report
 never disables entries, stops services, edits registry values, or executes
 `schtasks`/`sc.exe`.
+
+`windows-native-artifacts` defines the read-only collection contracts and
+fixture parsers for Windows-native evidence sources: PowerShell AppX and
+provisioned AppX inventory, registry exports, scheduled task XML/CSV, `sc.exe
+qc`, WinGet, Scoop, Chocolatey, DISM features, and DISM component-store
+analysis. The report only describes command argv, expected artifact schemas,
+protected surfaces, and parser names. It never runs PowerShell, DISM, registry,
+service, scheduled task, or package-manager commands.
 
 `promotion-gates` defines report-to-execution contracts for high-risk surfaces.
 Windows inventory findings for AppX/provisioned packages, Windows Features,

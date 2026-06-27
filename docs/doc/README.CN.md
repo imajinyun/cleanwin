@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
+python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
 ```
 
@@ -283,6 +284,14 @@ entries 会输出 target existence/status、start-type 或 run-level 分类、
 dependency、trigger/recovery，以及 `sc.exe qc`、`Get-CimInstance
 Win32_Service`、scheduled task XML export 等 snapshot evidence 要求。该报告
 不会禁用启动项、停止服务、编辑 registry，也不会执行 `schtasks`/`sc.exe`。
+
+`windows-native-artifacts` 定义 Windows-native evidence source 的只读 collection
+contract 和 fixture parser，覆盖 PowerShell AppX/provisioned AppX inventory、
+registry export、scheduled task XML/CSV、`sc.exe qc`、WinGet、Scoop、
+Chocolatey、DISM features 和 DISM component-store analysis。该报告只描述
+command argv、expected artifact schema、protected surfaces 和 parser 名称，不会
+运行 PowerShell、DISM、registry、service、scheduled task 或 package-manager
+命令。
 
 `promotion-gates` 定义 report-to-execution 契约。Windows inventory 中的
 AppX/provisioned package、Windows Feature、Component Store、Installer cache
