@@ -280,7 +280,7 @@ required snapshot fields, classification inputs, rollback reference fields, and
 golden-fixture requirements. These contracts are report-only and do not run
 PowerShell or remove packages.
 
-`debloat-privacy-report` is report-only and now covers an 84-check Windows
+`debloat-privacy-report` is report-only and now covers a 125-check Windows
 privacy policy baseline including telemetry, Advertising ID, consumer features,
 Copilot, Recall/WindowsAI, tailored experiences, activity history, feedback
 prompts, Diagnostic Data Viewer, Cortana/Search, Search web/Bing/location

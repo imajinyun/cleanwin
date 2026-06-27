@@ -279,7 +279,7 @@ identity fields、required snapshot fields、classification inputs、rollback
 reference fields 和 golden fixture 要求。这些 contract 仍然只读，不执行
 PowerShell，也不移除 package。
 
-`debloat-privacy-report` 仍然是只读报告，覆盖 84 项 Windows 隐私 policy 基线，
+`debloat-privacy-report` 仍然是只读报告，覆盖 125 项 Windows 隐私 policy 基线，
 包括 telemetry、Advertising ID、consumer features、Copilot、Recall/WindowsAI、
 tailored experiences、activity history、feedback prompts、Diagnostic Data
 Viewer、Cortana/Search、Search web/Bing/location history、Spotlight/lock-screen

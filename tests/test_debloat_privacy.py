@@ -95,7 +95,7 @@ def test_extended_privacy_policy_surface_is_reported(
     assert_field_values(viewer, {"state": "privacy-hardened"})
     assert_payload_schema(recall["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(tailored)
-    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 2})
+    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 2})
 
 
 def test_privatezilla_style_privacy_baseline_is_reported(
@@ -138,10 +138,10 @@ def test_privatezilla_style_privacy_baseline_is_reported(
     assert_field_values(by_id["privacy.edge-shopping-assistant.disabled"], {"state": "review-recommended"})
     assert_payload_schema(by_id["privacy.webcam-access.disabled"]["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(by_id["privacy.smartscreen.enabled"])
-    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 5})
+    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 5})
 
 
-def test_privacy_sexy_style_policy_surface_expands_to_eighty_four_checks(
+def test_privacy_sexy_style_policy_surface_expands_to_125_checks(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
@@ -165,7 +165,7 @@ def test_privacy_sexy_style_policy_surface_expands_to_eighty_four_checks(
     )
     by_id = {finding["id"]: finding for finding in report["findings"]}
 
-    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 5})
+    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 5})
     assert_contains_all(
         set(by_id),
         [
@@ -192,6 +192,60 @@ def test_privacy_sexy_style_policy_surface_expands_to_eighty_four_checks(
     assert_field_values(by_id["privacy.edge-typosquatting-checker.enabled"], {"state": "review-recommended", "risk": "high"})
     assert_field_values(by_id["privacy.app-permission-broad-file-system.disabled"], {"state": "review-recommended", "risk": "high"})
     assert_safe_to_execute_disabled(by_id["privacy.app-permission-broad-file-system.disabled"])
+
+
+def test_expanded_privacy_baseline_covers_sync_defender_edge_and_permissions(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = debloat_privacy_report(
+        raw_registry_values={
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\gazeInput\Value": "Allow",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications\GlobalUserDisabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync\DisableSettingSync": 2,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\SettingSync\DisableCredentialsSettingSync": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization\DODownloadMode": 3,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Spynet\SpynetReporting": 2,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\PUAProtection": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\ComponentUpdatesEnabled": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\StartupBoostEnabled": 0,
+            r"HKCU\Software\Policies\Microsoft\Office\Common\ClientTelemetry\DisableTelemetry": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\OneDrive\DisablePersonalSync": 1,
+        },
+        raw_appx_packages=[],
+        env={},
+    )
+    by_id = {finding["id"]: finding for finding in report["findings"]}
+
+    assert_contains_all(
+        set(by_id),
+        [
+            "privacy.app-permission-gaze-input.disabled",
+            "privacy.app-permission-background-apps.disabled",
+            "privacy.sync-settings.disabled",
+            "privacy.sync-credentials.disabled",
+            "privacy.delivery-optimization-internet-peering.disabled",
+            "privacy.defender-spynet-reporting.enabled",
+            "privacy.defender-pua-protection.enabled",
+            "privacy.edge-component-updates.enabled",
+            "privacy.edge-startup-boost.disabled",
+            "privacy.office-telemetry-agent.disabled",
+            "privacy.onedrive-personal-sync.disabled",
+        ],
+    )
+    assert_field_values(by_id["privacy.app-permission-gaze-input.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.app-permission-background-apps.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.sync-settings.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.sync-credentials.disabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.delivery-optimization-internet-peering.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.defender-spynet-reporting.enabled"], {"state": "privacy-hardened", "risk": "high"})
+    assert_field_values(by_id["privacy.defender-pua-protection.enabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.edge-component-updates.enabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.edge-startup-boost.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.office-telemetry-agent.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.onedrive-personal-sync.disabled"], {"state": "privacy-hardened"})
+    assert_safe_to_execute_disabled(by_id["privacy.edge-component-updates.enabled"])
 
 
 def test_appx_and_oem_findings_are_review_only(

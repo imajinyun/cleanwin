@@ -798,7 +798,7 @@ def _sample_debloat_privacy_report() -> dict[str, Any]:
         ],
         "summary": {
             "finding_count": 1,
-            "registry_policy_count": 84,
+            "registry_policy_count": 125,
             "review_recommended_count": 1,
             "privacy_hardened_count": 0,
             "appx_review_count": 0,
