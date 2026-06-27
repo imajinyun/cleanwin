@@ -17,7 +17,7 @@ from cleanwincli.execution_contracts import (
 )
 from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
-from cleanwincli.rule_catalog import rule_pack_catalog_report
+from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dashboard_report
 from cleanwincli.system_health import system_health_evidence_report
 from cleanwincli.windows_inventory import appx_snapshot_artifact_contract
 from cleanwincli.windows_native_artifacts import (
@@ -91,6 +91,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.rule-pack-catalog.v1", 1, "cleanwincli.rule_catalog", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.cleanup-rule-pack.v1", 1, "cleanwincli.rule_catalog", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.rule-quality-score.v1", 1, "cleanwincli.rule_catalog", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.rule-quality-dashboard.v1", 1, "cleanwincli.rule_catalog", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gates.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gate-validation.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1646,6 +1647,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
             "provenance": "builtin",
             "review_status": "manual-reviewed",
         }
+    if schema_name == "cleanwin.rule-quality-dashboard.v1":
+        return rule_quality_dashboard_report()
     if schema_name == "cleanwin.promotion-gates.v1":
         return _sample_promotion_gates()
     if schema_name == "cleanwin.promotion-gate-validation.v1":

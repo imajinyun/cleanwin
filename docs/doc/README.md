@@ -249,6 +249,7 @@ python3 cleanwin.py --json installed-app-inventory
 python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
+python3 cleanwin.py --json rule-quality-dashboard
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
@@ -367,6 +368,11 @@ and app leftovers. Each rule includes a quality score with risk,
 recoverability, owner evidence, official cleanup evidence, sensitive exclusion
 scan results, test coverage, provenance, and review status. The report does not
 import external packs, promote translated rules, or execute cleanup rules.
+
+`rule-quality-dashboard` is a read-only governance report over the same builtin
+rules. It summarizes quality buckets, risk and recoverability counts, evidence
+gaps, per-pack quality health, and a review queue for lower-scored or higher-risk
+rules without importing external catalogs or enabling execution.
 
 ---
 

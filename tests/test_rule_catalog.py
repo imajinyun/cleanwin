@@ -9,10 +9,12 @@ from cleanwincli.rule_catalog import (
     CATALOG_SCHEMA,
     RULE_PACK_CATALOG_SCHEMA,
     RULE_PACK_SCHEMA,
+    RULE_QUALITY_DASHBOARD_SCHEMA,
     RULE_QUALITY_SCORE_SCHEMA,
     RuleCatalogError,
     cleanup_rule_catalog,
     rule_pack_catalog_report,
+    rule_quality_dashboard_report,
 )
 
 JSONPayload = dict[str, Any]
@@ -161,6 +163,48 @@ def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
     )
 
 
+def test_rule_quality_dashboard_is_readonly_and_summarizes_rule_health(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_field_values: AssertFieldValues,
+    assert_contains_all: AssertContainsAll,
+    assert_at_least: AssertAtLeast,
+) -> None:
+    dashboard = assert_readonly_report(rule_quality_dashboard_report(), RULE_QUALITY_DASHBOARD_SCHEMA)
+
+    assert_field_values(
+        dashboard,
+        {
+            "quality_schema": RULE_QUALITY_SCORE_SCHEMA,
+            "summary.pack_count": 5,
+            "summary.execution_enabled_count": 0,
+            "promotion_gate.requires_quality_score": True,
+            "promotion_gate.execution_enabled": False,
+        },
+    )
+    assert_at_least(dashboard["summary"]["rule_count"], 40)
+    assert_at_least(dashboard["summary"]["minimum_score"], 60)
+    assert_contains_all(dashboard["risk_counts"], ["low", "medium", "high"])
+    assert_contains_all(dashboard["recoverability_counts"], ["high", "medium", "low"])
+    assert_contains_all(dashboard["quality_buckets"], ["excellent", "good", "review", "blocked"])
+    assert_contains_all(
+        dashboard["evidence_gap_counts"],
+        [
+            "missing_owner",
+            "missing_official_cleanup_command",
+            "missing_rationale",
+            "missing_active_install_marker",
+            "sensitive_exclusion_match",
+        ],
+    )
+    assert {pack["pack_id"] for pack in dashboard["packs"]} == {
+        "app-leftovers",
+        "browser-cache",
+        "browser-profile-cache",
+        "dev-cache",
+        "package-cache",
+    }
+
+
 def test_rule_pack_catalog_is_exposed_by_cli_provider_and_schema_registry(
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
     assert_schema_samples: AssertSchemaSamples,
@@ -170,9 +214,12 @@ def test_rule_pack_catalog_is_exposed_by_cli_provider_and_schema_registry(
     sample = assert_cli_provider_schema_sample("rule-pack-catalog", RULE_PACK_CATALOG_SCHEMA)
 
     assert_summary_counts(sample, {"pack_count": 5})
-    samples = assert_schema_samples([RULE_PACK_SCHEMA, RULE_QUALITY_SCORE_SCHEMA])
+    dashboard = assert_cli_provider_schema_sample("rule-quality-dashboard", RULE_QUALITY_DASHBOARD_SCHEMA)
+    assert_summary_counts(dashboard, {"pack_count": 5})
+    samples = assert_schema_samples([RULE_PACK_SCHEMA, RULE_QUALITY_SCORE_SCHEMA, RULE_QUALITY_DASHBOARD_SCHEMA])
     assert_payload_schema(samples[RULE_PACK_SCHEMA], RULE_PACK_SCHEMA)
     assert_payload_schema(samples[RULE_QUALITY_SCORE_SCHEMA], RULE_QUALITY_SCORE_SCHEMA)
+    assert_payload_schema(samples[RULE_QUALITY_DASHBOARD_SCHEMA], RULE_QUALITY_DASHBOARD_SCHEMA)
 
 
 @pytest.mark.parametrize(

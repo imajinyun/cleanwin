@@ -11,6 +11,7 @@ CATALOG_SCHEMA = "cleanwin.cleanup-rules.v1"
 RULE_PACK_CATALOG_SCHEMA = "cleanwin.rule-pack-catalog.v1"
 RULE_PACK_SCHEMA = "cleanwin.cleanup-rule-pack.v1"
 RULE_QUALITY_SCORE_SCHEMA = "cleanwin.rule-quality-score.v1"
+RULE_QUALITY_DASHBOARD_SCHEMA = "cleanwin.rule-quality-dashboard.v1"
 CATALOG_PATH = Path(__file__).with_name("rules") / "cleanup_rules.v1.json"
 
 _SECTION_PACKS = {
@@ -246,6 +247,141 @@ def browser_profile_cache_rules() -> dict[str, dict[str, Any]]:
     if not isinstance(value, dict):
         raise RuleCatalogError("browser_profile_cache_rules is not a rule map")
     return value
+
+
+def _all_catalog_rules(catalog: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        *catalog["dev_cache_rules"],
+        *catalog["package_cache_rules"],
+        *catalog["browser_cache_rules"],
+        *catalog["app_leftover_rules"],
+        *catalog["browser_profile_cache_rules"].values(),
+    ]
+
+
+def _quality_bucket(score: int) -> str:
+    if score >= 90:
+        return "excellent"
+    if score >= 80:
+        return "good"
+    if score >= 60:
+        return "review"
+    return "blocked"
+
+
+def _empty_count_map(keys: tuple[str, ...]) -> dict[str, int]:
+    return dict.fromkeys(keys, 0)
+
+
+def rule_quality_dashboard_report() -> dict[str, Any]:
+    catalog = cleanup_rule_catalog()
+    rules = _all_catalog_rules(catalog)
+    risk_counts = _empty_count_map(("low", "medium", "high"))
+    recoverability_counts = _empty_count_map(("high", "medium", "low"))
+    bucket_counts = _empty_count_map(("excellent", "good", "review", "blocked"))
+    evidence_gaps = _empty_count_map(
+        (
+            "missing_owner",
+            "missing_official_cleanup_command",
+            "missing_rationale",
+            "missing_active_install_marker",
+            "sensitive_exclusion_match",
+        )
+    )
+    pack_rows: list[dict[str, Any]] = []
+    review_queue: list[dict[str, Any]] = []
+    scores: list[int] = []
+
+    for rule in rules:
+        quality = rule.get("quality_score", {})
+        score = int(quality.get("score", 0))
+        scores.append(score)
+        risk = str(quality.get("risk", "unknown"))
+        recoverability = str(quality.get("recoverability", "unknown"))
+        if risk in risk_counts:
+            risk_counts[risk] += 1
+        if recoverability in recoverability_counts:
+            recoverability_counts[recoverability] += 1
+        bucket = _quality_bucket(score)
+        bucket_counts[bucket] += 1
+        gaps: list[str] = []
+        if not quality.get("owner_evidence"):
+            gaps.append("missing_owner")
+        if not quality.get("official_cleanup_evidence"):
+            gaps.append("missing_official_cleanup_command")
+        if not quality.get("rationale_evidence"):
+            gaps.append("missing_rationale")
+        if int(quality.get("active_install_marker_count", 0)) == 0:
+            gaps.append("missing_active_install_marker")
+        if quality.get("sensitive_exclusion_matches"):
+            gaps.append("sensitive_exclusion_match")
+        for gap in gaps:
+            evidence_gaps[gap] += 1
+        if risk == "high" or bucket in {"review", "blocked"} or gaps:
+            review_queue.append(
+                {
+                    "rule_id": rule["rule_id"],
+                    "rule_pack": rule["rule_pack"],
+                    "score": score,
+                    "risk": risk,
+                    "recoverability": recoverability,
+                    "evidence_gaps": gaps,
+                }
+            )
+
+    by_pack = {str(pack["pack_id"]): pack for pack in catalog["rule_packs"]}
+    for pack_id in sorted(by_pack):
+        pack = by_pack[pack_id]
+        pack_rules = [rule for rule in rules if rule.get("rule_pack") == pack_id]
+        pack_scores = [int(rule.get("quality_score", {}).get("score", 0)) for rule in pack_rules]
+        pack_rows.append(
+            {
+                "pack_id": pack_id,
+                "rule_count": len(pack_rules),
+                "minimum_score": min(pack_scores) if pack_scores else 0,
+                "average_score": round(sum(pack_scores) / len(pack_scores), 2) if pack_scores else 0,
+                "high_risk_rule_count": sum(1 for rule in pack_rules if rule.get("quality_score", {}).get("risk") == "high"),
+                "review_queue_count": sum(1 for item in review_queue if item["rule_pack"] == pack_id),
+                "review_status": pack["review_status"],
+                "source": pack["source"],
+            }
+        )
+
+    return {
+        "schema": RULE_QUALITY_DASHBOARD_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "catalog_schema": catalog["schema"],
+        "quality_schema": RULE_QUALITY_SCORE_SCHEMA,
+        "version": catalog["version"],
+        "summary": {
+            "rule_count": len(rules),
+            "pack_count": len(pack_rows),
+            "minimum_score": min(scores) if scores else 0,
+            "average_score": round(sum(scores) / len(scores), 2) if scores else 0,
+            "review_queue_count": len(review_queue),
+            "execution_enabled_count": 0,
+        },
+        "risk_counts": risk_counts,
+        "recoverability_counts": recoverability_counts,
+        "quality_buckets": bucket_counts,
+        "evidence_gap_counts": evidence_gaps,
+        "packs": pack_rows,
+        "review_queue": review_queue,
+        "promotion_gate": {
+            "requires_quality_score": True,
+            "requires_owner_evidence": True,
+            "requires_sensitive_exclusion_scan": True,
+            "requires_fixture_coverage": True,
+            "execution_enabled": False,
+        },
+        "non_goals": [
+            "This dashboard does not execute cleanup rules.",
+            "This dashboard does not promote rules into execution.",
+            "This dashboard does not import external cleaner rules.",
+        ],
+    }
 
 
 def rule_pack_catalog_report() -> dict[str, Any]:
