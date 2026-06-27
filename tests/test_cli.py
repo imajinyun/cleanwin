@@ -2754,6 +2754,156 @@ def test_app_leftovers_skips_virtualization_emulator_and_local_ai_rules_when_act
     assert_contains_none(paths, [str(bluestacks_logs), str(nox_logs), str(ldplayer_logs), str(ollama_logs)])
     assert_contains_none(paths, [str(lm_studio_logs), str(jan_logs), str(gpt4all_logs), str(pinokio_cache)])
 
+def test_app_leftovers_scans_network_remote_and_dev_tool_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "Fiddler Everywhere" / "logs" / "main.log", "fiddler"),
+        (roaming / "Charles" / "logs" / "charles.log", "charles"),
+        (roaming / "RustDesk" / "log" / "rustdesk.log", "rustdesk"),
+        (local / "Tailscale" / "Logs" / "ipn.log", "tailscale"),
+        (program_data / "ZeroTier" / "One" / "zerotier.log", "zerotier"),
+        (local / "Moonlight Game Streaming Project" / "Moonlight" / "logs" / "moonlight.log", "moonlight"),
+        (local / "Sunshine" / "logs" / "sunshine.log", "sunshine"),
+        (local / "Microsoft" / "VisualStudio" / "17.0_abcd" / "ActivityLog.xml", "visual-studio"),
+        (roaming / "GitExtensions" / "GitExtensions.log", "git-extensions"),
+        (local / "GitAhead" / "logs" / "gitahead.log", "gitahead"),
+        (roaming / "MongoDB Compass" / "GPUCache" / "data_0", "compass"),
+        (roaming / "RedisInsight" / "GPUCache" / "data_0", "redisinsight"),
+        (roaming / "Fiddler Everywhere" / "Sessions" / "capture.saz", "capture"),
+        (roaming / "Charles" / "ca" / "charles-ssl-proxying-certificate.pem", "cert"),
+        (roaming / "RustDesk" / "config" / "RustDesk.toml", "rustdesk-config"),
+        (program_data / "ZeroTier" / "One" / "identity.secret", "zerotier-secret"),
+        (local / "Tailscale" / "state" / "tailscaled.state", "tailscale-state"),
+        (user / "source" / "repos" / "app" / "app.sln", "solution"),
+        (user / "repos" / "project" / ".git" / "config", "git-config"),
+        (roaming / "MongoDB Compass" / "Connections" / "connections.json", "mongo-connections"),
+        (roaming / "RedisInsight" / "db" / "redisinsight.db", "redis-db"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    fiddler_logs = cache_files[0][0].parent
+    charles_logs = cache_files[1][0].parent
+    rustdesk_logs = cache_files[2][0].parent
+    tailscale_logs = cache_files[3][0].parent
+    zerotier_log = cache_files[4][0]
+    moonlight_logs = cache_files[5][0].parent
+    sunshine_logs = cache_files[6][0].parent
+    visual_studio_log = cache_files[7][0]
+    git_extensions_log = cache_files[8][0]
+    gitahead_logs = cache_files[9][0].parent
+    compass_gpu_cache = cache_files[10][0].parent
+    redisinsight_gpu_cache = cache_files[11][0].parent
+    protected_files = [path for path, _ in cache_files[12:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.fiddler-everywhere.logs"], {"path": str(fiddler_logs)})
+    assert_field_values(by_rule["app-leftovers.charles.logs"], {"path": str(charles_logs)})
+    assert_field_values(by_rule["app-leftovers.rustdesk.logs"], {"path": str(rustdesk_logs)})
+    assert_field_values(by_rule["app-leftovers.tailscale.logs"], {"path": str(tailscale_logs)})
+    assert_field_values(by_rule["app-leftovers.zerotier.logs"], {"path": str(zerotier_log)})
+    assert_field_values(by_rule["app-leftovers.moonlight.logs"], {"path": str(moonlight_logs)})
+    assert_field_values(by_rule["app-leftovers.sunshine.logs"], {"path": str(sunshine_logs)})
+    assert_field_values(by_rule["app-leftovers.visual-studio.logs"], {"path": str(visual_studio_log)})
+    assert_field_values(by_rule["app-leftovers.git-extensions.logs"], {"path": str(git_extensions_log)})
+    assert_field_values(by_rule["app-leftovers.gitahead.logs"], {"path": str(gitahead_logs)})
+    assert_field_values(by_rule["app-leftovers.mongodb-compass.gpu-cache"], {"path": str(compass_gpu_cache)})
+    assert_field_values(by_rule["app-leftovers.redisinsight.gpu-cache"], {"path": str(redisinsight_gpu_cache)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_network_remote_and_dev_tool_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_data = root / "ProgramData"
+    program_files = root / "ProgramFiles"
+
+    fiddler_logs = roaming / "Fiddler Everywhere" / "logs"
+    write_text_file(fiddler_logs / "main.log", "fiddler")
+    write_text_file(local / "Programs" / "Fiddler Everywhere" / "Fiddler Everywhere.exe", "exe")
+
+    charles_logs = roaming / "Charles" / "logs"
+    write_text_file(charles_logs / "charles.log", "charles")
+    write_text_file(program_files / "Charles" / "Charles.exe", "exe")
+
+    rustdesk_logs = roaming / "RustDesk" / "log"
+    write_text_file(rustdesk_logs / "rustdesk.log", "rustdesk")
+    write_text_file(program_files / "RustDesk" / "RustDesk.exe", "exe")
+
+    tailscale_logs = local / "Tailscale" / "Logs"
+    write_text_file(tailscale_logs / "ipn.log", "tailscale")
+    write_text_file(program_files / "Tailscale" / "tailscale-ipn.exe", "exe")
+
+    zerotier_log = program_data / "ZeroTier" / "One" / "zerotier.log"
+    write_text_file(zerotier_log, "zerotier")
+    write_text_file(program_files / "ZeroTier" / "One" / "zerotier_desktop_ui.exe", "exe")
+
+    moonlight_logs = local / "Moonlight Game Streaming Project" / "Moonlight" / "logs"
+    write_text_file(moonlight_logs / "moonlight.log", "moonlight")
+    write_text_file(program_files / "Moonlight Game Streaming" / "Moonlight.exe", "exe")
+
+    sunshine_logs = local / "Sunshine" / "logs"
+    write_text_file(sunshine_logs / "sunshine.log", "sunshine")
+    write_text_file(program_files / "Sunshine" / "sunshine.exe", "exe")
+
+    visual_studio_log = local / "Microsoft" / "VisualStudio" / "17.0_abcd" / "ActivityLog.xml"
+    write_text_file(visual_studio_log, "visual-studio")
+    write_text_file(program_files / "Microsoft Visual Studio" / "2022" / "Community" / "Common7" / "IDE" / "devenv.exe", "exe")
+
+    git_extensions_log = roaming / "GitExtensions" / "GitExtensions.log"
+    write_text_file(git_extensions_log, "git-extensions")
+    write_text_file(program_files / "GitExtensions" / "GitExtensions.exe", "exe")
+
+    gitahead_logs = local / "GitAhead" / "logs"
+    write_text_file(gitahead_logs / "gitahead.log", "gitahead")
+    write_text_file(program_files / "GitAhead" / "GitAhead.exe", "exe")
+
+    compass_gpu_cache = roaming / "MongoDB Compass" / "GPUCache"
+    write_text_file(compass_gpu_cache / "data_0", "compass")
+    write_text_file(local / "Programs" / "MongoDB Compass" / "MongoDBCompass.exe", "exe")
+
+    redisinsight_gpu_cache = roaming / "RedisInsight" / "GPUCache"
+    write_text_file(redisinsight_gpu_cache / "data_0", "redisinsight")
+    write_text_file(local / "Programs" / "RedisInsight" / "RedisInsight.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(fiddler_logs), str(charles_logs), str(rustdesk_logs), str(tailscale_logs)])
+    assert_contains_none(paths, [str(zerotier_log), str(moonlight_logs), str(sunshine_logs), str(visual_studio_log)])
+    assert_contains_none(paths, [str(git_extensions_log), str(gitahead_logs), str(compass_gpu_cache)])
+    assert_contains_none(paths, [str(redisinsight_gpu_cache)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

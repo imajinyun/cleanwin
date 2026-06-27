@@ -2001,6 +2001,102 @@
       "active_markers": ["local:Programs/Pinokio/Pinokio.exe", "programfiles:Pinokio/Pinokio.exe", "programfilesx86:Pinokio/Pinokio.exe"],
       "official_cleanup_command": "Uninstall Pinokio before removing reviewed cache leftovers.",
       "rationale": "Pinokio cache contains regenerated app shell artifacts; installed apps, repositories, models, environments, API keys, accounts, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.fiddler-everywhere.logs",
+      "owner": "Fiddler Everywhere",
+      "default": "roaming:Fiddler Everywhere/logs",
+      "active_markers": ["local:Programs/Fiddler Everywhere/Fiddler Everywhere.exe", "programfiles:Fiddler Everywhere/Fiddler Everywhere.exe", "programfilesx86:Fiddler Everywhere/Fiddler Everywhere.exe"],
+      "official_cleanup_command": "Uninstall Fiddler Everywhere before removing reviewed diagnostic log leftovers.",
+      "rationale": "Fiddler Everywhere logs are regenerated diagnostics; captured sessions, certificates, account state, rules, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.charles.logs",
+      "owner": "Charles Proxy",
+      "default": "roaming:Charles/logs",
+      "active_markers": ["programfiles:Charles/Charles.exe", "programfilesx86:Charles/Charles.exe"],
+      "official_cleanup_command": "Uninstall Charles Proxy before removing reviewed diagnostic log leftovers.",
+      "rationale": "Charles Proxy logs are regenerated diagnostics; captured sessions, SSL certificates, mappings, breakpoints, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.rustdesk.logs",
+      "owner": "RustDesk",
+      "default": "roaming:RustDesk/log",
+      "active_markers": ["programfiles:RustDesk/RustDesk.exe", "programfilesx86:RustDesk/RustDesk.exe", "local:Programs/RustDesk/RustDesk.exe"],
+      "official_cleanup_command": "Uninstall RustDesk before removing reviewed diagnostic log leftovers.",
+      "rationale": "RustDesk logs are regenerated diagnostics; IDs, keys, address books, unattended access configuration, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.tailscale.logs",
+      "owner": "Tailscale",
+      "default": "local:Tailscale/Logs",
+      "active_markers": ["programfiles:Tailscale/tailscale-ipn.exe", "programfilesx86:Tailscale/tailscale-ipn.exe"],
+      "official_cleanup_command": "Uninstall Tailscale before removing reviewed diagnostic log leftovers.",
+      "rationale": "Tailscale logs are regenerated diagnostics; node identity, keys, ACL state, network configuration, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.zerotier.logs",
+      "owner": "ZeroTier One",
+      "default": "programdata:ZeroTier/One/*.log",
+      "active_markers": ["programfiles:ZeroTier/One/zerotier_desktop_ui.exe", "programfilesx86:ZeroTier/One/zerotier_desktop_ui.exe"],
+      "official_cleanup_command": "Uninstall ZeroTier One before removing reviewed diagnostic log leftovers.",
+      "rationale": "ZeroTier logs are regenerated diagnostics; node identity, network memberships, keys, and controller configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.moonlight.logs",
+      "owner": "Moonlight Game Streaming",
+      "default": "local:Moonlight Game Streaming Project/Moonlight/logs",
+      "active_markers": ["programfiles:Moonlight Game Streaming/Moonlight.exe", "programfilesx86:Moonlight Game Streaming/Moonlight.exe", "local:Programs/Moonlight Game Streaming/Moonlight.exe"],
+      "official_cleanup_command": "Uninstall Moonlight before removing reviewed diagnostic log leftovers.",
+      "rationale": "Moonlight logs are regenerated diagnostics; paired hosts, streaming configuration, credentials, screenshots, and user media remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.sunshine.logs",
+      "owner": "Sunshine",
+      "default": "local:Sunshine/logs",
+      "active_markers": ["programfiles:Sunshine/sunshine.exe", "programfilesx86:Sunshine/sunshine.exe"],
+      "official_cleanup_command": "Uninstall Sunshine before removing reviewed diagnostic log leftovers.",
+      "rationale": "Sunshine logs are regenerated diagnostics; paired clients, certificates, streaming configuration, credentials, and media libraries remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.visual-studio.logs",
+      "owner": "Visual Studio",
+      "default": "local:Microsoft/VisualStudio/*/ActivityLog.xml",
+      "active_markers": ["programfiles:Microsoft Visual Studio/*/*/Common7/IDE/devenv.exe", "programfilesx86:Microsoft Visual Studio/*/*/Common7/IDE/devenv.exe"],
+      "official_cleanup_command": "Uninstall Visual Studio before removing reviewed IDE activity log leftovers.",
+      "rationale": "Visual Studio activity logs are regenerated diagnostics; solutions, projects, extensions, component caches, credentials, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.git-extensions.logs",
+      "owner": "Git Extensions",
+      "default": "roaming:GitExtensions/GitExtensions.log",
+      "active_markers": ["programfiles:GitExtensions/GitExtensions.exe", "programfilesx86:GitExtensions/GitExtensions.exe"],
+      "official_cleanup_command": "Uninstall Git Extensions before removing reviewed diagnostic log leftovers.",
+      "rationale": "Git Extensions logs are regenerated diagnostics; repositories, Git configuration, SSH keys, account state, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.gitahead.logs",
+      "owner": "GitAhead",
+      "default": "local:GitAhead/logs",
+      "active_markers": ["programfiles:GitAhead/GitAhead.exe", "programfilesx86:GitAhead/GitAhead.exe", "local:Programs/GitAhead/GitAhead.exe"],
+      "official_cleanup_command": "Uninstall GitAhead before removing reviewed diagnostic log leftovers.",
+      "rationale": "GitAhead logs are regenerated diagnostics; repositories, Git configuration, account state, SSH keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mongodb-compass.gpu-cache",
+      "owner": "MongoDB Compass",
+      "default": "roaming:MongoDB Compass/GPUCache",
+      "active_markers": ["local:Programs/MongoDB Compass/MongoDBCompass.exe", "programfiles:MongoDB Compass/MongoDBCompass.exe", "programfilesx86:MongoDB Compass/MongoDBCompass.exe"],
+      "official_cleanup_command": "Uninstall MongoDB Compass before removing reviewed renderer cache leftovers.",
+      "rationale": "MongoDB Compass GPUCache contains regenerated Electron renderer artifacts; connections, saved queries, exports, SSH tunnels, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.redisinsight.gpu-cache",
+      "owner": "RedisInsight",
+      "default": "roaming:RedisInsight/GPUCache",
+      "active_markers": ["local:Programs/RedisInsight/RedisInsight.exe", "programfiles:RedisInsight/RedisInsight.exe", "programfilesx86:RedisInsight/RedisInsight.exe"],
+      "official_cleanup_command": "Uninstall RedisInsight before removing reviewed renderer cache leftovers.",
+      "rationale": "RedisInsight GPUCache contains regenerated Electron renderer artifacts; database connections, workbench history, exports, SSH tunnels, and credentials remain outside this rule."
     }
   ]
 }

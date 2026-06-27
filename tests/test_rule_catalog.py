@@ -254,6 +254,18 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.jan.logs",
         "app-leftovers.gpt4all.logs",
         "app-leftovers.pinokio.cache",
+        "app-leftovers.fiddler-everywhere.logs",
+        "app-leftovers.charles.logs",
+        "app-leftovers.rustdesk.logs",
+        "app-leftovers.tailscale.logs",
+        "app-leftovers.zerotier.logs",
+        "app-leftovers.moonlight.logs",
+        "app-leftovers.sunshine.logs",
+        "app-leftovers.visual-studio.logs",
+        "app-leftovers.git-extensions.logs",
+        "app-leftovers.gitahead.logs",
+        "app-leftovers.mongodb-compass.gpu-cache",
+        "app-leftovers.redisinsight.gpu-cache",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
