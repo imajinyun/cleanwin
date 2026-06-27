@@ -2904,6 +2904,158 @@ def test_app_leftovers_skips_network_remote_and_dev_tool_rules_when_active_marke
     assert_contains_none(paths, [str(git_extensions_log), str(gitahead_logs), str(compass_gpu_cache)])
     assert_contains_none(paths, [str(redisinsight_gpu_cache)])
 
+def test_app_leftovers_scans_sync_backup_and_transfer_cache_governance(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    user = root / "User"
+    cache_files = [
+        (roaming / "Nextcloud" / "logs" / "nextcloud.log", "nextcloud"),
+        (roaming / "ownCloud" / "logs" / "owncloud.log", "owncloud"),
+        (local / "pCloud" / "logs" / "pcloud.log", "pcloud"),
+        (local / "Syncthing" / "syncthing.log", "syncthing"),
+        (roaming / "Resilio Sync" / "sync.log", "resilio"),
+        (roaming / "GoodSync" / "logs" / "goodsync.log", "goodsync"),
+        (local / "Duplicati" / "logs" / "duplicati.log", "duplicati"),
+        (roaming / "KopiaUI" / "logs" / "kopia.log", "kopia"),
+        (roaming / "Cyberduck" / "Logs" / "cyberduck.log", "cyberduck"),
+        (roaming / "Mountain Duck" / "Logs" / "mountain-duck.log", "mountain-duck"),
+        (roaming / "TeraCopy" / "Logs" / "copy.log", "teracopy"),
+        (local / "RcloneBrowser" / "logs" / "rclone.log", "rclone"),
+        (user / "Nextcloud" / "Documents" / "contract.docx", "synced-file"),
+        (roaming / "Nextcloud" / "nextcloud.cfg", "nextcloud-config"),
+        (roaming / "ownCloud" / "owncloud.cfg", "owncloud-config"),
+        (local / "pCloud" / "data.db", "pcloud-db"),
+        (local / "Syncthing" / "cert.pem", "syncthing-cert"),
+        (local / "Syncthing" / "index-v0.14.0.db", "syncthing-index"),
+        (roaming / "Resilio Sync" / "settings.dat", "resilio-settings"),
+        (roaming / "GoodSync" / "jobs.tic", "goodsync-jobs"),
+        (local / "Duplicati" / "Duplicati-server.sqlite", "duplicati-db"),
+        (roaming / "KopiaUI" / "repositories.config", "kopia-repos"),
+        (roaming / "Cyberduck" / "Bookmarks" / "server.duck", "cyberduck-bookmark"),
+        (roaming / "Mountain Duck" / "Bookmarks" / "drive.duck", "mountain-bookmark"),
+        (roaming / "TeraCopy" / "history.db", "teracopy-history"),
+        (user / ".config" / "rclone" / "rclone.conf", "rclone-config"),
+    ]
+    for path, contents in cache_files:
+        write_text_file(path, contents)
+    nextcloud_logs = cache_files[0][0].parent
+    owncloud_logs = cache_files[1][0].parent
+    pcloud_logs = cache_files[2][0].parent
+    syncthing_log = cache_files[3][0]
+    resilio_log = cache_files[4][0]
+    goodsync_logs = cache_files[5][0].parent
+    duplicati_logs = cache_files[6][0].parent
+    kopia_logs = cache_files[7][0].parent
+    cyberduck_logs = cache_files[8][0].parent
+    mountain_duck_logs = cache_files[9][0].parent
+    teracopy_logs = cache_files[10][0].parent
+    rclone_logs = cache_files[11][0].parent
+    protected_files = [path for path, _ in cache_files[12:]]
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(by_rule["app-leftovers.nextcloud.logs"], {"path": str(nextcloud_logs)})
+    assert_field_values(by_rule["app-leftovers.owncloud.logs"], {"path": str(owncloud_logs)})
+    assert_field_values(by_rule["app-leftovers.pcloud.logs"], {"path": str(pcloud_logs)})
+    assert_field_values(by_rule["app-leftovers.syncthing.logs"], {"path": str(syncthing_log)})
+    assert_field_values(by_rule["app-leftovers.resilio-sync.logs"], {"path": str(resilio_log)})
+    assert_field_values(by_rule["app-leftovers.goodsync.logs"], {"path": str(goodsync_logs)})
+    assert_field_values(by_rule["app-leftovers.duplicati.logs"], {"path": str(duplicati_logs)})
+    assert_field_values(by_rule["app-leftovers.kopiaui.logs"], {"path": str(kopia_logs)})
+    assert_field_values(by_rule["app-leftovers.cyberduck.logs"], {"path": str(cyberduck_logs)})
+    assert_field_values(by_rule["app-leftovers.mountain-duck.logs"], {"path": str(mountain_duck_logs)})
+    assert_field_values(by_rule["app-leftovers.teracopy.logs"], {"path": str(teracopy_logs)})
+    assert_field_values(by_rule["app-leftovers.rclone-browser.logs"], {"path": str(rclone_logs)})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(path) for path in protected_files])
+
+def test_app_leftovers_skips_sync_backup_and_transfer_rules_when_active_marker_exists(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    root = tmp_path
+    roaming = root / "Roaming"
+    local = root / "LocalAppData"
+    program_files = root / "ProgramFiles"
+
+    nextcloud_logs = roaming / "Nextcloud" / "logs"
+    write_text_file(nextcloud_logs / "nextcloud.log", "nextcloud")
+    write_text_file(program_files / "Nextcloud" / "nextcloud.exe", "exe")
+
+    owncloud_logs = roaming / "ownCloud" / "logs"
+    write_text_file(owncloud_logs / "owncloud.log", "owncloud")
+    write_text_file(program_files / "ownCloud" / "owncloud.exe", "exe")
+
+    pcloud_logs = local / "pCloud" / "logs"
+    write_text_file(pcloud_logs / "pcloud.log", "pcloud")
+    write_text_file(local / "pCloud" / "pCloud.exe", "exe")
+
+    syncthing_log = local / "Syncthing" / "syncthing.log"
+    write_text_file(syncthing_log, "syncthing")
+    write_text_file(program_files / "Syncthing" / "syncthing.exe", "exe")
+
+    resilio_log = roaming / "Resilio Sync" / "sync.log"
+    write_text_file(resilio_log, "resilio")
+    write_text_file(program_files / "Resilio Sync" / "Resilio Sync.exe", "exe")
+
+    goodsync_logs = roaming / "GoodSync" / "logs"
+    write_text_file(goodsync_logs / "goodsync.log", "goodsync")
+    write_text_file(program_files / "Siber Systems" / "GoodSync" / "GoodSync.exe", "exe")
+
+    duplicati_logs = local / "Duplicati" / "logs"
+    write_text_file(duplicati_logs / "duplicati.log", "duplicati")
+    write_text_file(program_files / "Duplicati 2" / "Duplicati.GUI.TrayIcon.exe", "exe")
+
+    kopia_logs = roaming / "KopiaUI" / "logs"
+    write_text_file(kopia_logs / "kopia.log", "kopia")
+    write_text_file(local / "Programs" / "KopiaUI" / "KopiaUI.exe", "exe")
+
+    cyberduck_logs = roaming / "Cyberduck" / "Logs"
+    write_text_file(cyberduck_logs / "cyberduck.log", "cyberduck")
+    write_text_file(program_files / "Cyberduck" / "Cyberduck.exe", "exe")
+
+    mountain_duck_logs = roaming / "Mountain Duck" / "Logs"
+    write_text_file(mountain_duck_logs / "mountain-duck.log", "mountain-duck")
+    write_text_file(program_files / "Mountain Duck" / "Mountain Duck.exe", "exe")
+
+    teracopy_logs = roaming / "TeraCopy" / "Logs"
+    write_text_file(teracopy_logs / "copy.log", "teracopy")
+    write_text_file(program_files / "TeraCopy" / "TeraCopy.exe", "exe")
+
+    rclone_logs = local / "RcloneBrowser" / "logs"
+    write_text_file(rclone_logs / "rclone.log", "rclone")
+    write_text_file(program_files / "Rclone Browser" / "RcloneBrowser.exe", "exe")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "app-leftovers",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    paths = {candidate["path"] for candidate in payload["candidates"]}
+    assert_contains_none(paths, [str(nextcloud_logs), str(owncloud_logs), str(pcloud_logs), str(syncthing_log)])
+    assert_contains_none(paths, [str(resilio_log), str(goodsync_logs), str(duplicati_logs), str(kopia_logs)])
+    assert_contains_none(paths, [str(cyberduck_logs), str(mountain_duck_logs), str(teracopy_logs), str(rclone_logs)])
+
 def test_app_leftovers_rule_filter_review_and_dry_run(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

@@ -2097,6 +2097,102 @@
       "active_markers": ["local:Programs/RedisInsight/RedisInsight.exe", "programfiles:RedisInsight/RedisInsight.exe", "programfilesx86:RedisInsight/RedisInsight.exe"],
       "official_cleanup_command": "Uninstall RedisInsight before removing reviewed renderer cache leftovers.",
       "rationale": "RedisInsight GPUCache contains regenerated Electron renderer artifacts; database connections, workbench history, exports, SSH tunnels, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.nextcloud.logs",
+      "owner": "Nextcloud Desktop",
+      "default": "roaming:Nextcloud/logs",
+      "active_markers": ["programfiles:Nextcloud/nextcloud.exe", "programfilesx86:Nextcloud/nextcloud.exe", "local:Programs/Nextcloud/nextcloud.exe"],
+      "official_cleanup_command": "Uninstall or reset Nextcloud Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "Nextcloud logs are regenerated sync diagnostics; synced files, account state, sync journals, encryption keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.owncloud.logs",
+      "owner": "ownCloud Desktop",
+      "default": "roaming:ownCloud/logs",
+      "active_markers": ["programfiles:ownCloud/owncloud.exe", "programfilesx86:ownCloud/owncloud.exe", "local:Programs/ownCloud/owncloud.exe"],
+      "official_cleanup_command": "Uninstall or reset ownCloud Desktop before removing reviewed diagnostic log leftovers.",
+      "rationale": "ownCloud logs are regenerated sync diagnostics; synced files, account state, sync journals, encryption keys, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.pcloud.logs",
+      "owner": "pCloud Drive",
+      "default": "local:pCloud/logs",
+      "active_markers": ["local:pCloud/pCloud.exe", "local:Programs/pCloud Drive/pCloud.exe", "programfiles:pCloud Drive/pCloud.exe", "programfilesx86:pCloud Drive/pCloud.exe"],
+      "official_cleanup_command": "Uninstall or reset pCloud Drive before removing reviewed diagnostic log leftovers.",
+      "rationale": "pCloud logs are regenerated sync diagnostics; synced files, cache database, account state, crypto folders, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.syncthing.logs",
+      "owner": "Syncthing",
+      "default": "local:Syncthing/syncthing.log",
+      "active_markers": ["local:Programs/Syncthing/syncthing.exe", "programfiles:Syncthing/syncthing.exe", "programfilesx86:Syncthing/syncthing.exe"],
+      "official_cleanup_command": "Uninstall or stop Syncthing before removing reviewed diagnostic log leftovers.",
+      "rationale": "Syncthing logs are regenerated diagnostics; synced folders, device IDs, index databases, certificates, and configuration remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.resilio-sync.logs",
+      "owner": "Resilio Sync",
+      "default": "roaming:Resilio Sync/sync.log",
+      "active_markers": ["programfiles:Resilio Sync/Resilio Sync.exe", "programfilesx86:Resilio Sync/Resilio Sync.exe", "local:Programs/Resilio Sync/Resilio Sync.exe"],
+      "official_cleanup_command": "Uninstall or reset Resilio Sync before removing reviewed diagnostic log leftovers.",
+      "rationale": "Resilio Sync logs are regenerated diagnostics; synced folders, identities, keys, peer state, archive data, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.goodsync.logs",
+      "owner": "GoodSync",
+      "default": "roaming:GoodSync/logs",
+      "active_markers": ["programfiles:Siber Systems/GoodSync/GoodSync.exe", "programfilesx86:Siber Systems/GoodSync/GoodSync.exe"],
+      "official_cleanup_command": "Uninstall GoodSync before removing reviewed diagnostic log leftovers.",
+      "rationale": "GoodSync logs are regenerated diagnostics; jobs, synced data, profiles, server credentials, and license state remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.duplicati.logs",
+      "owner": "Duplicati",
+      "default": "local:Duplicati/logs",
+      "active_markers": ["programfiles:Duplicati 2/Duplicati.GUI.TrayIcon.exe", "programfilesx86:Duplicati 2/Duplicati.GUI.TrayIcon.exe", "local:Programs/Duplicati 2/Duplicati.GUI.TrayIcon.exe"],
+      "official_cleanup_command": "Uninstall Duplicati before removing reviewed diagnostic log leftovers.",
+      "rationale": "Duplicati logs are regenerated backup diagnostics; backup databases, job definitions, encryption keys, remote credentials, and restored files remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.kopiaui.logs",
+      "owner": "KopiaUI",
+      "default": "roaming:KopiaUI/logs",
+      "active_markers": ["local:Programs/KopiaUI/KopiaUI.exe", "programfiles:KopiaUI/KopiaUI.exe", "programfilesx86:KopiaUI/KopiaUI.exe"],
+      "official_cleanup_command": "Uninstall KopiaUI before removing reviewed diagnostic log leftovers.",
+      "rationale": "KopiaUI logs are regenerated backup diagnostics; repositories, snapshots, cache indexes, encryption keys, policies, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.cyberduck.logs",
+      "owner": "Cyberduck",
+      "default": "roaming:Cyberduck/Logs",
+      "active_markers": ["programfiles:Cyberduck/Cyberduck.exe", "programfilesx86:Cyberduck/Cyberduck.exe", "local:Programs/Cyberduck/Cyberduck.exe"],
+      "official_cleanup_command": "Uninstall Cyberduck before removing reviewed diagnostic log leftovers.",
+      "rationale": "Cyberduck logs are regenerated transfer diagnostics; bookmarks, keychains, transfers, mounted volumes, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.mountain-duck.logs",
+      "owner": "Mountain Duck",
+      "default": "roaming:Mountain Duck/Logs",
+      "active_markers": ["programfiles:Mountain Duck/Mountain Duck.exe", "programfilesx86:Mountain Duck/Mountain Duck.exe", "local:Programs/Mountain Duck/Mountain Duck.exe"],
+      "official_cleanup_command": "Uninstall Mountain Duck before removing reviewed diagnostic log leftovers.",
+      "rationale": "Mountain Duck logs are regenerated transfer diagnostics; bookmarks, mounted drive state, offline files, keychains, and credentials remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.teracopy.logs",
+      "owner": "TeraCopy",
+      "default": "roaming:TeraCopy/Logs",
+      "active_markers": ["programfiles:TeraCopy/TeraCopy.exe", "programfilesx86:TeraCopy/TeraCopy.exe"],
+      "official_cleanup_command": "Uninstall TeraCopy before removing reviewed copy log leftovers.",
+      "rationale": "TeraCopy logs are regenerated copy diagnostics; copied files, transfer lists, checksum results, license state, and settings remain outside this rule."
+    },
+    {
+      "rule_id": "app-leftovers.rclone-browser.logs",
+      "owner": "Rclone Browser",
+      "default": "local:RcloneBrowser/logs",
+      "active_markers": ["programfiles:Rclone Browser/RcloneBrowser.exe", "programfilesx86:Rclone Browser/RcloneBrowser.exe", "local:Programs/Rclone Browser/RcloneBrowser.exe"],
+      "official_cleanup_command": "Uninstall Rclone Browser before removing reviewed diagnostic log leftovers.",
+      "rationale": "Rclone Browser logs are regenerated transfer diagnostics; rclone remotes, configs, cloud credentials, transfer queues, and synced files remain outside this rule."
     }
   ]
 }

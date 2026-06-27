@@ -266,6 +266,18 @@ def test_cleanup_rule_catalog_loads_versioned_rules(
         "app-leftovers.gitahead.logs",
         "app-leftovers.mongodb-compass.gpu-cache",
         "app-leftovers.redisinsight.gpu-cache",
+        "app-leftovers.nextcloud.logs",
+        "app-leftovers.owncloud.logs",
+        "app-leftovers.pcloud.logs",
+        "app-leftovers.syncthing.logs",
+        "app-leftovers.resilio-sync.logs",
+        "app-leftovers.goodsync.logs",
+        "app-leftovers.duplicati.logs",
+        "app-leftovers.kopiaui.logs",
+        "app-leftovers.cyberduck.logs",
+        "app-leftovers.mountain-duck.logs",
+        "app-leftovers.teracopy.logs",
+        "app-leftovers.rclone-browser.logs",
     ],
 )
 def test_cleanup_rule_catalog_regenerated_rules_have_reviewable_rationale(
