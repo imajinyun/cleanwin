@@ -7,6 +7,7 @@ from cleanwincli.windows_native_artifacts import (
     WINDOWS_NATIVE_ARTIFACT_CONTRACT_SCHEMA,
     WINDOWS_NATIVE_ARTIFACT_PARSE_SCHEMA,
     WINDOWS_NATIVE_ARTIFACTS_SCHEMA,
+    WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA,
     parse_chocolatey_list_output,
     parse_dism_feature_table,
     parse_registry_export_metadata,
@@ -59,6 +60,36 @@ def test_windows_native_artifact_contracts_are_report_only(
     for contract in contracts.values():
         assert_payload_schema(contract, WINDOWS_NATIVE_ARTIFACT_CONTRACT_SCHEMA)
         assert_execution_disabled(contract)
+
+
+def test_windows_native_collector_wrapper_is_contract_only(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_contains_none: Callable[[Collection[Any], Sequence[Any]], None],
+    assert_field_values: AssertFieldValues,
+) -> None:
+    wrapper = windows_native_artifacts_report()["collector_wrapper"]
+    commands = {command["id"]: command for command in wrapper["commands"]}
+
+    assert_payload_schema(wrapper, WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA)
+    assert_execution_disabled(wrapper)
+    assert_field_values(wrapper["summary"], {"command_count": 7, "requires_admin_count": 3, "mutation_command_count": 0})
+    assert_contains_all(
+        set(commands),
+        [
+            "collect-appx-packages",
+            "collect-provisioned-appx",
+            "collect-registry-export",
+            "collect-scheduled-tasks",
+            "collect-services",
+            "collect-package-managers",
+            "collect-dism-health",
+        ],
+    )
+    assert_contains_all(commands["collect-package-managers"]["captures"], ["winget-list", "scoop-list", "chocolatey-list"])
+    for command in commands.values():
+        assert_contains_none(" ".join(command["argv"]), ["Remove-AppxPackage", "Set-ItemProperty", "schtasks /Change", "sc config"])
 
 
 def test_windows_native_artifact_contracts_describe_protected_surfaces(
@@ -152,4 +183,10 @@ def test_cli_provider_and_schema_registry_expose_native_artifacts(
     assert_schema_samples: AssertSchemaSamples,
 ) -> None:
     assert_cli_provider_schema_sample("windows-native-artifacts", WINDOWS_NATIVE_ARTIFACTS_SCHEMA)
-    assert_schema_samples([WINDOWS_NATIVE_ARTIFACT_CONTRACT_SCHEMA, WINDOWS_NATIVE_ARTIFACT_PARSE_SCHEMA])
+    assert_schema_samples(
+        [
+            WINDOWS_NATIVE_ARTIFACT_CONTRACT_SCHEMA,
+            WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA,
+            WINDOWS_NATIVE_ARTIFACT_PARSE_SCHEMA,
+        ]
+    )

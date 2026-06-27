@@ -52,13 +52,14 @@ from cleanwincli.core import (
     workflow_router_command,
     workflow_trace_command,
 )
+from cleanwincli.output import render_human_payload
 
 
 def emit(payload: dict[str, Any], *, as_json: bool) -> None:
     if as_json:
         print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
     else:
-        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        print(render_human_payload(payload))
 
 
 def build_parser() -> argparse.ArgumentParser:

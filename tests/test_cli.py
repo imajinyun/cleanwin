@@ -54,6 +54,26 @@ def test_capabilities_reports_dry_run_and_single_exit(
     assert_contains_all(payload["executable_cache_categories"], ["temp", "dev-cache", "package-cache", "browser-cache"])
     assert_contains_all(payload["never_auto_execute"], ["registry-clean"])
 
+
+def test_non_json_cli_output_uses_progress_summary(
+    run_cleanwin_human: RunCleanWin,
+    cleanwin_test_env: Callable[..., dict[str, str]],
+    assert_returncode: AssertReturnCode,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    result = run_cleanwin_human("capabilities", env=cleanwin_test_env())
+
+    assert_returncode(result, 0)
+    assert_text_contains_all(
+        result.stdout,
+        [
+            "CleanWin ran",
+            "[100%]",
+            "status: ok",
+            "json: rerun with --json",
+        ],
+    )
+
 def test_inspect_temp_finds_sandbox_candidate(
     tmp_path: Path,
     cleanwin_json: CleanWinJSON,

@@ -11,6 +11,7 @@ from typing import Any
 
 WINDOWS_NATIVE_ARTIFACTS_SCHEMA = "cleanwin.windows-native-artifacts.v1"
 WINDOWS_NATIVE_ARTIFACT_CONTRACT_SCHEMA = "cleanwin.windows-native-artifact-contract.v1"
+WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA = "cleanwin.windows-native-collector-wrapper.v1"
 WINDOWS_NATIVE_ARTIFACT_PARSE_SCHEMA = "cleanwin.windows-native-artifact-parse.v1"
 
 
@@ -41,6 +42,97 @@ def _artifact_contract(
         "protected_surfaces": protected_surfaces,
         "review_notes": review_notes,
         "failure_modes": ["not-windows", "command-unavailable", "requires-admin", "policy-restricted"],
+    }
+
+
+def windows_native_collector_wrapper_contract() -> dict[str, Any]:
+    commands = [
+        {
+            "id": "collect-appx-packages",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "appx-packages"],
+            "captures": ["powershell-appx-packages"],
+            "output_path": r"<artifact-root>\appx-packages.json",
+            "requires_admin": True,
+        },
+        {
+            "id": "collect-provisioned-appx",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "provisioned-appx"],
+            "captures": ["powershell-provisioned-appx"],
+            "output_path": r"<artifact-root>\provisioned-appx.json",
+            "requires_admin": True,
+        },
+        {
+            "id": "collect-registry-export",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "registry-export"],
+            "captures": ["registry-export"],
+            "output_path": r"<artifact-root>\registry-export.reg",
+            "requires_admin": False,
+        },
+        {
+            "id": "collect-scheduled-tasks",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "scheduled-tasks"],
+            "captures": ["scheduled-task-xml", "scheduled-task-csv"],
+            "output_path": r"<artifact-root>\scheduled-tasks",
+            "requires_admin": False,
+        },
+        {
+            "id": "collect-services",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "services"],
+            "captures": ["service-query-config"],
+            "output_path": r"<artifact-root>\services",
+            "requires_admin": False,
+        },
+        {
+            "id": "collect-package-managers",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "package-managers"],
+            "captures": ["winget-list", "winget-export", "scoop-list", "chocolatey-list"],
+            "output_path": r"<artifact-root>\package-managers",
+            "requires_admin": False,
+        },
+        {
+            "id": "collect-dism-health",
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "dism-health"],
+            "captures": ["dism-features", "dism-component-store"],
+            "output_path": r"<artifact-root>\dism",
+            "requires_admin": True,
+        },
+    ]
+    return {
+        "schema": WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA,
+        "id": "cleanwin-windows-native-collector-wrapper",
+        "title": "Read-only Windows native collector wrapper",
+        "wrapper_kind": "powershell-thin-wrapper",
+        "script_name": "collect-cleanwin-artifacts.ps1",
+        "destructive": False,
+        "executes_by_report": False,
+        "safe_to_execute": False,
+        "default_state": "contract-only",
+        "stdout_contract": "json-summary",
+        "stderr_contract": "diagnostic-text",
+        "artifact_root_argument": "--artifact-root",
+        "required_invocation_gates": [
+            "explicit Windows host",
+            "operator-provided artifact root",
+            "read-only commands only",
+            "no repair, remove, disable, import, uninstall, or cleanup verbs",
+        ],
+        "forbidden_commands": [
+            "Remove-AppxPackage",
+            "Remove-AppxProvisionedPackage",
+            "Set-ItemProperty",
+            "reg import",
+            "schtasks /Change",
+            "sc config",
+            "dism /StartComponentCleanup",
+            "winget uninstall",
+            "choco uninstall",
+        ],
+        "commands": commands,
+        "summary": {
+            "command_count": len(commands),
+            "requires_admin_count": sum(1 for command in commands if command["requires_admin"]),
+            "mutation_command_count": 0,
+        },
     }
 
 
@@ -179,6 +271,7 @@ def windows_native_artifacts_report() -> dict[str, Any]:
             "requires_admin_count": sum(1 for contract in contracts if contract["requires_admin"]),
             "execution_enabled_count": sum(1 for contract in contracts if contract["executes_by_report"]),
         },
+        "collector_wrapper": windows_native_collector_wrapper_contract(),
         "execution_gate": {
             "artifact_collection_execution_enabled": False,
             "requires_explicit_windows_host": True,

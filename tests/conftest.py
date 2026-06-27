@@ -208,6 +208,25 @@ def run_cleanwin(repo_root: Path) -> RunCleanWin:
     return _run_cleanwin
 
 
+@pytest.fixture
+def run_cleanwin_human(repo_root: Path) -> RunCleanWin:
+    def _run_cleanwin_human(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+        merged_env = dict(os.environ)
+        if env:
+            merged_env.update(env)
+        merged_env["PYTHONPATH"] = str(repo_root)
+        return subprocess.run(
+            [sys.executable, str(repo_root / "cleanwin.py"), *args],
+            cwd=repo_root,
+            env=merged_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    return _run_cleanwin_human
+
+
 def load_json_stdout(result: subprocess.CompletedProcess[str]) -> JSONPayload:
     payload = json.loads(result.stdout)
     assert isinstance(payload, dict)

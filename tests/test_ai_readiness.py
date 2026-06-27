@@ -120,6 +120,7 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
             "cleanwin.external-rule-candidate.v1",
             "cleanwin.windows-native-artifacts.v1",
             "cleanwin.windows-native-artifact-contract.v1",
+            "cleanwin.windows-native-collector-wrapper.v1",
             "cleanwin.windows-native-artifact-parse.v1",
         ]
     )
