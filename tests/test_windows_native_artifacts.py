@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Collection, Sequence
+from pathlib import Path
 from typing import Any
 
 from cleanwincli.windows_native_artifacts import (
@@ -75,6 +76,14 @@ def test_windows_native_collector_wrapper_is_contract_only(
     assert_payload_schema(wrapper, WINDOWS_NATIVE_COLLECTOR_WRAPPER_SCHEMA)
     assert_execution_disabled(wrapper)
     assert_field_values(wrapper["summary"], {"command_count": 7, "requires_admin_count": 3, "mutation_command_count": 0})
+    assert_field_values(
+        wrapper,
+        {
+            "script_path": "scripts/collect-cleanwin-artifacts.ps1",
+            "default_state": "implemented-read-only",
+            "manifest_schema": "cleanwin.windows-native-collector-manifest.v1",
+        },
+    )
     assert_contains_all(
         set(commands),
         [
@@ -90,6 +99,47 @@ def test_windows_native_collector_wrapper_is_contract_only(
     assert_contains_all(commands["collect-package-managers"]["captures"], ["winget-list", "scoop-list", "chocolatey-list"])
     for command in commands.values():
         assert_contains_none(" ".join(command["argv"]), ["Remove-AppxPackage", "Set-ItemProperty", "schtasks /Change", "sc config"])
+
+
+def test_windows_native_collector_wrapper_script_is_read_only(
+    repo_root: Path,
+    assert_contains_all: AssertContainsAll,
+    assert_contains_none: Callable[[Collection[Any], Sequence[Any]], None],
+) -> None:
+    script = repo_root / "scripts" / "collect-cleanwin-artifacts.ps1"
+    text = script.read_text(encoding="utf-8")
+
+    assert_contains_all(
+        text,
+        [
+            "Get-AppxPackage -AllUsers",
+            "Get-AppxProvisionedPackage -Online",
+            "reg.exe export",
+            "Export-ScheduledTask",
+            "Get-CimInstance Win32_Service",
+            "sc.exe qc",
+            "winget.exe list",
+            "scoop.cmd list",
+            "choco.exe list --local-only",
+            "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore",
+            "cleanwin.windows-native-collector-manifest.v1",
+        ],
+    )
+    assert_contains_none(
+        text,
+        [
+            "Remove-AppxPackage",
+            "Remove-AppxProvisionedPackage",
+            "Set-ItemProperty",
+            "reg.exe import",
+            "schtasks.exe /Change",
+            "sc.exe config",
+            "StartComponentCleanup",
+            "RestoreHealth",
+            "winget.exe uninstall",
+            "choco.exe uninstall",
+        ],
+    )
 
 
 def test_windows_native_artifact_contracts_describe_protected_surfaces(

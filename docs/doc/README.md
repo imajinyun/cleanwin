@@ -346,9 +346,14 @@ never disables entries, stops services, edits registry values, or executes
 fixture parsers for Windows-native evidence sources: PowerShell AppX and
 provisioned AppX inventory, registry exports, scheduled task XML/CSV, `sc.exe
 qc`, WinGet, Scoop, Chocolatey, DISM features, and DISM component-store
-analysis. The report only describes command argv, expected artifact schemas,
-protected surfaces, and parser names. It never runs PowerShell, DISM, registry,
-service, scheduled task, or package-manager commands.
+analysis. The report describes command argv, expected artifact schemas,
+protected surfaces, parser names, and the implemented read-only wrapper
+`scripts/collect-cleanwin-artifacts.ps1`. The wrapper writes artifacts only to
+an operator-provided artifact root and emits a
+`cleanwin.windows-native-collector-manifest.v1` JSON manifest with hashes,
+availability, command display text, and collector metadata. It does not run
+cleanup, repair, remove, import, disable, uninstall, or registry mutation
+commands.
 
 `promotion-gates` defines report-to-execution contracts for high-risk surfaces.
 Windows inventory findings for AppX/provisioned packages, Windows Features,

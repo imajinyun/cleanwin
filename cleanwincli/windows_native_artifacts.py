@@ -46,52 +46,53 @@ def _artifact_contract(
 
 
 def windows_native_collector_wrapper_contract() -> dict[str, Any]:
+    script_path = "scripts/collect-cleanwin-artifacts.ps1"
     commands = [
         {
             "id": "collect-appx-packages",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "appx-packages"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "appx-packages", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["powershell-appx-packages"],
             "output_path": r"<artifact-root>\appx-packages.json",
             "requires_admin": True,
         },
         {
             "id": "collect-provisioned-appx",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "provisioned-appx"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "provisioned-appx", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["powershell-provisioned-appx"],
             "output_path": r"<artifact-root>\provisioned-appx.json",
             "requires_admin": True,
         },
         {
             "id": "collect-registry-export",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "registry-export"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "registry-export", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["registry-export"],
             "output_path": r"<artifact-root>\registry-export.reg",
             "requires_admin": False,
         },
         {
             "id": "collect-scheduled-tasks",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "scheduled-tasks"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "scheduled-tasks", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["scheduled-task-xml", "scheduled-task-csv"],
             "output_path": r"<artifact-root>\scheduled-tasks",
             "requires_admin": False,
         },
         {
             "id": "collect-services",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "services"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "services", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["service-query-config"],
             "output_path": r"<artifact-root>\services",
             "requires_admin": False,
         },
         {
             "id": "collect-package-managers",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "package-managers"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "package-managers", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["winget-list", "winget-export", "scoop-list", "chocolatey-list"],
             "output_path": r"<artifact-root>\package-managers",
             "requires_admin": False,
         },
         {
             "id": "collect-dism-health",
-            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "collect-cleanwin-artifacts.ps1", "dism-health"],
+            "argv": ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path, "-Mode", "dism-health", "-ArtifactRoot", "<artifact-root>"],
             "captures": ["dism-features", "dism-component-store"],
             "output_path": r"<artifact-root>\dism",
             "requires_admin": True,
@@ -103,13 +104,16 @@ def windows_native_collector_wrapper_contract() -> dict[str, Any]:
         "title": "Read-only Windows native collector wrapper",
         "wrapper_kind": "powershell-thin-wrapper",
         "script_name": "collect-cleanwin-artifacts.ps1",
+        "script_path": script_path,
         "destructive": False,
         "executes_by_report": False,
         "safe_to_execute": False,
-        "default_state": "contract-only",
+        "default_state": "implemented-read-only",
         "stdout_contract": "json-summary",
         "stderr_contract": "diagnostic-text",
+        "manifest_schema": "cleanwin.windows-native-collector-manifest.v1",
         "artifact_root_argument": "--artifact-root",
+        "supported_modes": ["all", "appx-packages", "provisioned-appx", "registry-export", "scheduled-tasks", "services", "package-managers", "dism-health"],
         "required_invocation_gates": [
             "explicit Windows host",
             "operator-provided artifact root",

@@ -339,10 +339,13 @@ Win32_Service`、scheduled task XML export 等 snapshot evidence 要求。该报
 `windows-native-artifacts` 定义 Windows-native evidence source 的只读 collection
 contract 和 fixture parser，覆盖 PowerShell AppX/provisioned AppX inventory、
 registry export、scheduled task XML/CSV、`sc.exe qc`、WinGet、Scoop、
-Chocolatey、DISM features 和 DISM component-store analysis。该报告只描述
-command argv、expected artifact schema、protected surfaces 和 parser 名称，不会
-运行 PowerShell、DISM、registry、service、scheduled task 或 package-manager
-命令。
+Chocolatey、DISM features 和 DISM component-store analysis。该报告会描述
+command argv、expected artifact schema、protected surfaces、parser 名称，以及已
+落地的只读 wrapper `scripts/collect-cleanwin-artifacts.ps1`。该 wrapper 只会写入
+调用者指定的 artifact root，并输出
+`cleanwin.windows-native-collector-manifest.v1` JSON manifest，包含 hash、
+availability、command display text 和 collector metadata。它不会运行 cleanup、
+repair、remove、import、disable、uninstall 或 registry mutation 命令。
 
 `promotion-gates` 定义 report-to-execution 契约。Windows inventory 中的
 AppX/provisioned package、Windows Feature、Component Store、Installer cache
