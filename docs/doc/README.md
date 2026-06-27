@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
+python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
 ```
 
 `installed-app-inventory` is read-only and correlates registry uninstall
@@ -297,6 +298,14 @@ scheduled task XML export. These gates are still non-executable contracts.
 The promotion gate validator can compare a source report schema and a proposed
 action contract, then return missing evidence, snapshots, rollback metadata,
 tests, and human confirmations without enabling execution.
+
+`external-rule-translate` parses a local `winapp2.ini` or CleanerML XML file
+into `cleanwin.external-rule-translation.v1` candidates. The translator is
+read-only: it does not download catalogs, execute commands, or add rules to the
+builtin catalog. Each candidate records upstream provenance, original pattern,
+translated CleanWin review metadata, sensitive exclusions, dangerous path
+flags, and `review_required=true` so external rules stay report-only until a
+future owner review and promotion gate approves them.
 
 ---
 

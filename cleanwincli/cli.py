@@ -23,6 +23,7 @@ from cleanwincli.core import (
     doctor_report,
     environment_index_command,
     execute_plan,
+    external_rule_translate_command,
     file_report_command,
     host_policy_report,
     inspect,
@@ -115,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
             "file-report",
             "recovery-readiness",
             "scan-governance",
+            "external-rule-translate",
             "installed-app-inventory",
             "official-command-plan",
             "preset-catalog",
@@ -138,6 +140,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("file-report", help="show read-only large-file and duplicate-file report")
     subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
     subparsers.add_parser("scan-governance", help="show scan performance and external rule review governance")
+    external_rule_parser = subparsers.add_parser("external-rule-translate", help="translate winapp2.ini or CleanerML rules into read-only review candidates")
+    external_rule_parser.add_argument("--input", required=True, help="local winapp2.ini or CleanerML file to parse")
+    external_rule_parser.add_argument("--format", choices=["auto", "winapp2", "cleanerml"], default="auto")
+    external_rule_parser.add_argument("--upstream-project")
+    external_rule_parser.add_argument("--upstream-ref", default="local-file")
+    external_rule_parser.add_argument("--license", default="external-review-required")
     subparsers.add_parser("installed-app-inventory", help="show read-only installed app inventory")
     subparsers.add_parser("official-command-plan", help="show read-only official Windows cleanup command plan")
     subparsers.add_parser("preset-catalog", help="show read-only cleanup preset catalog")
@@ -253,6 +261,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "scan-governance":
             emit(scan_governance_command(), as_json=args.json)
+            return 0
+        if args.command == "external-rule-translate":
+            emit(
+                external_rule_translate_command(
+                    Path(args.input),
+                    source_format=args.format,
+                    upstream_project=args.upstream_project,
+                    upstream_rule_id_or_commit=args.upstream_ref,
+                    license_name=args.license,
+                ),
+                as_json=args.json,
+            )
             return 0
         if args.command == "installed-app-inventory":
             emit(installed_app_inventory_command(), as_json=args.json)

@@ -116,6 +116,8 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
             "cleanwin.dism-health-evidence.v1",
             "cleanwin.pending-reboot-registry-evidence.v1",
             STARTUP_SERVICE_INVENTORY_SCHEMA,
+            "cleanwin.external-rule-translation.v1",
+            "cleanwin.external-rule-candidate.v1",
         ]
     )
 

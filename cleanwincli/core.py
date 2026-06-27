@@ -34,6 +34,7 @@ from cleanwincli.execution_contracts import (
     disable_revert_contract_report,
     permanent_delete_denial_report,
 )
+from cleanwincli.external_rules import translate_external_rules_file
 from cleanwincli.file_reports import file_report
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
@@ -683,6 +684,23 @@ def file_report_command() -> dict[str, Any]:
 
 def scan_governance_command() -> dict[str, Any]:
     return scan_governance_report()
+
+
+def external_rule_translate_command(
+    path: Path,
+    *,
+    source_format: str,
+    upstream_project: str | None,
+    upstream_rule_id_or_commit: str,
+    license_name: str,
+) -> dict[str, Any]:
+    return translate_external_rules_file(
+        path,
+        source_format=source_format,
+        upstream_project=upstream_project,
+        upstream_rule_id_or_commit=upstream_rule_id_or_commit,
+        license_name=license_name,
+    )
 
 
 def installed_app_inventory_command() -> dict[str, Any]:

@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
+python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
 ```
 
 `installed-app-inventory` 是只读报告，会先关联 registry uninstall entries、
@@ -293,6 +294,13 @@ XML export。这些 gates 仍然只是不可执行契约。
 Promotion gate validator 可以比较 source report schema 和 proposed action
 contract，并返回缺失的 evidence、snapshot、rollback metadata、tests 和 human
 confirmations，但不会启用执行。
+
+`external-rule-translate` 会把本地 `winapp2.ini` 或 CleanerML XML 文件解析成
+`cleanwin.external-rule-translation.v1` 候选项。Translator 只读运行：不会下载
+外部 catalog、不会执行命令，也不会把规则写入 builtin catalog。每个 candidate
+都会记录 upstream provenance、原始 pattern、转换后的 CleanWin review metadata、
+sensitive exclusions、危险路径标记和 `review_required=true`，确保外部规则在未来
+owner review 和 promotion gate 批准前始终保持 report-only。
 
 ---
 

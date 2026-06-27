@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
 from cleanwincli.system_health import system_health_evidence_report
 from cleanwincli.windows_inventory import appx_snapshot_artifact_contract
@@ -55,6 +56,8 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.scan-governance.v1", 1, "cleanwincli.scan_governance", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-review.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.external-rule-translation.v1", 1, "cleanwincli.external_rules", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.external-rule-candidate.v1", 1, "cleanwincli.external_rules", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.installed-app-inventory.v1", 1, "cleanwincli.installed_apps", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.installed-app-leftover-evidence-link.v1", 1, "cleanwincli.installed_apps", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-inventory.v1", 1, "cleanwincli.windows_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1550,6 +1553,10 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_scan_governance()
     if schema_name == "cleanwin.external-rule-review.v1":
         return _sample_scan_governance()["external_rule_contract"]
+    if schema_name == "cleanwin.external-rule-translation.v1":
+        return external_rule_translation_sample()
+    if schema_name == "cleanwin.external-rule-candidate.v1":
+        return external_rule_translation_sample()["candidates"][0]
     if schema_name == "cleanwin.installed-app-inventory.v1":
         return _sample_installed_app_inventory()
     if schema_name == "cleanwin.installed-app-leftover-evidence-link.v1":
