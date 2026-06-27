@@ -266,14 +266,15 @@ identity fields、required snapshot fields、classification inputs、rollback
 reference fields 和 golden fixture 要求。这些 contract 仍然只读，不执行
 PowerShell，也不移除 package。
 
-`debloat-privacy-report` 仍然是只读报告，覆盖更完整的 Windows 隐私
-policy 基线，包括 telemetry、Advertising ID、consumer features、Copilot、
-Recall/WindowsAI、tailored experiences、activity history、feedback prompts、
-Cortana/Search、Diagnostic Data Viewer、Spotlight/lock-screen content、
-location/Find My Device、speech/input personalization、app permissions、
-SmartScreen、cloud search、Start/Settings/third-party suggestions、silent app
-suggestions、Widgets、Edge personalization/shopping suggestions。它还会对内置
-AppX 包进行人工 review 分类，但不会卸载应用或修改 policy。
+`debloat-privacy-report` 仍然是只读报告，覆盖 84 项 Windows 隐私 policy 基线，
+包括 telemetry、Advertising ID、consumer features、Copilot、Recall/WindowsAI、
+tailored experiences、activity history、feedback prompts、Diagnostic Data
+Viewer、Cortana/Search、Search web/Bing/location history、Spotlight/lock-screen
+content、ContentDeliveryManager suggestions、Windows experimentation/preview
+builds、cloud clipboard/shared experiences、location/Find My Device、speech/input
+personalization、app permissions、SmartScreen、Widgets、Edge
+SmartScreen/search/autofill/metrics/prediction policies。它还会对内置 AppX 包
+进行人工 review 分类，但不会卸载应用或修改 policy。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、

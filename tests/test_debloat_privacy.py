@@ -95,7 +95,7 @@ def test_extended_privacy_policy_surface_is_reported(
     assert_field_values(viewer, {"state": "privacy-hardened"})
     assert_payload_schema(recall["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(tailored)
-    assert_summary_counts(report, {"registry_policy_count": 35, "privacy_hardened_count": 2})
+    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 2})
 
 
 def test_privatezilla_style_privacy_baseline_is_reported(
@@ -138,7 +138,60 @@ def test_privatezilla_style_privacy_baseline_is_reported(
     assert_field_values(by_id["privacy.edge-shopping-assistant.disabled"], {"state": "review-recommended"})
     assert_payload_schema(by_id["privacy.webcam-access.disabled"]["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(by_id["privacy.smartscreen.enabled"])
-    assert_summary_counts(report, {"registry_policy_count": 35, "privacy_hardened_count": 5})
+    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 5})
+
+
+def test_privacy_sexy_style_policy_surface_expands_to_eighty_four_checks(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = debloat_privacy_report(
+        raw_registry_values={
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DisableTelemetryOptInSettingsUx": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\AllowDeviceNameInTelemetry": 1,
+            r"HKLM\SOFTWARE\Microsoft\PolicyManager\default\System\AllowExperimentation\value": 0,
+            r"HKCU\Software\Policies\Microsoft\Windows\Explorer\DisableSearchBoxSuggestions": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Search\BingSearchEnabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\AllowClipboardHistory": 0,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager\PreInstalledAppsEnabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\SearchSuggestEnabled": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\TyposquattingCheckerEnabled": 0,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\broadFileSystemAccess\Value": "Allow",
+        },
+        raw_appx_packages=[],
+        env={},
+    )
+    by_id = {finding["id"]: finding for finding in report["findings"]}
+
+    assert_summary_counts(report, {"registry_policy_count": 84, "privacy_hardened_count": 5})
+    assert_contains_all(
+        set(by_id),
+        [
+            "privacy.telemetry-opt-in-settings.disabled",
+            "privacy.device-name-in-telemetry.disabled",
+            "privacy.experimentation.disabled",
+            "privacy.search-web-results.disabled",
+            "privacy.bing-search.disabled",
+            "privacy.cloud-clipboard.disabled",
+            "privacy.content-delivery-preinstalled-apps.disabled",
+            "privacy.edge-search-suggestions.disabled",
+            "privacy.edge-typosquatting-checker.enabled",
+            "privacy.app-permission-broad-file-system.disabled",
+        ],
+    )
+    assert_field_values(by_id["privacy.telemetry-opt-in-settings.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.device-name-in-telemetry.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.experimentation.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.search-web-results.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.bing-search.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.cloud-clipboard.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.content-delivery-preinstalled-apps.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.edge-search-suggestions.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.edge-typosquatting-checker.enabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.app-permission-broad-file-system.disabled"], {"state": "review-recommended", "risk": "high"})
+    assert_safe_to_execute_disabled(by_id["privacy.app-permission-broad-file-system.disabled"])
 
 
 def test_appx_and_oem_findings_are_review_only(
