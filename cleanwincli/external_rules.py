@@ -11,6 +11,7 @@ from typing import Any
 
 EXTERNAL_RULE_TRANSLATION_SCHEMA = "cleanwin.external-rule-translation.v1"
 EXTERNAL_RULE_CANDIDATE_SCHEMA = "cleanwin.external-rule-candidate.v1"
+EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA = "cleanwin.external-rule-import-sandbox.v1"
 
 SUPPORTED_FORMATS = ("auto", "winapp2", "cleanerml")
 DEFAULT_LICENSE = "external-review-required"
@@ -171,6 +172,91 @@ def _candidate_from_raw(raw: _RawExternalRule, source: ExternalRuleSource) -> di
     }
 
 
+def _dangerous_path_scan(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    flag_counts: dict[str, int] = {}
+    dangerous_candidates: list[dict[str, Any]] = []
+    for candidate in candidates:
+        flags = [str(flag) for flag in candidate.get("risk_flags", [])]
+        for flag in flags:
+            flag_counts[flag] = flag_counts.get(flag, 0) + 1
+        if candidate.get("dangerous_path"):
+            dangerous_candidates.append(
+                {
+                    "external_rule_id": candidate.get("external_rule_id"),
+                    "original_pattern": candidate.get("original_pattern"),
+                    "risk_flags": flags,
+                }
+            )
+    return {
+        "schema": "cleanwin.external-rule-dangerous-path-scan.v1",
+        "dangerous_path_count": len(dangerous_candidates),
+        "flag_counts": dict(sorted(flag_counts.items())),
+        "dangerous_candidates": dangerous_candidates,
+    }
+
+
+def _external_rule_pack_candidate(candidates: list[dict[str, Any]], source: ExternalRuleSource) -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.external-rule-pack-candidate.v1",
+        "pack_id": f"external.{source.source_format}.{_slug(source.upstream_project)}",
+        "version": source.upstream_rule_id_or_commit,
+        "source": "external-untrusted",
+        "review_status": "unreviewed",
+        "source_format": source.source_format,
+        "upstream_project": source.upstream_project,
+        "license": source.license,
+        "rule_count": len(candidates),
+        "rule_ids": [str(candidate.get("translated_cleanwin_rule", {}).get("rule_id")) for candidate in candidates],
+        "execution_enabled": False,
+        "promotion_allowed": False,
+    }
+
+
+def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource) -> dict[str, Any]:
+    owner_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("owner") or ""))
+    rationale_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("rationale") or ""))
+    dangerous_path_scan = _dangerous_path_scan(candidates)
+    promotion_blockers = [
+        "external-untrusted-provenance",
+        "owner-review-required",
+        "fixture-coverage-required",
+        "schema-validation-required",
+        "execution-disabled-by-default",
+    ]
+    if dangerous_path_scan["dangerous_path_count"]:
+        promotion_blockers.append("dangerous-path-review-required")
+    return {
+        "schema": EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "execution_enabled": False,
+        "default_import_mode": "report-only",
+        "supported_formats": ["winapp2", "cleanerml"],
+        "allowed_sources": ["local-file"],
+        "external_rule_pack_candidate": _external_rule_pack_candidate(candidates, source),
+        "validation": {
+            "schema_validation_required": True,
+            "owner_required": True,
+            "rationale_required": True,
+            "sensitive_exclusions_required": True,
+            "fixture_coverage_required": True,
+            "quality_score_required": True,
+            "default_execution_enabled": False,
+        },
+        "dangerous_path_scan": dangerous_path_scan,
+        "summary": {
+            "candidate_count": len(candidates),
+            "dangerous_path_count": dangerous_path_scan["dangerous_path_count"],
+            "owner_missing_count": owner_missing_count,
+            "rationale_missing_count": rationale_missing_count,
+            "execution_enabled_count": sum(1 for candidate in candidates if candidate.get("execution_enabled")),
+            "provenance": "external-untrusted",
+        },
+        "promotion_blockers": promotion_blockers,
+    }
+
+
 def _parse_winapp2(text: str) -> list[_RawExternalRule]:
     parser = _CasePreservingConfigParser(interpolation=None, strict=False)
     parser.read_string(text)
@@ -251,6 +337,7 @@ def translate_external_rules_text(
     )
     raw_rules = _parse_winapp2(text) if resolved_format == "winapp2" else _parse_cleanerml(text)
     candidates = [_candidate_from_raw(raw_rule, source) for raw_rule in raw_rules]
+    import_sandbox = _import_sandbox(candidates, source)
     return {
         "schema": EXTERNAL_RULE_TRANSLATION_SCHEMA,
         "destructive": False,
@@ -265,11 +352,14 @@ def translate_external_rules_text(
             "license": source.license,
         },
         "candidates": candidates,
+        "import_sandbox": import_sandbox,
         "summary": {
             "candidate_count": len(candidates),
             "review_required_count": sum(1 for candidate in candidates if candidate["review_required"]),
             "dangerous_path_count": sum(1 for candidate in candidates if candidate["dangerous_path"]),
             "execution_enabled_count": sum(1 for candidate in candidates if candidate["execution_enabled"]),
+            "owner_missing_count": import_sandbox["summary"]["owner_missing_count"],
+            "rationale_missing_count": import_sandbox["summary"]["rationale_missing_count"],
             "provenance": "external-untrusted",
         },
         "promotion_gate": {
@@ -277,6 +367,7 @@ def translate_external_rules_text(
             "requires_owner_review": True,
             "requires_fixture_coverage": True,
             "requires_sensitive_exclusions": True,
+            "requires_dangerous_path_scan": True,
             "requires_dry_run_evidence": True,
             "execution_enabled": False,
         },

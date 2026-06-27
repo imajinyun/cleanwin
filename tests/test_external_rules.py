@@ -6,6 +6,7 @@ from typing import Any
 
 from cleanwincli.external_rules import (
     EXTERNAL_RULE_CANDIDATE_SCHEMA,
+    EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA,
     EXTERNAL_RULE_TRANSLATION_SCHEMA,
     external_rule_translation_sample,
     translate_external_rules_text,
@@ -60,6 +61,59 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
         ["user-document-directory", "wildcard-outside-governed-root"],
     )
     assert_contains_all(by_pattern[r"HKCU\Software\Example\Telemetry"]["risk_flags"], ["registry-pattern"])
+
+
+def test_external_rule_translation_includes_import_sandbox_contract(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    payload = translate_external_rules_text(
+        """
+[Example Browser Cache *]
+FileKey1=%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache|*.*|RECURSE
+FileKey2=%UserProfile%\\Documents|*.*|RECURSE
+RegKey1=HKCU\\Software\\Example\\Telemetry
+""".strip(),
+        source_format="winapp2",
+        upstream_project="BleachBit/winapp2.ini",
+        upstream_rule_id_or_commit="fixture",
+    )
+
+    sandbox = assert_payload_schema(payload["import_sandbox"], EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA)
+    assert_field_values(
+        sandbox,
+        {
+            "destructive": False,
+            "dry_run": True,
+            "execution_enabled": False,
+            "default_import_mode": "report-only",
+            "external_rule_pack_candidate.source": "external-untrusted",
+            "external_rule_pack_candidate.review_status": "unreviewed",
+            "external_rule_pack_candidate.rule_count": 3,
+            "validation.owner_required": True,
+            "validation.rationale_required": True,
+            "validation.schema_validation_required": True,
+            "validation.default_execution_enabled": False,
+            "summary.candidate_count": 3,
+            "summary.dangerous_path_count": 2,
+            "summary.owner_missing_count": 0,
+            "summary.rationale_missing_count": 0,
+        },
+    )
+    assert_contains_all(
+        sandbox["promotion_blockers"],
+        [
+            "external-untrusted-provenance",
+            "owner-review-required",
+            "fixture-coverage-required",
+            "dangerous-path-review-required",
+        ],
+    )
+    assert_contains_all(
+        sandbox["dangerous_path_scan"]["flag_counts"],
+        ["registry-pattern", "user-document-directory", "wildcard-outside-governed-root"],
+    )
 
 
 def test_cleanerml_translation_keeps_external_rules_untrusted(
@@ -131,10 +185,14 @@ def test_external_rule_translation_schema_samples_are_registered(
     assert_execution_disabled: AssertExecutionDisabled,
     assert_payload_schema: AssertPayloadSchema,
 ) -> None:
-    samples = assert_schema_samples([EXTERNAL_RULE_TRANSLATION_SCHEMA, EXTERNAL_RULE_CANDIDATE_SCHEMA])
+    samples = assert_schema_samples(
+        [EXTERNAL_RULE_TRANSLATION_SCHEMA, EXTERNAL_RULE_CANDIDATE_SCHEMA, EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA]
+    )
     assert_readonly_report(samples[EXTERNAL_RULE_TRANSLATION_SCHEMA], EXTERNAL_RULE_TRANSLATION_SCHEMA)
     assert_execution_disabled(samples[EXTERNAL_RULE_TRANSLATION_SCHEMA])
     assert_payload_schema(samples[EXTERNAL_RULE_CANDIDATE_SCHEMA], EXTERNAL_RULE_CANDIDATE_SCHEMA)
+    assert_readonly_report(samples[EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA], EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA)
+    assert_execution_disabled(samples[EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA])
 
 
 def test_external_rule_translation_sample_matches_contract(

@@ -251,6 +251,31 @@ def browser_profile_cache_rules() -> dict[str, dict[str, Any]]:
 def rule_pack_catalog_report() -> dict[str, Any]:
     catalog = cleanup_rule_catalog()
     packs = list(catalog["rule_packs"])
+    external_import_sandbox = {
+        "schema": "cleanwin.external-rule-import-sandbox.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "execution_enabled": False,
+        "default_import_mode": "report-only",
+        "supported_formats": ["winapp2", "cleanerml"],
+        "allowed_sources": ["local-file"],
+        "required_review_fields": [
+            "owner",
+            "rationale",
+            "sensitive_exclusions",
+            "fixture_coverage",
+            "quality_score",
+        ],
+        "promotion_blockers": [
+            "external-untrusted-provenance",
+            "execution-disabled-by-default",
+            "schema-validation-required",
+            "owner-review-required",
+            "fixture-coverage-required",
+            "dangerous-path-review-required",
+        ],
+    }
     return {
         "schema": RULE_PACK_CATALOG_SCHEMA,
         "destructive": False,
@@ -258,6 +283,14 @@ def rule_pack_catalog_report() -> dict[str, Any]:
         "executes_system_commands": False,
         "catalog_schema": catalog["schema"],
         "version": catalog["version"],
+        "versioning": {
+            "catalog_schema": CATALOG_SCHEMA,
+            "rule_pack_catalog_schema": RULE_PACK_CATALOG_SCHEMA,
+            "rule_pack_schema": RULE_PACK_SCHEMA,
+            "rule_schema": "cleanwin.cleanup-rule.v1",
+            "quality_schema": RULE_QUALITY_SCORE_SCHEMA,
+            "versioned_pack_count": len(packs),
+        },
         "packs": packs,
         "summary": {
             "pack_count": len(packs),
@@ -266,6 +299,7 @@ def rule_pack_catalog_report() -> dict[str, Any]:
             "manual_reviewed_pack_count": sum(1 for pack in packs if pack["review_status"] == "manual-reviewed"),
             "execution_enabled_count": 0,
         },
+        "external_import_sandbox": external_import_sandbox,
         "promotion_gate": {
             "external_rule_import_enabled": False,
             "requires_schema_validation": True,

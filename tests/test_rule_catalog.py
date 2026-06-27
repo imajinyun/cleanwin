@@ -131,6 +131,36 @@ def test_rule_pack_catalog_report_is_readonly_and_summarizes_builtin_packs(
         assert pack["quality"]["minimum_score"] > 0
 
 
+def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
+    assert_field_values: AssertFieldValues,
+    assert_contains_all: AssertContainsAll,
+) -> None:
+    report = rule_pack_catalog_report()
+
+    assert_field_values(
+        report,
+        {
+            "versioning.rule_pack_schema": RULE_PACK_SCHEMA,
+            "versioning.rule_schema": "cleanwin.cleanup-rule.v1",
+            "versioning.quality_schema": RULE_QUALITY_SCORE_SCHEMA,
+            "external_import_sandbox.schema": "cleanwin.external-rule-import-sandbox.v1",
+            "external_import_sandbox.default_import_mode": "report-only",
+            "external_import_sandbox.execution_enabled": False,
+            "external_import_sandbox.allowed_sources.0": "local-file",
+            "external_import_sandbox.supported_formats.0": "winapp2",
+            "external_import_sandbox.supported_formats.1": "cleanerml",
+        },
+    )
+    assert_contains_all(
+        report["external_import_sandbox"]["required_review_fields"],
+        ["owner", "rationale", "sensitive_exclusions", "fixture_coverage", "quality_score"],
+    )
+    assert_contains_all(
+        report["external_import_sandbox"]["promotion_blockers"],
+        ["external-untrusted-provenance", "execution-disabled-by-default", "schema-validation-required"],
+    )
+
+
 def test_rule_pack_catalog_is_exposed_by_cli_provider_and_schema_registry(
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
     assert_schema_samples: AssertSchemaSamples,
