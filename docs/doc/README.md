@@ -325,9 +325,13 @@ chain with snapshot refs, restore command, required metadata, and post-rollback
 checks. The registry privacy drill also exposes a
 `cleanwin.registry-privacy-rollback-drill.v1` fixture with export/import
 commands, before/target/after values, dry-run token evidence, managed-device and
-policy-owner review requirements, and post-rollback assertions. The report never
-imports registry files, recreates scheduled tasks, changes service start types,
-or reinstalls AppX packages.
+policy-owner review requirements, and post-rollback assertions. The AppX drill
+also exposes a `cleanwin.appx-per-user-rollback-drill.v1` fixture scoped to
+per-user, non-provisioned packages, with package identity, snapshot ref,
+Add-AppxPackage restore metadata, blocked target classes, dry-run token
+evidence, and registration-state rollback assertions. The report never imports
+registry files, recreates scheduled tasks, changes service start types, or
+reinstalls AppX packages.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,

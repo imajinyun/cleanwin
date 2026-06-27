@@ -24,6 +24,7 @@ ROLLBACK_DRILL_REPORT_SCHEMA = "cleanwin.rollback-drill-report.v1"
 ROLLBACK_DRILL_CASE_SCHEMA = "cleanwin.rollback-drill-case.v1"
 ROLLBACK_DRILL_VALIDATION_SCHEMA = "cleanwin.rollback-drill-validation.v1"
 REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA = "cleanwin.registry-privacy-rollback-drill.v1"
+APPX_PER_USER_ROLLBACK_DRILL_SCHEMA = "cleanwin.appx-per-user-rollback-drill.v1"
 
 _PROTECTED_SERVICE_TASK_TOKENS = (
     "microsoft",
@@ -95,6 +96,36 @@ def rollback_drill_report() -> dict[str, Any]:
         ],
         "safe_to_execute": False,
     }
+    appx_per_user_rollback_fixture = {
+        "schema": APPX_PER_USER_ROLLBACK_DRILL_SCHEMA,
+        "fixture_only": True,
+        "dry_run": True,
+        "execution_enabled": False,
+        "scope": "per-user",
+        "provisioned": False,
+        "package_snapshot_ref": "snapshot://appx/Microsoft.BingWeather_8wekyb3d8bbwe.json",
+        "package_identity": {
+            "name": "Microsoft.BingWeather",
+            "package_full_name": "Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe",
+            "package_family_name": "Microsoft.BingWeather_8wekyb3d8bbwe",
+            "publisher": "CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+            "install_location": r"C:\Program Files\WindowsApps\Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe",
+        },
+        "remove_command": ["powershell.exe", "Remove-AppxPackage", "-Package", "Microsoft.BingWeather_1.0.0.0_x64__8wekyb3d8bbwe"],
+        "restore_command": ["powershell.exe", "Add-AppxPackage", "-DisableDevelopmentMode", "-Register", r"<InstallLocation>\AppxManifest.xml"],
+        "before_registration_state": "registered",
+        "simulated_after_remove_state": "unregistered-for-current-user",
+        "after_rollback_registration_state": "registered",
+        "blocked_target_classes": ["framework", "system", "dependency", "non-removable", "provisioned"],
+        "required_reviews": ["consumer-app-classification", "dependency-review", "non-removable-check", "dry-run-token-match"],
+        "dry_run_confirmation_token": "fixture-dry-run-token-appx-per-user",
+        "post_rollback_assertions": [
+            "package family identity matches snapshot",
+            "restore command registers AppxManifest.xml from install location",
+            "after rollback registration state equals before state",
+        ],
+        "safe_to_execute": False,
+    }
     drills = [
         _rollback_drill_case(
             drill_id="rollback-drill.registry-privacy-import",
@@ -159,7 +190,8 @@ def rollback_drill_report() -> dict[str, Any]:
                 "restore_command": r"Add-AppxPackage -Register <InstallLocation>\AppxManifest.xml",
             },
             verification_steps=["compare package family identity", "verify restore command references install location"],
-        ),
+        )
+        | {"appx_per_user_rollback_fixture": appx_per_user_rollback_fixture},
     ]
     validation = validate_rollback_drills({"schema": ROLLBACK_DRILL_REPORT_SCHEMA, "drills": drills})
     return {
@@ -258,6 +290,60 @@ def validate_rollback_drills(report: dict[str, Any]) -> dict[str, Any]:
                             "path": f"{prefix}.registry_rollback_fixture.after_rollback_value",
                             "code": "REGISTRY_ROLLBACK_VALUE_MISMATCH",
                             "message": "after rollback value must match the fixture before value",
+                        }
+                    )
+        if drill.get("target_type") == "appx-package":
+            fixture = drill.get("appx_per_user_rollback_fixture")
+            if not isinstance(fixture, dict) or fixture.get("schema") != APPX_PER_USER_ROLLBACK_DRILL_SCHEMA:
+                violations.append(
+                    {
+                        "path": f"{prefix}.appx_per_user_rollback_fixture",
+                        "code": "APPX_PER_USER_ROLLBACK_FIXTURE_REQUIRED",
+                        "message": f"AppX drills must include {APPX_PER_USER_ROLLBACK_DRILL_SCHEMA}",
+                    }
+                )
+            else:
+                for field, code in (
+                    ("package_snapshot_ref", "APPX_PACKAGE_SNAPSHOT_REF_REQUIRED"),
+                    ("package_identity", "APPX_PACKAGE_IDENTITY_REQUIRED"),
+                    ("restore_command", "APPX_RESTORE_COMMAND_REQUIRED"),
+                    ("before_registration_state", "APPX_BEFORE_REGISTRATION_STATE_REQUIRED"),
+                    ("after_rollback_registration_state", "APPX_AFTER_ROLLBACK_STATE_REQUIRED"),
+                    ("dry_run_confirmation_token", "DRY_RUN_TOKEN_REQUIRED"),
+                    ("post_rollback_assertions", "POST_ROLLBACK_ASSERTIONS_REQUIRED"),
+                ):
+                    if not fixture.get(field):
+                        violations.append({"path": f"{prefix}.appx_per_user_rollback_fixture.{field}", "code": code, "message": f"{field} is required"})
+                if fixture.get("execution_enabled") is not False:
+                    violations.append(
+                        {
+                            "path": f"{prefix}.appx_per_user_rollback_fixture.execution_enabled",
+                            "code": "APPX_ROLLBACK_EXECUTION_MUST_STAY_DISABLED",
+                            "message": "AppX rollback drill must not execute commands",
+                        }
+                    )
+                if fixture.get("scope") != "per-user":
+                    violations.append(
+                        {
+                            "path": f"{prefix}.appx_per_user_rollback_fixture.scope",
+                            "code": "APPX_PER_USER_SCOPE_REQUIRED",
+                            "message": "AppX rollback drill must stay limited to per-user scope",
+                        }
+                    )
+                if fixture.get("provisioned") is not False:
+                    violations.append(
+                        {
+                            "path": f"{prefix}.appx_per_user_rollback_fixture.provisioned",
+                            "code": "APPX_PROVISIONED_TARGET_BLOCKED",
+                            "message": "AppX rollback drill must not target provisioned packages",
+                        }
+                    )
+                if fixture.get("before_registration_state") != fixture.get("after_rollback_registration_state"):
+                    violations.append(
+                        {
+                            "path": f"{prefix}.appx_per_user_rollback_fixture.after_rollback_registration_state",
+                            "code": "APPX_ROLLBACK_STATE_MISMATCH",
+                            "message": "after rollback registration state must match the fixture before state",
                         }
                     )
     return {

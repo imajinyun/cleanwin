@@ -321,8 +321,12 @@ snapshot -> action -> rollback -> verification 链路，并包含 snapshot refs�
 restore command、required metadata 和 post-rollback checks。Registry privacy
 drill 还会输出 `cleanwin.registry-privacy-rollback-drill.v1` fixture，包含
 export/import commands、before/target/after values、dry-run token evidence、
-managed-device 与 policy-owner review 要求，以及 post-rollback assertions。该报告
-不会导入 registry 文件、重建 scheduled task、修改 service start type 或重新安装 AppX 包。
+managed-device 与 policy-owner review 要求，以及 post-rollback assertions。AppX
+drill 还会输出 `cleanwin.appx-per-user-rollback-drill.v1` fixture，仅覆盖
+per-user、non-provisioned package，并包含 package identity、snapshot ref、
+Add-AppxPackage restore metadata、blocked target classes、dry-run token evidence
+和 registration-state rollback assertions。该报告不会导入 registry 文件、重建
+scheduled task、修改 service start type 或重新安装 AppX 包。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、

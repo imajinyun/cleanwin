@@ -8,6 +8,7 @@ import pytest
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import tool_catalog
 from cleanwincli.execution_contracts import (
+    APPX_PER_USER_ROLLBACK_DRILL_SCHEMA,
     APPX_REMOVAL_CHANGE_SCHEMA,
     APPX_REMOVAL_PLAN_SCHEMA,
     APPX_REMOVAL_PLAN_VALIDATION_SCHEMA,
@@ -685,6 +686,30 @@ def test_rollback_drill_report_covers_fixture_restore_paths(
     assert_contains_all(task_drill["required_metadata"], ["task_xml_or_export_ref", "restore_command"])
     assert_contains_all(service_drill["required_metadata"], ["previous_start_type", "snapshot_artifact_ref"])
     assert_contains_all(appx_drill["required_metadata"], ["package_family_name", "previous_registration_state"])
+    appx_fixture = assert_payload_schema(
+        appx_drill["appx_per_user_rollback_fixture"], APPX_PER_USER_ROLLBACK_DRILL_SCHEMA
+    )
+    assert_field_values(
+        appx_fixture,
+        {
+            "fixture_only": True,
+            "execution_enabled": False,
+            "scope": "per-user",
+            "provisioned": False,
+            "package_identity.package_family_name": "Microsoft.BingWeather_8wekyb3d8bbwe",
+            "before_registration_state": "registered",
+            "simulated_after_remove_state": "unregistered-for-current-user",
+            "after_rollback_registration_state": "registered",
+            "dry_run_confirmation_token": "fixture-dry-run-token-appx-per-user",
+        },
+    )
+    assert_contains_all(appx_fixture["blocked_target_classes"], ["framework", "system", "dependency", "provisioned"])
+    assert_contains_all(appx_fixture["required_reviews"], ["consumer-app-classification", "dependency-review", "dry-run-token-match"])
+    assert_contains_all(appx_fixture["restore_command"], ["powershell.exe", "Add-AppxPackage", "-Register"])
+    assert_contains_all(
+        appx_fixture["post_rollback_assertions"],
+        ["after rollback registration state equals before state"],
+    )
     assert_field_values(report["validation"], {"valid": True})
 
 
@@ -730,6 +755,58 @@ def test_rollback_drill_validator_reports_missing_fixture_evidence(
     )
 
 
+def test_rollback_drill_validator_reports_invalid_appx_per_user_fixture(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = assert_payload_schema(
+        validate_rollback_drills(
+            {
+                "schema": ROLLBACK_DRILL_REPORT_SCHEMA,
+                "drills": [
+                    {
+                        "schema": ROLLBACK_DRILL_CASE_SCHEMA,
+                        "target_type": "appx-package",
+                        "fixture_only": True,
+                        "execution_enabled": False,
+                        "executes_system_commands": False,
+                        "snapshot_refs": ["snapshot://appx/example.json"],
+                        "restore_command": ["powershell.exe", "Add-AppxPackage"],
+                        "required_metadata": {"package_family_name": "Example_8wekyb3d8bbwe"},
+                        "verification_steps": ["verify AppX registration"],
+                        "appx_per_user_rollback_fixture": {
+                            "schema": APPX_PER_USER_ROLLBACK_DRILL_SCHEMA,
+                            "execution_enabled": True,
+                            "scope": "all-users",
+                            "provisioned": True,
+                            "before_registration_state": "registered",
+                            "after_rollback_registration_state": "missing",
+                        },
+                    }
+                ],
+            }
+        ),
+        ROLLBACK_DRILL_VALIDATION_SCHEMA,
+    )
+
+    assert_field_values(validation, {"valid": False})
+    assert_contains_all(
+        {violation["code"] for violation in validation["violations"]},
+        [
+            "APPX_PACKAGE_SNAPSHOT_REF_REQUIRED",
+            "APPX_PACKAGE_IDENTITY_REQUIRED",
+            "APPX_RESTORE_COMMAND_REQUIRED",
+            "DRY_RUN_TOKEN_REQUIRED",
+            "POST_ROLLBACK_ASSERTIONS_REQUIRED",
+            "APPX_ROLLBACK_EXECUTION_MUST_STAY_DISABLED",
+            "APPX_PER_USER_SCOPE_REQUIRED",
+            "APPX_PROVISIONED_TARGET_BLOCKED",
+            "APPX_ROLLBACK_STATE_MISMATCH",
+        ],
+    )
+
+
 def test_schema_registry_exposes_registry_privacy_rollback_drill_fixture(
     assert_schema_samples: AssertSchemaSamples,
     assert_payload_schema: AssertPayloadSchema,
@@ -741,6 +818,30 @@ def test_schema_registry_exposes_registry_privacy_rollback_drill_fixture(
 
     assert_execution_disabled(fixture)
     assert_field_values(fixture, {"fixture_only": True, "before_value.data": "3", "after_rollback_value.data": "3"})
+
+
+def test_schema_registry_exposes_appx_per_user_rollback_drill_fixture(
+    assert_schema_samples: AssertSchemaSamples,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    samples = assert_schema_samples([APPX_PER_USER_ROLLBACK_DRILL_SCHEMA])
+    fixture = assert_payload_schema(
+        samples[APPX_PER_USER_ROLLBACK_DRILL_SCHEMA], APPX_PER_USER_ROLLBACK_DRILL_SCHEMA
+    )
+
+    assert_execution_disabled(fixture)
+    assert_field_values(
+        fixture,
+        {
+            "fixture_only": True,
+            "scope": "per-user",
+            "provisioned": False,
+            "before_registration_state": "registered",
+            "after_rollback_registration_state": "registered",
+        },
+    )
 
 
 @pytest.mark.parametrize(

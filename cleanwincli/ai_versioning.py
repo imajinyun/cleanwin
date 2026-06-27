@@ -116,6 +116,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.rollback-drill-case.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.rollback-drill-validation.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-rollback-drill.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.appx-per-user-rollback-drill.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.startup-service-inventory.v1", 1, "cleanwincli.startup_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-report.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.system-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "report", "cleanwin", ("cli", "ai-host", "ci")),
@@ -1729,6 +1730,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return validate_rollback_drills(rollback_drill_report())
     if schema_name == "cleanwin.registry-privacy-rollback-drill.v1":
         return rollback_drill_report()["drills"][0]["registry_rollback_fixture"]
+    if schema_name == "cleanwin.appx-per-user-rollback-drill.v1":
+        return rollback_drill_report()["drills"][3]["appx_per_user_rollback_fixture"]
     if schema_name == "cleanwin.startup-service-inventory.v1":
         return _sample_startup_service_inventory()
     if schema_name == "cleanwin.system-health-report.v1":
