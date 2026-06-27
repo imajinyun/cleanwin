@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
+python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -279,6 +280,13 @@ location and Find My Device, speech and input personalization, app permissions,
 SmartScreen, Widgets, and Edge SmartScreen/search/autofill/metrics/prediction
 policies. It also classifies bundled AppX packages for manual review without
 uninstalling or changing policy.
+
+`registry-privacy-plan` turns review-recommended registry privacy findings into
+a simulation-only change/revert plan. Each planned change carries registry
+export requirements, previous value, target value, managed-device detection,
+policy owner review, dry-run confirmation token requirements, and a restore
+command. The validator reports missing evidence and keeps registry execution
+disabled.
 
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
@@ -480,6 +488,7 @@ Governance roadmap:
 | `cleanwincli/installed_apps.py` | Read-only installed app inventory and leftover correlation |
 | `cleanwincli/windows_inventory.py` | Read-only Windows inventory baseline for apps, AppX, features, update/cache, Defender, restore, Recycle Bin, Installer cache, and component store |
 | `cleanwincli/debloat_privacy.py` | Read-only privacy/debloat report for Windows policy baselines, AppX review classification, and OEM app locations |
+| `cleanwincli/execution_contracts.py` | Non-executable registry privacy, disable/revert, backup-delete, and permanent-delete denial contracts |
 | `cleanwincli/startup_inventory.py` | Read-only startup, StartupApproved, Winlogon/Shell extension, service, driver service, and scheduled task inventory |
 | `cleanwincli/promotion_gates.py` | Report-to-execution promotion contracts for registry, startup, service/task, official-command, Windows inventory, and browser-cache surfaces |
 | `cleanwincli/official_commands.py` | Read-only official Windows cleanup command plans |

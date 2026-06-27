@@ -33,6 +33,7 @@ from cleanwincli.execution_contracts import (
     backup_delete_contract_report,
     disable_revert_contract_report,
     permanent_delete_denial_report,
+    registry_privacy_change_plan_report,
 )
 from cleanwincli.external_rules import translate_external_rules_file
 from cleanwincli.file_reports import file_report
@@ -619,6 +620,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return disable_revert_contract_report()
     if provider == "permanent-delete-denial":
         return permanent_delete_denial_report()
+    if provider == "registry-privacy-plan":
+        return registry_privacy_change_plan_report()
     if provider == "startup-service-inventory":
         return startup_service_inventory_report()
     if provider == "system-health-report":
@@ -747,6 +750,10 @@ def disable_revert_contract_command() -> dict[str, Any]:
 
 def permanent_delete_denial_command() -> dict[str, Any]:
     return permanent_delete_denial_report()
+
+
+def registry_privacy_plan_command() -> dict[str, Any]:
+    return registry_privacy_change_plan_report()
 
 
 def startup_service_inventory_command() -> dict[str, Any]:

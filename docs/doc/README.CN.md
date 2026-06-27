@@ -243,6 +243,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json debloat-privacy-report
+python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
@@ -277,6 +278,12 @@ builds、cloud clipboard/shared experiences、location/Find My Device、speech/i
 personalization、app permissions、SmartScreen、Widgets、Edge
 SmartScreen/search/autofill/metrics/prediction policies。它还会对内置 AppX 包
 进行人工 review 分类，但不会卸载应用或修改 policy。
+
+`registry-privacy-plan` 会把 review-recommended 的 registry privacy findings
+转换成 simulation-only change/revert plan。每个 planned change 都包含 registry
+export 要求、previous value、target value、managed-device detection、policy
+owner review、dry-run confirmation token 要求和 restore command。Validator 会
+报告缺失 evidence，并保持 registry execution disabled。
 
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、
@@ -474,6 +481,7 @@ CI 入口：
 | `cleanwincli/installed_apps.py` | 只读已安装应用 inventory 与 leftover 关联 |
 | `cleanwincli/windows_inventory.py` | 只读 Windows inventory 基线，覆盖应用、AppX、功能、更新/cache、Defender、还原点、回收站、Installer cache 和 component store |
 | `cleanwincli/debloat_privacy.py` | 只读 privacy/debloat 报告，覆盖 Windows policy 基线、AppX review 分类和 OEM 应用位置 |
+| `cleanwincli/execution_contracts.py` | 不可执行 registry privacy、disable/revert、backup-delete 和 permanent-delete denial 契约 |
 | `cleanwincli/startup_inventory.py` | 只读 startup、StartupApproved、Winlogon/Shell extension、service、driver service 和 scheduled task inventory |
 | `cleanwincli/promotion_gates.py` | registry、startup、service/task、official-command、Windows inventory 和 browser-cache surface 的 report-to-execution promotion contract |
 | `cleanwincli/official_commands.py` | 只读 Windows 官方清理命令计划 |

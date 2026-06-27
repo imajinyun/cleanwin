@@ -35,6 +35,7 @@ from cleanwincli.core import (
     preset_catalog_command,
     promotion_gates_command,
     recovery_readiness_command,
+    registry_privacy_plan_command,
     review_plan,
     rule_pack_catalog_command,
     scan_governance_command,
@@ -128,6 +129,7 @@ def build_parser() -> argparse.ArgumentParser:
             "debloat-privacy-report",
             "disable-revert-contract",
             "permanent-delete-denial",
+            "registry-privacy-plan",
             "startup-service-inventory",
             "system-health-report",
             "windows-native-artifacts",
@@ -159,6 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
     subparsers.add_parser("disable-revert-contract", help="show non-executable disable/revert action contracts")
     subparsers.add_parser("permanent-delete-denial", help="show permanent deletion denial contract")
+    subparsers.add_parser("registry-privacy-plan", help="show simulated registry privacy change/revert plan")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
     subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
@@ -306,6 +309,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "permanent-delete-denial":
             emit(permanent_delete_denial_command(), as_json=args.json)
+            return 0
+        if args.command == "registry-privacy-plan":
+            emit(registry_privacy_plan_command(), as_json=args.json)
             return 0
         if args.command == "startup-service-inventory":
             emit(startup_service_inventory_command(), as_json=args.json)

@@ -7,6 +7,160 @@ from typing import Any
 DISABLE_REVERT_CONTRACT_SCHEMA = "cleanwin.disable-revert-contract.v1"
 BACKUP_DELETE_CONTRACT_SCHEMA = "cleanwin.backup-delete-contract.v1"
 PERMANENT_DELETE_DENIAL_SCHEMA = "cleanwin.permanent-delete-denial.v1"
+REGISTRY_PRIVACY_PLAN_SCHEMA = "cleanwin.registry-privacy-plan.v1"
+REGISTRY_PRIVACY_CHANGE_SCHEMA = "cleanwin.registry-privacy-change.v1"
+REGISTRY_PRIVACY_REVERT_SCHEMA = "cleanwin.registry-privacy-revert.v1"
+REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA = "cleanwin.registry-privacy-plan-validation.v1"
+
+
+def _registry_privacy_change_from_finding(finding: dict[str, Any]) -> dict[str, Any]:
+    evidence = finding.get("change_evidence", {})
+    expected_values = evidence.get("expected_private_values", [])
+    target_value = str(expected_values[0]) if isinstance(expected_values, list) and expected_values else ""
+    hive = str(evidence.get("hive") or "")
+    subkey_path = str(evidence.get("subkey_path") or "")
+    value_name = str(evidence.get("value_name") or "")
+    observed_value = str(evidence.get("observed_value") or "")
+    registry_export_ref = f"snapshot://registry/{finding.get('id')}.reg"
+    return {
+        "schema": REGISTRY_PRIVACY_CHANGE_SCHEMA,
+        "id": f"registry-privacy.change.{finding['id']}",
+        "source_finding_id": finding["id"],
+        "target_action": "registry-privacy-change",
+        "risk": finding.get("risk", "medium"),
+        "state": "simulated",
+        "hive": hive,
+        "subkey_path": subkey_path,
+        "value_name": value_name,
+        "previous_value": observed_value,
+        "target_value": target_value,
+        "registry_export_ref": registry_export_ref,
+        "required_export_command": evidence.get("required_export_command", ["reg.exe", "export", rf"{hive}\{subkey_path}", "<export-file.reg>", "/y"]),
+        "restore_command": ["reg.exe", "import", "<export-file.reg>"],
+        "managed_device_detection": {
+            "required": True,
+            "signals": ["domain_joined", "mdm_enrolled", "policy_key_owned_by_organization"],
+            "state": "not-evaluated",
+        },
+        "owner_review": {
+            "required": True,
+            "policy_owner": "unknown",
+            "review_state": "required",
+        },
+        "dry_run_confirmation": {
+            "required": True,
+            "token_ref": "cleanwin.ai-confirmation-summary.v1.confirmation_token",
+            "provided": False,
+        },
+        "rollback": {
+            "schema": REGISTRY_PRIVACY_REVERT_SCHEMA,
+            "registry_export_ref": registry_export_ref,
+            "previous_value": observed_value,
+            "restore_command": ["reg.exe", "import", "<export-file.reg>"],
+            "verification": ["query exact registry value after restore", "compare previous value"],
+        },
+        "execution_enabled": False,
+        "auto_executable": False,
+        "safe_to_execute": False,
+    }
+
+
+def registry_privacy_change_plan_report(source_report: dict[str, Any] | None = None) -> dict[str, Any]:
+    if source_report is None:
+        from cleanwincli.debloat_privacy import debloat_privacy_report
+
+        source_report = debloat_privacy_report()
+    findings = [
+        finding
+        for finding in source_report.get("findings", [])
+        if isinstance(finding, dict)
+        and finding.get("kind") == "registry-policy"
+        and finding.get("state") == "review-recommended"
+        and isinstance(finding.get("change_evidence"), dict)
+    ]
+    changes = [_registry_privacy_change_from_finding(finding) for finding in findings]
+    return {
+        "schema": REGISTRY_PRIVACY_PLAN_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "source_report_schema": source_report.get("schema"),
+        "plan_state": "simulation-only",
+        "changes": changes,
+        "summary": {
+            "change_count": len(changes),
+            "execution_enabled_count": sum(1 for change in changes if change["execution_enabled"]),
+            "requires_registry_export_count": len(changes),
+            "requires_owner_review_count": len(changes),
+            "requires_dry_run_token_count": len(changes),
+        },
+        "validation": validate_registry_privacy_change_plan({"schema": REGISTRY_PRIVACY_PLAN_SCHEMA, "changes": changes}),
+        "execution_gate": {
+            "registry_privacy_execution_enabled": False,
+            "requires_registry_export": True,
+            "requires_previous_value": True,
+            "requires_managed_device_detection": True,
+            "requires_policy_owner_review": True,
+            "requires_matching_dry_run_token": True,
+            "ai_auto_call_allowed": False,
+        },
+        "non_goals": [
+            "This report does not write registry values.",
+            "This report does not import registry rollback files.",
+            "This report does not bypass managed-device policy ownership.",
+        ],
+    }
+
+
+def validate_registry_privacy_change_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    violations: list[dict[str, str]] = []
+    if plan.get("schema") != REGISTRY_PRIVACY_PLAN_SCHEMA:
+        violations.append({"path": "schema", "code": "INVALID_SCHEMA", "message": f"schema must be {REGISTRY_PRIVACY_PLAN_SCHEMA}"})
+    changes = plan.get("changes")
+    if not isinstance(changes, list):
+        violations.append({"path": "changes", "code": "MISSING_CHANGES", "message": "changes must be a list"})
+        changes = []
+    for index, change in enumerate(changes):
+        if not isinstance(change, dict):
+            violations.append({"path": f"changes.{index}", "code": "INVALID_CHANGE", "message": "change must be an object"})
+            continue
+        prefix = f"changes.{index}"
+        required_fields = {
+            "schema": REGISTRY_PRIVACY_CHANGE_SCHEMA,
+            "hive": None,
+            "subkey_path": None,
+            "value_name": None,
+            "previous_value": None,
+            "target_value": None,
+            "registry_export_ref": None,
+            "restore_command": None,
+        }
+        for field, expected in required_fields.items():
+            value = change.get(field)
+            if expected is not None and value != expected:
+                violations.append({"path": f"{prefix}.{field}", "code": "INVALID_FIELD", "message": f"{field} must be {expected}"})
+            elif expected is None and (value is None or value == "" or value == []):
+                violations.append({"path": f"{prefix}.{field}", "code": "MISSING_FIELD", "message": f"{field} is required"})
+        if change.get("execution_enabled") is not False:
+            violations.append({"path": f"{prefix}.execution_enabled", "code": "EXECUTION_MUST_STAY_DISABLED", "message": "registry privacy plan must remain simulation-only"})
+        managed_detection = change.get("managed_device_detection")
+        if not isinstance(managed_detection, dict) or managed_detection.get("required") is not True:
+            violations.append({"path": f"{prefix}.managed_device_detection", "code": "MANAGED_DEVICE_DETECTION_REQUIRED", "message": "managed device detection is required"})
+        owner_review = change.get("owner_review")
+        if not isinstance(owner_review, dict) or owner_review.get("required") is not True:
+            violations.append({"path": f"{prefix}.owner_review", "code": "OWNER_REVIEW_REQUIRED", "message": "policy owner review is required"})
+        dry_run = change.get("dry_run_confirmation")
+        if not isinstance(dry_run, dict) or dry_run.get("required") is not True:
+            violations.append({"path": f"{prefix}.dry_run_confirmation", "code": "DRY_RUN_TOKEN_REQUIRED", "message": "dry-run confirmation token is required"})
+        rollback = change.get("rollback")
+        if not isinstance(rollback, dict) or rollback.get("schema") != REGISTRY_PRIVACY_REVERT_SCHEMA:
+            violations.append({"path": f"{prefix}.rollback", "code": "ROLLBACK_PLAN_REQUIRED", "message": "rollback metadata is required"})
+    return {
+        "schema": REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
+        "valid": not violations,
+        "violation_count": len(violations),
+        "violations": violations,
+    }
 
 
 def disable_revert_contract_report() -> dict[str, Any]:

@@ -11,9 +11,15 @@ from cleanwincli.execution_contracts import (
     BACKUP_DELETE_CONTRACT_SCHEMA,
     DISABLE_REVERT_CONTRACT_SCHEMA,
     PERMANENT_DELETE_DENIAL_SCHEMA,
+    REGISTRY_PRIVACY_CHANGE_SCHEMA,
+    REGISTRY_PRIVACY_PLAN_SCHEMA,
+    REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
+    REGISTRY_PRIVACY_REVERT_SCHEMA,
     backup_delete_contract_report,
     disable_revert_contract_report,
     permanent_delete_denial_report,
+    registry_privacy_change_plan_report,
+    validate_registry_privacy_change_plan,
 )
 
 JSONPayload = dict[str, Any]
@@ -28,6 +34,7 @@ AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
 AssertAnyTextContains = Callable[[Sequence[str], str], None]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_disable_revert_contract_is_non_executable(
@@ -140,12 +147,127 @@ def test_permanent_delete_denial_contract_keeps_irreversible_delete_disabled(
     )
 
 
+def test_registry_privacy_plan_is_simulation_only_and_revertible(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    source_report = {
+        "schema": "cleanwin.debloat-privacy-report.v1",
+        "findings": [
+            {
+                "id": "privacy.telemetry.allow-telemetry",
+                "kind": "registry-policy",
+                "risk": "high",
+                "state": "review-recommended",
+                "change_evidence": {
+                    "hive": "HKLM",
+                    "subkey_path": r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+                    "value_name": "AllowTelemetry",
+                    "observed_value": "3",
+                    "expected_private_values": ["0"],
+                    "required_export_command": [
+                        "reg.exe",
+                        "export",
+                        r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+                        "<export-file.reg>",
+                        "/y",
+                    ],
+                },
+            }
+        ],
+    }
+
+    report = assert_readonly_report(registry_privacy_change_plan_report(source_report), REGISTRY_PRIVACY_PLAN_SCHEMA)
+
+    assert_summary_counts(
+        report,
+        {
+            "change_count": 1,
+            "execution_enabled_count": 0,
+            "requires_registry_export_count": 1,
+            "requires_owner_review_count": 1,
+            "requires_dry_run_token_count": 1,
+        },
+    )
+    assert_field_values(
+        report["execution_gate"],
+        {
+            "registry_privacy_execution_enabled": False,
+            "requires_registry_export": True,
+            "requires_previous_value": True,
+            "requires_managed_device_detection": True,
+            "requires_policy_owner_review": True,
+            "requires_matching_dry_run_token": True,
+        },
+    )
+    change = assert_payload_schema(report["changes"][0], REGISTRY_PRIVACY_CHANGE_SCHEMA)
+    assert_execution_disabled(change, "auto_executable", "safe_to_execute")
+    assert_field_values(
+        change,
+        {
+            "state": "simulated",
+            "previous_value": "3",
+            "target_value": "0",
+            "managed_device_detection.required": True,
+            "owner_review.required": True,
+            "dry_run_confirmation.required": True,
+        },
+    )
+    assert_contains_all(change["required_export_command"], ["reg.exe", "export"])
+    assert_payload_schema(change["rollback"], REGISTRY_PRIVACY_REVERT_SCHEMA)
+    assert_field_values(change["rollback"], {"previous_value": "3"})
+    assert_field_values(report["validation"], {"valid": True})
+
+
+def test_registry_privacy_plan_validator_reports_missing_evidence(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = assert_payload_schema(
+        validate_registry_privacy_change_plan(
+            {
+                "schema": REGISTRY_PRIVACY_PLAN_SCHEMA,
+                "changes": [
+                    {
+                        "schema": REGISTRY_PRIVACY_CHANGE_SCHEMA,
+                        "hive": "HKLM",
+                        "subkey_path": "",
+                        "value_name": "AllowTelemetry",
+                        "target_value": "0",
+                        "execution_enabled": True,
+                    }
+                ],
+            }
+        ),
+        REGISTRY_PRIVACY_PLAN_VALIDATION_SCHEMA,
+    )
+
+    assert_field_values(validation, {"valid": False})
+    assert_contains_all(
+        {violation["code"] for violation in validation["violations"]},
+        [
+            "MISSING_FIELD",
+            "EXECUTION_MUST_STAY_DISABLED",
+            "MANAGED_DEVICE_DETECTION_REQUIRED",
+            "OWNER_REVIEW_REQUIRED",
+            "DRY_RUN_TOKEN_REQUIRED",
+            "ROLLBACK_PLAN_REQUIRED",
+        ],
+    )
+
+
 @pytest.mark.parametrize(
     ("command", "schema"),
     [
         ("disable-revert-contract", DISABLE_REVERT_CONTRACT_SCHEMA),
         ("backup-delete-contract", BACKUP_DELETE_CONTRACT_SCHEMA),
         ("permanent-delete-denial", PERMANENT_DELETE_DENIAL_SCHEMA),
+        ("registry-privacy-plan", REGISTRY_PRIVACY_PLAN_SCHEMA),
     ],
 )
 def test_cli_provider_and_schema_registry_expose_execution_contracts(
@@ -157,6 +279,8 @@ def test_cli_provider_and_schema_registry_expose_execution_contracts(
     sample = assert_cli_provider_schema_sample(command, schema)
     if schema == PERMANENT_DELETE_DENIAL_SCHEMA:
         assert_execution_disabled(sample["capability"])
+    if schema == REGISTRY_PRIVACY_PLAN_SCHEMA:
+        assert_execution_disabled(sample["execution_gate"], "registry_privacy_execution_enabled")
 
 
 def test_ai_host_and_execute_schema_continue_to_deny_permanent_delete(
