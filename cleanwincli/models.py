@@ -68,6 +68,8 @@ class Candidate:
     cache_owner: str | None = None
     official_cleanup_command: str | None = None
     safe_to_delete_rationale: str | None = None
+    cache_layer: str | None = None
+    cache_layer_family: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -86,6 +88,8 @@ class Candidate:
             "cache_owner": self.cache_owner,
             "official_cleanup_command": self.official_cleanup_command,
             "safe_to_delete_rationale": self.safe_to_delete_rationale,
+            "cache_layer": self.cache_layer,
+            "cache_layer_family": self.cache_layer_family,
         }
 
 
@@ -163,6 +167,8 @@ def candidate_from_dict(value: dict[str, Any]) -> Candidate:
         cache_owner=value.get("cache_owner"),
         official_cleanup_command=value.get("official_cleanup_command"),
         safe_to_delete_rationale=value.get("safe_to_delete_rationale"),
+        cache_layer=value.get("cache_layer"),
+        cache_layer_family=value.get("cache_layer_family"),
     )
 
 

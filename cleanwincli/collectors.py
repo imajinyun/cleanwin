@@ -161,6 +161,8 @@ def candidate_for(
     cache_owner: str | None = None,
     official_cleanup_command: str | None = None,
     safe_to_delete_rationale: str | None = None,
+    cache_layer: str | None = None,
+    cache_layer_family: str | None = None,
 ) -> Candidate | None:
     if not path.exists():
         return None
@@ -181,6 +183,8 @@ def candidate_for(
         cache_owner=cache_owner,
         official_cleanup_command=official_cleanup_command,
         safe_to_delete_rationale=safe_to_delete_rationale,
+        cache_layer=cache_layer,
+        cache_layer_family=cache_layer_family,
     )
 
 
@@ -512,6 +516,8 @@ def collect_candidates(
                     cache_owner=rule["owner"],
                     official_cleanup_command=rule["official_cleanup_command"],
                     safe_to_delete_rationale=rule["rationale"],
+                    cache_layer=rule.get("cache_layer"),
+                    cache_layer_family=rule.get("cache_layer_family"),
                 )
                 if candidate:
                     candidates.append(candidate)
@@ -529,6 +535,8 @@ def collect_candidates(
                 cache_owner=rule["owner"],
                 official_cleanup_command=rule["official_cleanup_command"],
                 safe_to_delete_rationale=rule["rationale"],
+                cache_layer=rule.get("cache_layer"),
+                cache_layer_family=rule.get("cache_layer_family"),
             )
             if candidate:
                 candidates.append(candidate)
@@ -552,6 +560,8 @@ def collect_candidates(
                 cache_owner=rule["owner"],
                 official_cleanup_command=rule["official_cleanup_command"],
                 safe_to_delete_rationale=rule["rationale"],
+                cache_layer=rule.get("cache_layer"),
+                cache_layer_family=rule.get("cache_layer_family"),
             )
             if candidate:
                 candidates.append(candidate)
@@ -570,6 +580,8 @@ def collect_candidates(
                 cache_owner=str(app_rule["owner"]),
                 official_cleanup_command=str(app_rule["official_cleanup_command"]),
                 safe_to_delete_rationale=str(app_rule["rationale"]),
+                cache_layer=str(app_rule.get("cache_layer") or ""),
+                cache_layer_family=str(app_rule.get("cache_layer_family") or ""),
             )
             if candidate:
                 candidates.append(candidate)

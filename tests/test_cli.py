@@ -3135,6 +3135,7 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert_contains_none: AssertContainsNone,
     assert_all_match: AssertAllMatch,
     assert_none_match: AssertNoneMatch,
+    assert_field_values: AssertFieldValues,
 ) -> None:
     root = tmp_path
     local = root / "LocalAppData"
@@ -3161,6 +3162,15 @@ def test_browser_cache_scans_cache_only_directories_without_profile_data(
     assert_contains_none(paths, [str(cookies)])
     assert_all_match(payload["candidates"], lambda candidate: candidate["category"] == "browser-cache")
     assert_none_match(payload["candidates"], lambda candidate: "cookies" in candidate["path"].lower())
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+    assert_field_values(
+        by_rule["browser-cache.chrome.default.cache"],
+        {"cache_layer": "http-cache", "cache_layer_family": "browser-cache"},
+    )
+    assert_field_values(
+        by_rule["browser-cache.edge.profile1.code-cache"],
+        {"cache_layer": "code-cache", "cache_layer_family": "browser-cache"},
+    )
 
 def test_browser_cache_discovers_additional_browser_profiles(
     tmp_path: Path,
@@ -3320,7 +3330,14 @@ def test_package_cache_scans_additional_developer_package_caches(
     )
     by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
     assert_field_values(by_rule["package-cache.vcpkg.downloads"], {"path": str(vcpkg_downloads)})
-    assert_field_values(by_rule["package-cache.pipx.cache"], {"path": str(pipx_cache)})
+    assert_field_values(
+        by_rule["package-cache.vcpkg.downloads"],
+        {"cache_layer": "package-download-cache", "cache_layer_family": "package-cache"},
+    )
+    assert_field_values(
+        by_rule["package-cache.pipx.cache"],
+        {"path": str(pipx_cache), "cache_layer": "package-install-cache", "cache_layer_family": "package-cache"},
+    )
 
 def test_inspect_rule_id_filters_dev_cache_candidates(
     tmp_path: Path,

@@ -22,6 +22,30 @@ _SECTION_PACKS = {
     "app_leftover_rules": ("app-leftovers", "Application leftover cleanup candidates"),
 }
 
+_CACHE_LAYER_FAMILIES = {
+    "http-cache": "browser-cache",
+    "code-cache": "browser-cache",
+    "gpu-cache": "renderer-cache",
+    "shader-cache": "renderer-cache",
+    "service-worker-cache": "browser-cache",
+    "startup-cache": "runtime-cache",
+    "package-download-cache": "package-cache",
+    "package-install-cache": "package-cache",
+    "dependency-cache": "dependency-cache",
+    "build-cache": "build-cache",
+    "repository-cache": "dependency-cache",
+    "hook-env-cache": "dependency-cache",
+    "logs": "diagnostics",
+    "crash-dumps": "diagnostics",
+    "crash-reports": "diagnostics",
+    "thumbnail-cache": "media-cache",
+    "artwork-cache": "media-cache",
+    "webcache": "browser-cache",
+    "renderer-cache": "renderer-cache",
+    "temp-build-cache": "build-cache",
+    "index-cache": "metadata-cache",
+}
+
 
 class RuleCatalogError(RuntimeError):
     """Raised when the cleanup rule catalog is missing or invalid."""
@@ -92,10 +116,61 @@ def _rule_quality_score(rule: dict[str, Any], *, section: str) -> dict[str, Any]
     }
 
 
+def _cache_layer_for_rule(rule: dict[str, Any], *, section: str) -> str:
+    explicit = str(rule.get("cache_layer") or "")
+    if explicit:
+        return explicit
+    rule_id = str(rule.get("rule_id") or "").lower()
+    default = str(rule.get("default") or "").lower()
+    haystack = f"{rule_id} {default}"
+    if "code-cache" in haystack or "code cache" in haystack:
+        return "code-cache"
+    if "gpu-cache" in haystack or "gpucache" in haystack:
+        return "gpu-cache"
+    if "shader" in haystack:
+        return "shader-cache"
+    if "crashdump" in haystack or "crashdumps" in haystack:
+        return "crash-dumps"
+    if "crash" in haystack:
+        return "crash-reports"
+    if "log" in haystack:
+        return "logs"
+    if "download" in haystack:
+        return "package-download-cache" if section == "package_cache_rules" else "download-cache"
+    if "thumbnail" in haystack or "thumb" in haystack:
+        return "thumbnail-cache"
+    if "art-cache" in haystack or "artwork" in haystack:
+        return "artwork-cache"
+    if "webcache" in haystack:
+        return "webcache"
+    if "startup" in haystack:
+        return "startup-cache"
+    if section == "dev_cache_rules":
+        if any(token in haystack for token in ("go-build", "gradle", "node-gyp")):
+            return "build-cache"
+        if any(token in haystack for token in ("maven", "nuget", "cargo", "go-module", "pnpm", "npm", "yarn", "pip")):
+            return "dependency-cache"
+        if "pre-commit" in haystack:
+            return "hook-env-cache"
+    if section == "package_cache_rules":
+        return "package-install-cache" if any(token in haystack for token in ("lib-bad", "pipx")) else "package-download-cache"
+    if section in {"browser_cache_rules", "browser_profile_cache_rules"}:
+        return "http-cache"
+    if "cache" in haystack:
+        return "runtime-cache"
+    return "diagnostics"
+
+
+def _cache_layer_family(cache_layer: str) -> str:
+    return _CACHE_LAYER_FAMILIES.get(cache_layer, "runtime-cache")
+
+
 def _with_quality(rule: dict[str, Any], *, section: str) -> dict[str, Any]:
     enriched = dict(rule)
     enriched.setdefault("rule_pack", _SECTION_PACKS.get(section, (section, section))[0])
     enriched.setdefault("schema", "cleanwin.cleanup-rule.v1")
+    enriched.setdefault("cache_layer", _cache_layer_for_rule(enriched, section=section))
+    enriched.setdefault("cache_layer_family", _cache_layer_family(str(enriched["cache_layer"])))
     enriched["quality_score"] = _rule_quality_score(enriched, section=section)
     return enriched
 
@@ -159,6 +234,8 @@ def _build_rule_packs(validated: dict[str, Any]) -> tuple[dict[str, Any], ...]:
     for section, (pack_id, title) in _SECTION_PACKS.items():
         rules = _rule_list_for_pack(validated, section)
         quality_scores = [rule["quality_score"]["score"] for rule in rules if isinstance(rule.get("quality_score"), dict)]
+        cache_layers = sorted({str(rule.get("cache_layer")) for rule in rules if rule.get("cache_layer")})
+        cache_layer_families = sorted({str(rule.get("cache_layer_family")) for rule in rules if rule.get("cache_layer_family")})
         packs.append(
             {
                 "schema": RULE_PACK_SCHEMA,
@@ -169,6 +246,8 @@ def _build_rule_packs(validated: dict[str, Any]) -> tuple[dict[str, Any], ...]:
                 "review_status": "manual-reviewed",
                 "rule_count": len(rules),
                 "rule_ids": [str(rule["rule_id"]) for rule in rules],
+                "cache_layers": cache_layers,
+                "cache_layer_families": cache_layer_families,
                 "quality": {
                     "schema": "cleanwin.rule-pack-quality-summary.v1",
                     "minimum_score": min(quality_scores) if quality_scores else 0,
@@ -291,6 +370,8 @@ def rule_quality_dashboard_report() -> dict[str, Any]:
     pack_rows: list[dict[str, Any]] = []
     review_queue: list[dict[str, Any]] = []
     scores: list[int] = []
+    cache_layer_counts: dict[str, int] = {}
+    cache_layer_family_counts: dict[str, int] = {}
 
     for rule in rules:
         quality = rule.get("quality_score", {})
@@ -302,6 +383,10 @@ def rule_quality_dashboard_report() -> dict[str, Any]:
             risk_counts[risk] += 1
         if recoverability in recoverability_counts:
             recoverability_counts[recoverability] += 1
+        cache_layer = str(rule.get("cache_layer") or "unknown")
+        cache_layer_family = str(rule.get("cache_layer_family") or "unknown")
+        cache_layer_counts[cache_layer] = cache_layer_counts.get(cache_layer, 0) + 1
+        cache_layer_family_counts[cache_layer_family] = cache_layer_family_counts.get(cache_layer_family, 0) + 1
         bucket = _quality_bucket(score)
         bucket_counts[bucket] += 1
         gaps: list[str] = []
@@ -365,6 +450,8 @@ def rule_quality_dashboard_report() -> dict[str, Any]:
         },
         "risk_counts": risk_counts,
         "recoverability_counts": recoverability_counts,
+        "cache_layer_counts": dict(sorted(cache_layer_counts.items())),
+        "cache_layer_family_counts": dict(sorted(cache_layer_family_counts.items())),
         "quality_buckets": bucket_counts,
         "evidence_gap_counts": evidence_gaps,
         "packs": pack_rows,

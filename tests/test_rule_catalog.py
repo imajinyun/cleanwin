@@ -102,6 +102,31 @@ def test_cleanup_rule_catalog_enriches_rules_with_quality_scores(
     assert_contains_all(quality.keys(), ["active_install_marker_count", "sensitive_exclusion_matches", "test_coverage"])
 
 
+@pytest.mark.parametrize(
+    ("rule_id", "cache_layer", "cache_layer_family"),
+    [
+        ("dev-cache.go-build.cache", "build-cache", "build-cache"),
+        ("dev-cache.npm.cache", "dependency-cache", "dependency-cache"),
+        ("package-cache.winget.packages", "package-download-cache", "package-cache"),
+        ("package-cache.chocolatey.lib-bad", "package-install-cache", "package-cache"),
+        ("browser-cache.chrome.cache", "http-cache", "browser-cache"),
+        ("browser-cache.chrome.code-cache", "code-cache", "browser-cache"),
+        ("app-leftovers.vscode.gpu-cache", "gpu-cache", "renderer-cache"),
+        ("app-leftovers.tortoisegit.crashdumps", "crash-dumps", "diagnostics"),
+    ],
+)
+def test_cleanup_rule_catalog_enriches_cache_layer_taxonomy(
+    rule_catalog: dict[str, Any],
+    rule_id: str,
+    cache_layer: str,
+    cache_layer_family: str,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    rule = {rule["rule_id"]: rule for rule in catalog_rules(rule_catalog)}[rule_id]
+
+    assert_field_values(rule, {"cache_layer": cache_layer, "cache_layer_family": cache_layer_family})
+
+
 def test_rule_pack_catalog_report_is_readonly_and_summarizes_builtin_packs(
     assert_readonly_report: AssertReadonlyReport,
     assert_payload_schema: AssertPayloadSchema,
@@ -131,6 +156,8 @@ def test_rule_pack_catalog_report_is_readonly_and_summarizes_builtin_packs(
         assert pack["review_status"] == "manual-reviewed"
         assert pack["rule_count"] == len(pack["rule_ids"])
         assert pack["quality"]["minimum_score"] > 0
+        assert pack["cache_layers"]
+        assert pack["cache_layer_families"]
 
 
 def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
@@ -185,6 +212,8 @@ def test_rule_quality_dashboard_is_readonly_and_summarizes_rule_health(
     assert_at_least(dashboard["summary"]["minimum_score"], 60)
     assert_contains_all(dashboard["risk_counts"], ["low", "medium", "high"])
     assert_contains_all(dashboard["recoverability_counts"], ["high", "medium", "low"])
+    assert_contains_all(dashboard["cache_layer_counts"], ["http-cache", "code-cache", "gpu-cache", "package-download-cache"])
+    assert_contains_all(dashboard["cache_layer_family_counts"], ["browser-cache", "package-cache", "renderer-cache", "diagnostics"])
     assert_contains_all(dashboard["quality_buckets"], ["excellent", "good", "review", "blocked"])
     assert_contains_all(
         dashboard["evidence_gap_counts"],

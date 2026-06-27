@@ -372,7 +372,10 @@ import external packs, promote translated rules, or execute cleanup rules.
 `rule-quality-dashboard` is a read-only governance report over the same builtin
 rules. It summarizes quality buckets, risk and recoverability counts, evidence
 gaps, per-pack quality health, and a review queue for lower-scored or higher-risk
-rules without importing external catalogs or enabling execution.
+rules without importing external catalogs or enabling execution. Rule metadata
+also includes machine-readable `cache_layer` and `cache_layer_family` fields so
+browser, developer, package, renderer, diagnostic, media, build, and dependency
+cache surfaces can be reviewed separately by scripts and AI agents.
 
 ---
 
