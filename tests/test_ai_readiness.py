@@ -15,6 +15,7 @@ from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA
 from cleanwincli.recovery import RECOVERY_READINESS_SCHEMA
 from cleanwincli.startup_inventory import STARTUP_SERVICE_INVENTORY_SCHEMA
+from cleanwincli.windows_inventory import WINDOWS_INVENTORY_SCHEMA
 from cleanwincli.workflow_artifacts import (
     WORKFLOW_DECISION_SCHEMA,
     WORKFLOW_TRACE_SCHEMA,
@@ -70,6 +71,7 @@ EXPECTED_READINESS_PROVIDERS = [
     ("doctor", "cleanwin.doctor.v1"),
     ("recovery-readiness", RECOVERY_READINESS_SCHEMA),
     ("installed-app-inventory", INSTALLED_APP_INVENTORY_SCHEMA),
+    ("windows-inventory", WINDOWS_INVENTORY_SCHEMA),
     ("official-command-plan", OFFICIAL_COMMAND_PLAN_SCHEMA),
     ("debloat-privacy-report", DEBLOAT_PRIVACY_REPORT_SCHEMA),
     ("startup-service-inventory", STARTUP_SERVICE_INVENTORY_SCHEMA),
@@ -100,6 +102,7 @@ def test_ai_readiness_is_valid_and_registers_critical_schemas(
             WORKFLOW_TRACE_SCHEMA,
             RECOVERY_READINESS_SCHEMA,
             INSTALLED_APP_INVENTORY_SCHEMA,
+            WINDOWS_INVENTORY_SCHEMA,
             OFFICIAL_COMMAND_PLAN_SCHEMA,
             DEBLOAT_PRIVACY_REPORT_SCHEMA,
             STARTUP_SERVICE_INVENTORY_SCHEMA,

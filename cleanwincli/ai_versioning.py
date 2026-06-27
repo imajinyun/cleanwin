@@ -52,6 +52,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.scan-governance.v1", 1, "cleanwincli.scan_governance", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-review.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.installed-app-inventory.v1", 1, "cleanwincli.installed_apps", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-inventory.v1", 1, "cleanwincli.windows_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.browser-profile-inventory.v1", 1, "cleanwincli.browser_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-command-plan.v1", 1, "cleanwincli.official_commands", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-action-contract.v1", 1, "cleanwincli.official_commands", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -324,6 +325,65 @@ def _sample_installed_app_inventory() -> dict[str, Any]:
     }
 
 
+def _sample_windows_inventory() -> dict[str, Any]:
+    return {
+        "schema": "cleanwin.windows-inventory.v1",
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "platform": {"os_name": "nt", "platform": "Windows-11", "is_windows": True},
+        "sections": [
+            {
+                "id": "appx-packages",
+                "title": "Installed AppX/MSIX packages",
+                "risk": "high",
+                "source": {"id": "appx-packages", "available": True, "reason": "test-fixture", "evidence": {}},
+                "items": [{"name": "Microsoft.WindowsTerminal", "publisher": "Microsoft"}],
+                "item_count": 1,
+                "review_guidance": ["Classify Microsoft, OEM, framework, and user apps before any future debloat plan."],
+                "protected_surfaces": ["package identity", "per-user registration", "framework packages"],
+                "executes_by_report": False,
+                "auto_executable": False,
+            },
+            {
+                "id": "component-store",
+                "title": "Windows component store",
+                "risk": "high",
+                "source": {
+                    "id": "component-store",
+                    "available": False,
+                    "reason": "external-command-not-executed",
+                    "evidence": {"command": "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore"},
+                },
+                "items": [],
+                "item_count": 0,
+                "review_guidance": ["Use DISM or Storage Settings only; never delete WinSxS directly."],
+                "protected_surfaces": [r"C:\\Windows\\WinSxS", "servicing stack", "component rollback"],
+                "executes_by_report": False,
+                "auto_executable": False,
+            },
+        ],
+        "summary": {
+            "section_count": 11,
+            "available_section_count": 1,
+            "high_risk_section_count": 6,
+            "total_item_count": 1,
+            "appx_package_count": 1,
+            "provisioned_appx_package_count": 0,
+            "windows_feature_count": 0,
+            "executes_system_command_count": 0,
+        },
+        "promotion_gate": {
+            "execution_enabled": False,
+            "requires_recovery_readiness": True,
+            "requires_official_command_plan": True,
+            "requires_human_review": True,
+            "requires_matching_dry_run_token": True,
+        },
+        "non_goals": ["This report does not execute PowerShell, DISM, winget, or Windows Settings commands."],
+    }
+
+
 def _sample_file_report() -> dict[str, Any]:
     return {
         "schema": "cleanwin.file-report.v1",
@@ -530,7 +590,14 @@ def _sample_debloat_privacy_report() -> dict[str, Any]:
                 "review_steps": ["Export the policy key before any future registry mutation."],
             }
         ],
-        "summary": {"finding_count": 1, "review_recommended_count": 1, "privacy_hardened_count": 0, "appx_review_count": 0, "oem_location_count": 0},
+        "summary": {
+            "finding_count": 1,
+            "registry_policy_count": 11,
+            "review_recommended_count": 1,
+            "privacy_hardened_count": 0,
+            "appx_review_count": 0,
+            "oem_location_count": 0,
+        },
         "execution_gate": {
             "system_execution_enabled": False,
             "requires_restore_point": True,
@@ -676,7 +743,7 @@ def _sample_promotion_gates() -> dict[str, Any]:
         "destructive": False,
         "dry_run": True,
         "execution_enabled": False,
-        "gate_count": 2,
+        "gate_count": 3,
         "gates": [
             {
                 "id": "registry-privacy-to-registry-change",
@@ -692,6 +759,19 @@ def _sample_promotion_gates() -> dict[str, Any]:
                 "rationale": "Registry privacy changes must remain report-only until exact rollback evidence exists.",
             },
             {
+                "id": "windows-inventory-to-component-store-cleanup",
+                "source_reports": ["cleanwin.windows-inventory.v1", "cleanwin.official-command-plan.v1"],
+                "target_action": "component-store-cleanup",
+                "default_state": "report-only",
+                "required_evidence": ["component_store_analysis", "official_command_id", "pending_reboot_state"],
+                "required_snapshots": ["system-restore-point", "component-store-analysis"],
+                "rollback_metadata": ["analysis_ref", "command_id", "stdout_ref", "stderr_ref", "exit_code"],
+                "required_tests": ["fixture-dism-analysis", "command-id-allowlist", "execution-output-captured"],
+                "human_confirmations": ["explicit-component-store-review", "matching-dry-run-token"],
+                "ai_auto_call_allowed": False,
+                "rationale": "Component store cleanup must use DISM/official command surfaces and must never become direct WinSxS file deletion.",
+            },
+            {
                 "id": "browser-profile-to-cache-plan",
                 "source_reports": ["cleanwin.browser-profile-inventory.v1"],
                 "target_action": "browser-cache-delete",
@@ -705,7 +785,7 @@ def _sample_promotion_gates() -> dict[str, Any]:
                 "rationale": "Only regenerated browser cache layers may be promoted.",
             },
         ],
-        "summary": {"report_only_gate_count": 1, "ai_auto_call_allowed_count": 1, "requires_snapshot_count": 1},
+        "summary": {"report_only_gate_count": 2, "ai_auto_call_allowed_count": 1, "requires_snapshot_count": 2},
         "global_requirements": ["No raw shell command strings in executable plans."],
         "non_goals": ["This report does not enable registry, startup, service, scheduled task, debloat, or official-command execution."],
     }
@@ -770,9 +850,44 @@ def _sample_startup_service_inventory() -> dict[str, Any]:
                 "safe_to_execute": False,
             }
         ],
-        "services": [],
+        "registry_extension_entries": [
+            {
+                "source": "registry-extension",
+                "entry_type": "winlogon",
+                "location": r"HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon",
+                "name": "Shell",
+                "raw_value": "explorer.exe",
+                "publisher": "",
+                "signature_status": "not-checked",
+                "risk": "high",
+                "safe_to_execute": False,
+            }
+        ],
+        "services": [
+            {
+                "name": "ExampleService",
+                "display_name": "Example Service",
+                "status": "Running",
+                "start_type": "Automatic",
+                "service_type": "service",
+                "binary_path": r"C:\\Program Files\\Example\\example-service.exe",
+                "publisher": "Example Corp",
+                "signature_status": "not-checked",
+                "risk": "high",
+                "safe_to_execute": False,
+            }
+        ],
         "scheduled_tasks": [],
-        "summary": {"startup_entry_count": 1, "service_count": 0, "scheduled_task_count": 0, "missing_target_count": 0, "auto_executable_count": 0},
+        "summary": {
+            "startup_entry_count": 1,
+            "registry_extension_entry_count": 1,
+            "high_risk_extension_count": 1,
+            "service_count": 1,
+            "driver_service_count": 0,
+            "scheduled_task_count": 0,
+            "missing_target_count": 0,
+            "auto_executable_count": 0,
+        },
         "execution_gate": {
             "system_execution_enabled": False,
             "requires_service_snapshot": True,
@@ -1081,6 +1196,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_scan_governance()["external_rule_contract"]
     if schema_name == "cleanwin.installed-app-inventory.v1":
         return _sample_installed_app_inventory()
+    if schema_name == "cleanwin.windows-inventory.v1":
+        return _sample_windows_inventory()
     if schema_name == "cleanwin.browser-profile-inventory.v1":
         return _sample_browser_profile_inventory()
     if schema_name == "cleanwin.official-command-plan.v1":

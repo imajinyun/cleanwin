@@ -67,6 +67,34 @@ def test_registry_policy_values_are_classified(
     assert_summary_counts(report, {"review_recommended_count": 1, "privacy_hardened_count": 1})
 
 
+def test_extended_privacy_policy_surface_is_reported(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = debloat_privacy_report(
+        raw_registry_values={
+            r"HKCU\Software\Policies\Microsoft\Windows\WindowsAI\DisableAIDataAnalysis": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Privacy\TailoredExperiencesWithDiagnosticDataEnabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities": 1,
+        },
+        raw_appx_packages=[],
+        env={},
+    )
+    by_id = {finding["id"]: finding for finding in report["findings"]}
+
+    recall = by_id["privacy.recall.disabled"]
+    tailored = by_id["privacy.tailored-experiences.disabled"]
+    upload = by_id["privacy.activity-history.upload-disabled"]
+    assert_field_values(recall, {"state": "privacy-hardened", "risk": "high"})
+    assert_field_values(tailored, {"state": "review-recommended"})
+    assert_field_values(upload, {"state": "review-recommended"})
+    assert_payload_schema(recall["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
+    assert_safe_to_execute_disabled(tailored)
+    assert_summary_counts(report, {"registry_policy_count": 11, "privacy_hardened_count": 1})
+
+
 def test_appx_and_oem_findings_are_review_only(
     tmp_path: Path,
     write_text_file: WriteTextFile,
@@ -82,18 +110,23 @@ def test_appx_and_oem_findings_are_review_only(
 
     report = debloat_privacy_report(
         raw_registry_values={},
-        raw_appx_packages=[{"Name": "Microsoft.XboxGamingOverlay", "Publisher": "CN=Microsoft", "Version": "1.0.0.0"}],
+        raw_appx_packages=[
+            {"Name": "Microsoft.XboxGamingOverlay", "Publisher": "CN=Microsoft", "Version": "1.0.0.0"},
+            {"Name": "Microsoft.GetHelp", "Publisher": "CN=Microsoft", "Version": "1.0.0.0"},
+        ],
         env={"PROGRAMFILES": str(program_files)},
     )
 
     appx_findings = [finding for finding in report["findings"] if finding["kind"] == "appx-package"]
     oem_findings = [finding for finding in report["findings"] if finding["kind"] == "oem-app-location"]
-    assert_exact_count(appx_findings, 1)
-    assert_field_values(appx_findings[0], {"state": "review-recommended"})
+    assert_exact_count(appx_findings, 2)
+    by_package = {finding["package"]["name"]: finding for finding in appx_findings}
+    assert_field_values(by_package["Microsoft.XboxGamingOverlay"], {"state": "review-recommended", "review_category": "gaming"})
+    assert_field_values(by_package["Microsoft.GetHelp"], {"matched_token": "gethelp", "review_category": "support"})
     assert_safe_to_execute_disabled(appx_findings[0])
     assert_exact_count(oem_findings, 1)
     assert_any_text_contains([oem_findings[0]["path"]], "SupportAssistAgent")
-    assert_summary_counts(report, {"appx_review_count": 1, "oem_location_count": 1})
+    assert_summary_counts(report, {"appx_review_count": 2, "oem_location_count": 1})
 
 
 def test_cli_and_ai_provider_expose_report(

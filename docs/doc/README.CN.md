@@ -239,10 +239,27 @@ python3 cleanwin.py --json ai-runbook
 python3 cleanwin.py --json doctor
 python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 ```
+
+`debloat-privacy-report` 仍然是只读报告，覆盖更完整的 Windows 隐私
+policy 基线，包括 telemetry、Advertising ID、consumer features、Copilot、
+Recall/WindowsAI、tailored experiences、activity history、feedback prompts、
+Cortana/Search 和 Spotlight。它还会对内置 AppX 包进行人工 review 分类，
+但不会卸载应用或修改 policy。
+
+`startup-service-inventory` 仍然只读，报告 registry Run entries、
+StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、
+services、driver services 和 scheduled tasks。该报告不会禁用启动项、
+停止服务、编辑 registry，也不会执行 `schtasks`/`sc.exe`。
+
+`promotion-gates` 定义 report-to-execution 契约。Windows inventory 中的
+AppX/provisioned package、Windows Feature、Component Store、Installer cache
+和 Recycle Bin 发现项，在缺少 snapshot evidence、rollback metadata、专项测试
+和明确人工 review 前，都保持 report-only。
 
 ---
 
@@ -302,7 +319,7 @@ cleanwin-mcp
 - 拒绝未知工具和非法参数。
 - 拒绝 raw command 参数。
 - 调用 CLI 前应用 cleanwin host-policy 检查。
-- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor`、`cleanwin://engineering/recovery-readiness`、`cleanwin://inventory/installed-apps`、`cleanwin://plan/official-command-plan`、`cleanwin://inventory/debloat-privacy`、`cleanwin://inventory/startup-services` 等资源。
+- 暴露 `cleanwin://ai/tools`、`cleanwin://ai/host-policy`、`cleanwin://ai/readiness`、`cleanwin://ai/self-test`、`cleanwin://engineering/doctor`、`cleanwin://engineering/recovery-readiness`、`cleanwin://inventory/installed-apps`、`cleanwin://inventory/windows`、`cleanwin://plan/official-command-plan`、`cleanwin://inventory/debloat-privacy`、`cleanwin://inventory/startup-services` 等资源。
 
 指定 MCP server 使用的 CLI 脚本或二进制：
 
@@ -393,9 +410,11 @@ CI 入口：
 | `cleanwincli/rules/cleanup_rules.v1.json` | 治理化清理规则 catalog 数据 |
 | `cleanwincli/recovery.py` | 恢复 readiness 门禁与 snapshot 格式声明 |
 | `cleanwincli/installed_apps.py` | 只读已安装应用 inventory 与 leftover 关联 |
+| `cleanwincli/windows_inventory.py` | 只读 Windows inventory 基线，覆盖应用、AppX、功能、更新/cache、Defender、还原点、回收站、Installer cache 和 component store |
+| `cleanwincli/debloat_privacy.py` | 只读 privacy/debloat 报告，覆盖 Windows policy 基线、AppX review 分类和 OEM 应用位置 |
+| `cleanwincli/startup_inventory.py` | 只读 startup、StartupApproved、Winlogon/Shell extension、service、driver service 和 scheduled task inventory |
+| `cleanwincli/promotion_gates.py` | registry、startup、service/task、official-command、Windows inventory 和 browser-cache surface 的 report-to-execution promotion contract |
 | `cleanwincli/official_commands.py` | 只读 Windows 官方清理命令计划 |
-| `cleanwincli/debloat_privacy.py` | 只读 debloat 和隐私 telemetry 报告 |
-| `cleanwincli/startup_inventory.py` | 只读启动项、服务和计划任务 inventory |
 | `cleanwincli/protection_data.py` | Windows 安全策略数据 |
 | `cleanwincli/protection.py` | 路径和文件系统候选项校验 |
 | `cleanwincli/delete_ops.py` | 唯一破坏性出口和 recycle/permanent 路由 primitive |

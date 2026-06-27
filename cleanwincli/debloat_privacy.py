@@ -10,6 +10,138 @@ from typing import Any
 
 DEBLOAT_PRIVACY_REPORT_SCHEMA = "cleanwin.debloat-privacy-report.v1"
 
+_POLICY_SPECS: tuple[tuple[str, str, str, str, str, set[int], str, list[str]], ...] = (
+    (
+        "privacy.telemetry.allow-telemetry",
+        "Windows telemetry policy",
+        "HKLM",
+        r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
+        "AllowTelemetry",
+        {0},
+        "high",
+        ["Review organization policy before changing telemetry settings.", "Export the policy key before any future registry mutation."],
+    ),
+    (
+        "privacy.ad-id.disabled",
+        "Advertising ID policy",
+        "HKCU",
+        r"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo",
+        "Enabled",
+        {0},
+        "medium",
+        ["Use Windows Privacy settings where possible.", "Confirm app compatibility before changing advertising ID state."],
+    ),
+    (
+        "privacy.consumer-features.disabled",
+        "Consumer features policy",
+        "HKLM",
+        r"SOFTWARE\Policies\Microsoft\Windows\CloudContent",
+        "DisableWindowsConsumerFeatures",
+        {1},
+        "medium",
+        ["Review managed policy ownership.", "Export the policy key before any future registry mutation."],
+    ),
+    (
+        "privacy.copilot.disabled",
+        "Windows Copilot policy",
+        "HKCU",
+        r"Software\Policies\Microsoft\Windows\WindowsCopilot",
+        "TurnOffWindowsCopilot",
+        {1},
+        "medium",
+        ["Confirm Windows version support.", "Prefer Settings or policy management over direct registry edits."],
+    ),
+    (
+        "privacy.recall.disabled",
+        "Windows Recall AI data analysis policy",
+        "HKCU",
+        r"Software\Policies\Microsoft\Windows\WindowsAI",
+        "DisableAIDataAnalysis",
+        {1},
+        "high",
+        ["Confirm Windows edition and policy support.", "Export the WindowsAI policy key before any future mutation."],
+    ),
+    (
+        "privacy.tailored-experiences.disabled",
+        "Tailored experiences with diagnostic data",
+        "HKCU",
+        r"Software\Microsoft\Windows\CurrentVersion\Privacy",
+        "TailoredExperiencesWithDiagnosticDataEnabled",
+        {0},
+        "medium",
+        ["Prefer Windows Privacy settings where possible.", "Record current value before any policy change."],
+    ),
+    (
+        "privacy.activity-history.publish-disabled",
+        "Activity history publishing policy",
+        "HKLM",
+        r"SOFTWARE\Policies\Microsoft\Windows\System",
+        "PublishUserActivities",
+        {0},
+        "medium",
+        ["Review Timeline/activity history expectations.", "Export the Windows System policy key before mutation."],
+    ),
+    (
+        "privacy.activity-history.upload-disabled",
+        "Activity history upload policy",
+        "HKLM",
+        r"SOFTWARE\Policies\Microsoft\Windows\System",
+        "UploadUserActivities",
+        {0},
+        "medium",
+        ["Review cross-device activity history expectations.", "Export the Windows System policy key before mutation."],
+    ),
+    (
+        "privacy.feedback-notifications.disabled",
+        "Feedback notification policy",
+        "HKCU",
+        r"Software\Policies\Microsoft\Windows\DataCollection",
+        "DoNotShowFeedbackNotifications",
+        {1},
+        "low",
+        ["Confirm user notification preference.", "Use policy management instead of ad hoc registry edits."],
+    ),
+    (
+        "privacy.search-cortana.disabled",
+        "Cortana search policy",
+        "HKLM",
+        r"SOFTWARE\Policies\Microsoft\Windows\Windows Search",
+        "AllowCortana",
+        {0},
+        "medium",
+        ["Confirm Windows Search behavior expectations.", "Export Windows Search policy before mutation."],
+    ),
+    (
+        "privacy.spotlight.disabled",
+        "Windows Spotlight policy",
+        "HKCU",
+        r"Software\Policies\Microsoft\Windows\CloudContent",
+        "DisableWindowsSpotlightFeatures",
+        {1},
+        "low",
+        ["Review lock screen and Spotlight preference.", "Prefer policy or Settings UI for future changes."],
+    ),
+)
+
+_APPX_REVIEW_TOKENS: tuple[tuple[str, str, str], ...] = (
+    ("bing", "search-and-content", "Bundled Bing/content package; review user workflow before removal."),
+    ("clipchamp", "consumer-media", "Consumer media package; review creative workflow before removal."),
+    ("copilot", "ai-assistant", "AI assistant package; review policy and Windows feature dependencies."),
+    ("feedbackhub", "diagnostics-feedback", "Feedback Hub package; review support and diagnostics needs."),
+    ("gethelp", "support", "Support package; review helpdesk/support expectations."),
+    ("getstarted", "onboarding", "Onboarding package; usually low value after initial setup but still needs review."),
+    ("mixedreality", "mixed-reality", "Mixed Reality package; review device and headset requirements."),
+    ("officehub", "office-promo", "Office hub package; review Microsoft 365 workflow."),
+    ("people", "contacts", "People/contact package; review mail/contact integration."),
+    ("skype", "communications", "Communications package; review user communication workflow."),
+    ("solitaire", "games", "Game package; review user preference before removal."),
+    ("teams", "communications", "Teams package; review work/school account dependencies."),
+    ("windowscommunicationsapps", "mail-calendar", "Mail and Calendar package; review email/calendar usage."),
+    ("xbox", "gaming", "Xbox package; review Game Bar, gaming, and controller dependencies."),
+    ("yourphone", "phone-link", "Phone Link package; review mobile integration workflow."),
+    ("zune", "media", "Legacy media package; review music/video workflow."),
+)
+
 
 def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
@@ -99,6 +231,14 @@ def _appx_inventory_source(raw_appx_packages: Iterable[Mapping[str, Any]] | None
     return [package for package in packages if package["name"]], _source_status("appx-packages", available=True, reason="test-fixture")
 
 
+def _appx_review_metadata(package_name: str) -> dict[str, str] | None:
+    normalized = package_name.lower()
+    for token, category, rationale in _APPX_REVIEW_TOKENS:
+        if token in normalized:
+            return {"matched_token": token, "category": category, "rationale": rationale}
+    return None
+
+
 def _oem_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     candidates = [
         ("programdata-oem", Path(env["PROGRAMDATA"]) / "OEM") if env.get("PROGRAMDATA") else None,
@@ -138,51 +278,9 @@ def debloat_privacy_report(
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     current_env = dict(os.environ if env is None else env)
-    policy_specs = [
-        (
-            "privacy.telemetry.allow-telemetry",
-            "Windows telemetry policy",
-            "HKLM",
-            r"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
-            "AllowTelemetry",
-            {0},
-            "high",
-            ["Review organization policy before changing telemetry settings.", "Export the policy key before any future registry mutation."],
-        ),
-        (
-            "privacy.ad-id.disabled",
-            "Advertising ID policy",
-            "HKCU",
-            r"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo",
-            "Enabled",
-            {0},
-            "medium",
-            ["Use Windows Privacy settings where possible.", "Confirm app compatibility before changing advertising ID state."],
-        ),
-        (
-            "privacy.consumer-features.disabled",
-            "Consumer features policy",
-            "HKLM",
-            r"SOFTWARE\Policies\Microsoft\Windows\CloudContent",
-            "DisableWindowsConsumerFeatures",
-            {1},
-            "medium",
-            ["Review managed policy ownership.", "Export the policy key before any future registry mutation."],
-        ),
-        (
-            "privacy.copilot.disabled",
-            "Windows Copilot policy",
-            "HKCU",
-            r"Software\Policies\Microsoft\Windows\WindowsCopilot",
-            "TurnOffWindowsCopilot",
-            {1},
-            "medium",
-            ["Confirm Windows version support.", "Prefer Settings or policy management over direct registry edits."],
-        ),
-    ]
     sources: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
-    for spec in policy_specs:
+    for spec in _POLICY_SPECS:
         finding_id, title, root_name, subkey_path, value_name, private_values, risk, review_steps = spec
         value, source = _registry_value(root_name, subkey_path, value_name, raw_values=raw_registry_values)
         sources.append(source)
@@ -201,12 +299,12 @@ def debloat_privacy_report(
         )
     appx_packages, appx_source = _appx_inventory_source(raw_appx_packages)
     sources.append(appx_source)
-    appx_review = [
-        package
-        for package in appx_packages
-        if any(token in package["name"].lower() for token in ("bing", "xbox", "zune", "solitaire", "people", "copilot", "feedbackhub"))
-    ]
-    for package in appx_review:
+    appx_review: list[tuple[dict[str, Any], dict[str, str]]] = []
+    for package in appx_packages:
+        metadata = _appx_review_metadata(package["name"])
+        if metadata is not None:
+            appx_review.append((package, metadata))
+    for package, metadata in appx_review:
         findings.append(
             {
                 "id": f"appx.review.{package['name']}",
@@ -215,6 +313,9 @@ def debloat_privacy_report(
                 "risk": "medium",
                 "state": "review-recommended",
                 "package": package,
+                "review_category": metadata["category"],
+                "matched_token": metadata["matched_token"],
+                "review_rationale": metadata["rationale"],
                 "safe_to_execute": False,
                 "review_steps": ["Confirm the package is not required by the user.", "Create recovery evidence before any future AppX removal.", "Prefer documented Windows package management workflows."],
             }
@@ -232,6 +333,7 @@ def debloat_privacy_report(
         "findings": findings,
         "summary": {
             "finding_count": len(findings),
+            "registry_policy_count": len(_POLICY_SPECS),
             "review_recommended_count": sum(1 for finding in findings if finding["state"] == "review-recommended"),
             "privacy_hardened_count": sum(1 for finding in findings if finding["state"] == "privacy-hardened"),
             "appx_review_count": len(appx_review),

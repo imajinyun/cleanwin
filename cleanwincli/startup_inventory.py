@@ -15,14 +15,36 @@ def _source_status(source_id: str, *, available: bool, reason: str, evidence: di
     return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
 
 
-def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    keys = [
+def _startup_registry_keys() -> list[tuple[str, str]]:
+    return [
         ("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Run"),
         ("HKCU", r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
         ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"),
         ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce"),
         ("HKLM", r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"),
     ]
+
+
+def _startup_approval_keys() -> list[tuple[str, str, str, str]]:
+    return [
+        ("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run", "startup-approved", "medium"),
+        ("HKCU", r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder", "startup-approved", "medium"),
+        ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run", "startup-approved", "medium"),
+        ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder", "startup-approved", "medium"),
+    ]
+
+
+def _winlogon_shell_keys() -> list[tuple[str, str, str, str]]:
+    return [
+        ("HKLM", r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", "winlogon", "high"),
+        ("HKCU", r"Software\Microsoft\Windows NT\CurrentVersion\Winlogon", "winlogon", "high"),
+        ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\ShellServiceObjectDelayLoad", "shell-extension", "high"),
+        ("HKLM", r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Browser Helper Objects", "browser-helper-object", "high"),
+    ]
+
+
+def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    keys = _startup_registry_keys()
     entries: list[dict[str, Any]] = []
     sources: list[dict[str, Any]] = []
     if raw_registry_values is not None:
@@ -77,6 +99,48 @@ def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] |
         except OSError as exc:
             sources.append(_source_status("registry-startup", available=False, reason="registry-key-unavailable", evidence={"key": full_key, "error": str(exc)}))
     return entries, sources
+
+
+def _registry_extension_entries(
+    raw_registry_values: Mapping[str, Mapping[str, Any]] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    keys = [*_startup_approval_keys(), *_winlogon_shell_keys()]
+    entries: list[dict[str, Any]] = []
+    sources: list[dict[str, Any]] = []
+    if raw_registry_values is not None:
+        for root_name, key_path, entry_type, risk in keys:
+            full_key = rf"{root_name}\{key_path}"
+            values = raw_registry_values.get(full_key, {})
+            sources.append(_source_status("registry-startup-extension-fixture", available=True, reason="test-fixture", evidence={"key": full_key, "entry_type": entry_type}))
+            for name, raw_value in values.items():
+                raw_text = raw_value.hex() if isinstance(raw_value, bytes) else str(raw_value)
+                entries.append(
+                    {
+                        "source": "registry-extension",
+                        "entry_type": entry_type,
+                        "location": full_key,
+                        "name": str(name),
+                        "raw_value": raw_text,
+                        "publisher": "",
+                        "signature_status": "not-checked",
+                        "risk": risk,
+                        "safe_to_execute": False,
+                    }
+                )
+        return entries, sources
+    return [], [
+        _source_status(
+            "registry-startup-extensions",
+            available=False,
+            reason="registry-extension-inventory-not-executed",
+            evidence={
+                "keys": [
+                    rf"{root_name}\{key_path}"
+                    for root_name, key_path, _entry_type, _risk in keys
+                ]
+            },
+        )
+    ]
 
 
 def _strip_command_target(command: str) -> str:
@@ -138,14 +202,26 @@ def _service_entries(raw_services: Iterable[Mapping[str, Any]] | None) -> tuple[
             "display_name": str(service.get("DisplayName") or service.get("display_name") or ""),
             "status": str(service.get("Status") or service.get("status") or ""),
             "start_type": str(service.get("StartType") or service.get("start_type") or ""),
+            "service_type": str(service.get("ServiceType") or service.get("service_type") or "service"),
+            "binary_path": str(service.get("PathName") or service.get("BinaryPathName") or service.get("binary_path") or ""),
             "publisher": str(service.get("Publisher") or service.get("publisher") or ""),
             "signature_status": "not-checked",
-            "risk": "high" if str(service.get("StartType") or service.get("start_type") or "").lower() == "automatic" else "medium",
+            "risk": _service_risk(service),
             "safe_to_execute": False,
         }
         for service in raw_services
     ]
     return [entry for entry in entries if entry["name"]], _source_status("services", available=True, reason="test-fixture")
+
+
+def _service_risk(service: Mapping[str, Any]) -> str:
+    start_type = str(service.get("StartType") or service.get("start_type") or "").lower()
+    service_type = str(service.get("ServiceType") or service.get("service_type") or "").lower()
+    if "driver" in service_type:
+        return "high"
+    if start_type == "automatic":
+        return "high"
+    return "medium"
 
 
 def _scheduled_task_entries(raw_tasks: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -175,10 +251,11 @@ def startup_service_inventory_report(
 ) -> dict[str, Any]:
     current_env = dict(os.environ if env is None else env)
     registry_entries, registry_sources = _registry_run_entries(raw_registry_values)
+    registry_extension_entries, registry_extension_sources = _registry_extension_entries(raw_registry_values)
     folder_entries, folder_sources = _startup_folder_entries(current_env)
     services, service_source = _service_entries(raw_services)
     tasks, task_source = _scheduled_task_entries(raw_tasks)
-    sources = [*registry_sources, *folder_sources, service_source, task_source, _source_status("shell-extensions", available=False, reason="not-implemented-read-only-source")]
+    sources = [*registry_sources, *registry_extension_sources, *folder_sources, service_source, task_source]
     return {
         "schema": STARTUP_SERVICE_INVENTORY_SCHEMA,
         "destructive": False,
@@ -187,11 +264,15 @@ def startup_service_inventory_report(
         "platform": {"os_name": os.name, "platform": platform.platform(), "is_windows": os.name == "nt"},
         "sources": sources,
         "startup_entries": [*registry_entries, *folder_entries],
+        "registry_extension_entries": registry_extension_entries,
         "services": services,
         "scheduled_tasks": tasks,
         "summary": {
             "startup_entry_count": len(registry_entries) + len(folder_entries),
+            "registry_extension_entry_count": len(registry_extension_entries),
+            "high_risk_extension_count": sum(1 for entry in registry_extension_entries if entry["risk"] == "high"),
             "service_count": len(services),
+            "driver_service_count": sum(1 for service in services if "driver" in service.get("service_type", "").lower()),
             "scheduled_task_count": len(tasks),
             "missing_target_count": sum(1 for entry in [*registry_entries, *folder_entries, *tasks] if not entry.get("target_exists")),
             "auto_executable_count": 0,

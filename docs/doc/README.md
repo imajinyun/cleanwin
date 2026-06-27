@@ -239,10 +239,28 @@ python3 cleanwin.py --json ai-runbook
 python3 cleanwin.py --json doctor
 python3 cleanwin.py --json recovery-readiness
 python3 cleanwin.py --json installed-app-inventory
+python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json startup-service-inventory
 ```
+
+`debloat-privacy-report` is report-only and now covers a broader Windows privacy
+policy baseline including telemetry, Advertising ID, consumer features, Copilot,
+Recall/WindowsAI, tailored experiences, activity history, feedback prompts,
+Cortana/Search, and Spotlight. It also classifies bundled AppX packages for
+manual review without uninstalling or changing policy.
+
+`startup-service-inventory` remains read-only and reports registry Run entries,
+StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
+services, driver services, and scheduled tasks. The report never disables
+entries, stops services, edits registry values, or executes `schtasks`/`sc.exe`.
+
+`promotion-gates` defines report-to-execution contracts for high-risk surfaces.
+Windows inventory findings for AppX/provisioned packages, Windows Features,
+Component Store, Installer cache, and Recycle Bin remain report-only until
+snapshot evidence, rollback metadata, focused tests, and explicit human review
+are present.
 
 ---
 
@@ -302,7 +320,7 @@ The server:
 - Rejects unknown tools and invalid arguments.
 - Denies raw command arguments.
 - Applies cleanwin host-policy checks before calling the CLI.
-- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, and `cleanwin://inventory/startup-services`.
+- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, `cleanwin://inventory/windows`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, and `cleanwin://inventory/startup-services`.
 
 To point the MCP server at a specific CLI script or binary:
 
@@ -394,9 +412,11 @@ Governance roadmap:
 | `cleanwincli/rules/cleanup_rules.v1.json` | Governed cleanup rule catalog data |
 | `cleanwincli/recovery.py` | Recovery readiness gates and snapshot format declarations |
 | `cleanwincli/installed_apps.py` | Read-only installed app inventory and leftover correlation |
+| `cleanwincli/windows_inventory.py` | Read-only Windows inventory baseline for apps, AppX, features, update/cache, Defender, restore, Recycle Bin, Installer cache, and component store |
+| `cleanwincli/debloat_privacy.py` | Read-only privacy/debloat report for Windows policy baselines, AppX review classification, and OEM app locations |
+| `cleanwincli/startup_inventory.py` | Read-only startup, StartupApproved, Winlogon/Shell extension, service, driver service, and scheduled task inventory |
+| `cleanwincli/promotion_gates.py` | Report-to-execution promotion contracts for registry, startup, service/task, official-command, Windows inventory, and browser-cache surfaces |
 | `cleanwincli/official_commands.py` | Read-only official Windows cleanup command plans |
-| `cleanwincli/debloat_privacy.py` | Read-only debloat and privacy telemetry reporting |
-| `cleanwincli/startup_inventory.py` | Read-only startup, service, and task inventory |
 | `cleanwincli/protection_data.py` | Windows safety policy data |
 | `cleanwincli/protection.py` | Path and filesystem candidate validation |
 | `cleanwincli/delete_ops.py` | Single destructive exit and recycle/permanent routing primitives |

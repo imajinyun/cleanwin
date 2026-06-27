@@ -46,6 +46,7 @@ from cleanwincli.recovery import recovery_readiness_report
 from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
+from cleanwincli.windows_inventory import windows_inventory_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
 from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
@@ -82,6 +83,7 @@ def capabilities() -> dict[str, Any]:
             "system-health-report",
             "disable-revert-contract",
             "visual-studio-report",
+            "windows-inventory",
             "windows-report",
             "wsl-report",
         ],
@@ -616,6 +618,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return startup_service_inventory_report()
     if provider == "system-health-report":
         return system_health_report()
+    if provider == "windows-inventory":
+        return windows_inventory_report()
     if provider == "windows-smoke-matrix":
         return windows_smoke_matrix_report()
     if provider == "review-sample":
@@ -723,6 +727,10 @@ def startup_service_inventory_command() -> dict[str, Any]:
 
 def system_health_report_command() -> dict[str, Any]:
     return system_health_report()
+
+
+def windows_inventory_command() -> dict[str, Any]:
+    return windows_inventory_report()
 
 
 def windows_smoke_matrix_command() -> dict[str, Any]:

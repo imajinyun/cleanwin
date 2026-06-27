@@ -283,6 +283,8 @@ def resource_payload(uri: str) -> dict[str, Any]:
         return ai_tools_report("recovery-readiness")
     if uri == "cleanwin://inventory/installed-apps":
         return ai_tools_report("installed-app-inventory")
+    if uri == "cleanwin://inventory/windows":
+        return ai_tools_report("windows-inventory")
     if uri == "cleanwin://plan/official-command-plan":
         return ai_tools_report("official-command-plan")
     if uri == "cleanwin://inventory/debloat-privacy":
@@ -336,6 +338,7 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
             {"uri": "cleanwin://engineering/doctor", "name": "CleanWin engineering doctor", "mimeType": "application/json"},
             {"uri": "cleanwin://engineering/recovery-readiness", "name": "CleanWin recovery readiness", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/installed-apps", "name": "CleanWin installed app inventory", "mimeType": "application/json"},
+            {"uri": "cleanwin://inventory/windows", "name": "CleanWin Windows inventory baseline", "mimeType": "application/json"},
             {"uri": "cleanwin://plan/official-command-plan", "name": "CleanWin official command plan", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/debloat-privacy", "name": "CleanWin debloat privacy report", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/startup-services", "name": "CleanWin startup service inventory", "mimeType": "application/json"},

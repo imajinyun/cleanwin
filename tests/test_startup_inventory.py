@@ -87,6 +87,45 @@ def test_service_and_scheduled_task_fixtures_are_report_only(
     assert_field_values(report["scheduled_tasks"][0], {"target_exists": False})
 
 
+def test_registry_extension_and_driver_service_inventory_are_report_only(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_field_values: AssertFieldValues,
+    assert_contains_all: AssertContainsAll,
+) -> None:
+    report = startup_service_inventory_report(
+        raw_registry_values={
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run": {
+                "Teams": bytes.fromhex("020000000000000000000000"),
+            },
+            r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon": {
+                "Shell": "explorer.exe",
+            },
+        },
+        raw_services=[
+            {
+                "Name": "ExampleDriver",
+                "DisplayName": "Example Driver",
+                "Status": "Running",
+                "StartType": "Manual",
+                "ServiceType": "Kernel Driver",
+                "PathName": r"C:\Windows\System32\drivers\example.sys",
+            }
+        ],
+        raw_tasks=[],
+        env={},
+    )
+
+    extensions = {entry["name"]: entry for entry in report["registry_extension_entries"]}
+    assert_contains_all(extensions, ["Teams", "Shell"])
+    assert_field_values(extensions["Teams"], {"entry_type": "startup-approved", "risk": "medium"})
+    assert_field_values(extensions["Shell"], {"entry_type": "winlogon", "risk": "high"})
+    assert_safe_to_execute_disabled(extensions["Shell"])
+    assert_field_values(report["services"][0], {"service_type": "Kernel Driver", "risk": "high"})
+    assert_safe_to_execute_disabled(report["services"][0])
+    assert_summary_counts(report, {"registry_extension_entry_count": 2, "high_risk_extension_count": 1, "driver_service_count": 1})
+
+
 def test_cli_and_ai_provider_expose_inventory(
     assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
 ) -> None:
