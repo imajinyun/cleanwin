@@ -224,6 +224,13 @@ python3 cleanwin.py --json execute-plan \
 ```
 
 > 在非 Windows 平台，真实 recycle 执行会 fail-closed，除非在测试中显式设置 `CLEANWIN_TEST_MODE=1`。
+>
+> 受控执行仅限低风险、可再生成的 cache 类别：`temp`、`dev-cache`、
+> `package-cache` 和 `browser-cache`。每个可执行 candidate 必须保持
+> `recycle` mode、非 admin scope、通过 identity check，并包含可再生成
+> rationale。`app-leftovers`、registry、startup、service、scheduled task、
+> AppX、Windows component、installer cache 和 Recycle Bin 等更高风险 surface
+> 仍保持 report/plan/validation only。
 
 ### AI 与治理命令
 

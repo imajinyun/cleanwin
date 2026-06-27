@@ -224,6 +224,13 @@ python3 cleanwin.py --json execute-plan \
 ```
 
 > On non-Windows platforms, real recycle execution fails closed unless `CLEANWIN_TEST_MODE=1` is used for tests.
+>
+> Controlled execution is limited to low-risk regenerable cache categories:
+> `temp`, `dev-cache`, `package-cache`, and `browser-cache`. Each executable
+> candidate must remain `recycle` mode, non-admin scoped, identity-checked, and
+> include a regeneration rationale. Higher-risk surfaces such as
+> `app-leftovers`, registry, startup, services, tasks, AppX, Windows components,
+> installer cache, and Recycle Bin remain report/plan/validation only.
 
 ### AI and governance commands
 

@@ -52,12 +52,14 @@ def test_ai_schema_validation_and_provider_parity(
     assert_payload_status_true: AssertPayloadStatus,
     assert_field_values: AssertFieldValues,
     assert_exact_sequence: AssertExactSequence,
+    assert_text_contains_all: AssertTextContainsAll,
 ) -> None:
     validation = validate_ai_schema()
     assert_payload_status_true(validation, "valid")
     destructive = [tool for tool in AI_TOOL_DEFINITIONS if tool["risk"] == "destructive"]
     assert_exact_sequence([tool["name"] for tool in destructive], ["cleanwin_execute_plan"])
     assert_field_values(destructive[0], {"auto_call_allowed": False, "requires_confirmation": True})
+    assert_text_contains_all(destructive[0]["description"], ["low-risk cache", "recycle mode"])
 
 
 def test_schema_registry_includes_ai_host_critical_schemas(

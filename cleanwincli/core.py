@@ -58,6 +58,8 @@ from cleanwincli.windows_smoke import windows_smoke_matrix_report
 from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
 
+EXECUTABLE_CACHE_CATEGORIES = frozenset({"temp", "dev-cache", "package-cache", "browser-cache"})
+
 
 def capabilities() -> dict[str, Any]:
     return {
@@ -76,6 +78,7 @@ def capabilities() -> dict[str, Any]:
             "operation log write failures",
         ],
         "safe_categories": ["app-leftovers", "browser-cache", "dev-cache", "package-cache", "temp"],
+        "executable_cache_categories": sorted(EXECUTABLE_CACHE_CATEGORIES),
         "read_only_categories": [
             "browser-cache-report",
             "backup-delete-contract",
@@ -158,6 +161,17 @@ def validate_plan_payload(plan: Plan, raw: dict[str, Any], *, require_context: b
             continue
         if candidate.requires_admin:
             errors.append(f"Admin-scoped candidate is not executable in MVP: {candidate.path}")
+            continue
+        if candidate.category not in EXECUTABLE_CACHE_CATEGORIES:
+            errors.append(
+                f"Category is not enabled for controlled low-risk cache execution: {candidate.path} uses {candidate.category}"
+            )
+            continue
+        if candidate.risk != "low":
+            errors.append(f"Only low-risk cache candidates are executable in MVP: {candidate.path} uses {candidate.risk}")
+            continue
+        if not candidate.safe_to_delete_rationale:
+            errors.append(f"Low-risk cache execution requires a regeneration rationale: {candidate.path}")
             continue
         try:
             candidate_path = Path(candidate.path)

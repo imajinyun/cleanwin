@@ -210,7 +210,7 @@ AI_TOOL_DEFINITIONS: tuple[dict[str, Any], ...] = (
     },
     {
         "name": "cleanwin_execute_plan",
-        "description": "Execute a validated cleanwin plan using recycle mode and explicit human confirmation gates.",
+        "description": "Execute only validated low-risk cache candidates using recycle mode and explicit human confirmation gates.",
         "risk": "destructive",
         "auto_call_allowed": False,
         "requires_confirmation": True,
