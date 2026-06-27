@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 BROWSER_PROFILE_INVENTORY_SCHEMA = "cleanwin.browser-profile-inventory.v1"
+LOCKED_STATE_SCHEMA = "cleanwin.locked-state.v1"
 
 SENSITIVE_EXCLUSIONS = [
     "Cookies",
@@ -74,25 +75,63 @@ def _dir_size(path: Path) -> int:
 
 
 def _locked_state(profile_path: Path) -> dict[str, Any]:
-    lock_files = ["SingletonLock", "lock", ".parentlock", "parent.lock"]
+    indicators = {
+        "process-lock-file": ["SingletonLock", "lock", ".parentlock", "parent.lock"],
+        "socket-or-cookie-lock": ["SingletonSocket", "SingletonCookie"],
+        "profile-database-wal": ["Cookies-wal", "Cookies-shm", "places.sqlite-wal", "places.sqlite-shm"],
+    }
     evidence = []
-    for name in lock_files:
-        path = profile_path / name
-        if _path_exists(path):
-            evidence.append({"path": str(path), "exists": True})
+    for indicator_type, names in indicators.items():
+        for name in names:
+            path = profile_path / name
+            if _path_exists(path):
+                evidence.append({"path": str(path), "exists": True, "indicator_type": indicator_type})
+    blocked_reasons = []
+    if any(item["indicator_type"] == "process-lock-file" for item in evidence):
+        blocked_reasons.append("profile-lock-file-present")
+    if any(item["indicator_type"] == "socket-or-cookie-lock" for item in evidence):
+        blocked_reasons.append("browser-singleton-lock-present")
+    if any(item["indicator_type"] == "profile-database-wal" for item in evidence):
+        blocked_reasons.append("profile-database-write-ahead-log-present")
     return {
+        "schema": LOCKED_STATE_SCHEMA,
         "locked": bool(evidence),
         "state": "locked-or-running" if evidence else "not-observed",
         "evidence": evidence,
-        "method": "lock-file-presence",
+        "blocked_reasons": blocked_reasons,
+        "method": "filesystem-lock-indicator-scan",
+        "process_scan_performed": False,
+        "safe_to_execute": False,
     }
 
 
-def _cache_layers(profile_path: Path, layer_map: Mapping[str, str]) -> list[dict[str, Any]]:
+def _layer_lock_state(profile_lock: dict[str, Any], layer_path: Path) -> dict[str, Any]:
+    layer_indicators = []
+    for suffix in ("LOCK", "LOCKFILE", ".lock", "lock"):
+        path = layer_path / suffix
+        if _path_exists(path):
+            layer_indicators.append({"path": str(path), "exists": True, "indicator_type": "cache-layer-lock"})
+    blocked_reasons = list(profile_lock.get("blocked_reasons", []))
+    if layer_indicators:
+        blocked_reasons.append("cache-layer-lock-present")
+    return {
+        "schema": LOCKED_STATE_SCHEMA,
+        "locked": bool(profile_lock.get("locked")) or bool(layer_indicators),
+        "state": "locked-or-running" if profile_lock.get("locked") or layer_indicators else "not-observed",
+        "evidence": [*profile_lock.get("evidence", []), *layer_indicators],
+        "blocked_reasons": sorted(set(blocked_reasons)),
+        "method": "profile-and-cache-layer-lock-indicator-scan",
+        "process_scan_performed": False,
+        "safe_to_execute": False,
+    }
+
+
+def _cache_layers(profile_path: Path, layer_map: Mapping[str, str], profile_lock: dict[str, Any]) -> list[dict[str, Any]]:
     layers: list[dict[str, Any]] = []
     for relative_path, layer_type in layer_map.items():
         path = profile_path.joinpath(*relative_path.split("/"))
         exists = _path_exists(path)
+        layer_lock = _layer_lock_state(profile_lock, path)
         layers.append(
             {
                 "name": relative_path,
@@ -101,6 +140,8 @@ def _cache_layers(profile_path: Path, layer_map: Mapping[str, str]) -> list[dict
                 "exists": exists,
                 "size_bytes": _dir_size(path) if exists else 0,
                 "promotable": layer_type in {"http-cache", "code-cache", "gpu-cache", "shader-cache"},
+                "locked_state": layer_lock,
+                "blocked_reasons": layer_lock["blocked_reasons"],
                 "safe_to_execute": False,
             }
         )
@@ -123,6 +164,7 @@ def _chromium_profiles(browser: str, owner: str, root: Path) -> tuple[list[dict[
         profile_path = root / profile_name
         if not _path_exists(profile_path):
             continue
+        profile_lock = _locked_state(profile_path)
         profiles.append(
             {
                 "browser": browser,
@@ -131,8 +173,8 @@ def _chromium_profiles(browser: str, owner: str, root: Path) -> tuple[list[dict[
                 "profile_name": profile_name,
                 "profile_path": str(profile_path),
                 "profile_exists": True,
-                "locked_profile": _locked_state(profile_path),
-                "cache_layers": _cache_layers(profile_path, CHROMIUM_CACHE_LAYERS),
+                "locked_profile": profile_lock,
+                "cache_layers": _cache_layers(profile_path, CHROMIUM_CACHE_LAYERS, profile_lock),
                 "sensitive_exclusions": SENSITIVE_EXCLUSIONS,
                 "safe_to_execute": False,
             }
@@ -150,6 +192,7 @@ def _firefox_profiles(root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]
         except OSError:
             profile_roots = []
     for profile_path in sorted(profile_roots, key=lambda item: item.name.lower()):
+        profile_lock = _locked_state(profile_path)
         profiles.append(
             {
                 "browser": "firefox",
@@ -158,8 +201,8 @@ def _firefox_profiles(root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]
                 "profile_name": profile_path.name,
                 "profile_path": str(profile_path),
                 "profile_exists": True,
-                "locked_profile": _locked_state(profile_path),
-                "cache_layers": _cache_layers(profile_path, FIREFOX_CACHE_LAYERS),
+                "locked_profile": profile_lock,
+                "cache_layers": _cache_layers(profile_path, FIREFOX_CACHE_LAYERS, profile_lock),
                 "sensitive_exclusions": SENSITIVE_EXCLUSIONS,
                 "safe_to_execute": False,
             }
@@ -201,6 +244,7 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
         sources.append(_source_status("firefox", available=False, reason="appdata-env-missing"))
 
     cache_layers = [layer for profile in profiles for layer in profile["cache_layers"]]
+    locked_layers = [layer for layer in cache_layers if layer["locked_state"]["locked"]]
     return {
         "schema": BROWSER_PROFILE_INVENTORY_SCHEMA,
         "destructive": False,
@@ -212,6 +256,7 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
         "summary": {
             "profile_count": len(profiles),
             "locked_profile_count": sum(1 for profile in profiles if profile["locked_profile"]["locked"]),
+            "locked_cache_layer_count": len(locked_layers),
             "cache_layer_count": len(cache_layers),
             "existing_cache_layer_count": sum(1 for layer in cache_layers if layer["exists"]),
             "promotable_cache_layer_count": sum(1 for layer in cache_layers if layer["promotable"]),

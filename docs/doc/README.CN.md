@@ -250,6 +250,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json rule-quality-dashboard
+python3 cleanwin.py --json browser-profile-inventory
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
@@ -368,6 +369,11 @@ quality buckets、risk/recoverability counts、evidence gaps、每个 pack 的�
 执行。规则元数据还会包含机器可读的 `cache_layer` 和 `cache_layer_family` 字段，
 便于脚本和 AI agent 分别审查 browser、developer、package、renderer、
 diagnostic、media、build 和 dependency cache surface。
+
+`browser-profile-inventory` 会报告浏览器 cache layer，并为 profile 与
+cache-layer lock indicators 输出结构化 `cleanwin.locked-state.v1` contract，
+覆盖 singleton locks、socket/cookie locks 和 database WAL/SHM 文件。该报告不会
+扫描进程、解锁文件、关闭浏览器或删除 cache layer。
 
 ---
 

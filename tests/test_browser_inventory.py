@@ -4,7 +4,11 @@ from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import Any
 
-from cleanwincli.browser_inventory import BROWSER_PROFILE_INVENTORY_SCHEMA, browser_profile_inventory_report
+from cleanwincli.browser_inventory import (
+    BROWSER_PROFILE_INVENTORY_SCHEMA,
+    LOCKED_STATE_SCHEMA,
+    browser_profile_inventory_report,
+)
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
@@ -21,6 +25,7 @@ AssertAnyTextContains = Callable[[Sequence[str], str], None]
 AssertNoneMatch = Callable[[Sequence[str], Callable[[str], bool]], Sequence[str]]
 FieldValues = dict[str, Any]
 AssertFieldValues = Callable[[JSONPayload, FieldValues], JSONPayload]
+AssertPayloadSchema = Callable[[JSONPayload, str], JSONPayload]
 
 
 def test_browser_inventory_reports_profiles_cache_layers_and_locks(
@@ -30,26 +35,46 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_field_values: AssertFieldValues,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     local = tmp_path / "LocalAppData"
     chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
     cache = chrome_default / "Cache"
     code_cache = chrome_default / "Code Cache"
     write_text_file(cache / "entry", "cache")
+    write_text_file(cache / "LOCK", "cache-lock")
     write_text_file(code_cache / "bytecode", "code")
     write_text_file(chrome_default / "SingletonLock", "locked")
+    write_text_file(chrome_default / "SingletonSocket", "socket")
+    write_text_file(chrome_default / "Cookies-wal", "wal")
 
     report = browser_profile_inventory_report(env={"LOCALAPPDATA": str(local), "APPDATA": str(tmp_path / "Roaming")})
 
     assert_readonly_report(report, BROWSER_PROFILE_INVENTORY_SCHEMA)
-    assert_summary_counts(report, {"profile_count": 1, "locked_profile_count": 1})
+    assert_summary_counts(report, {"profile_count": 1, "locked_profile_count": 1, "locked_cache_layer_count": 7})
     profile = report["profiles"][0]
     assert_field_values(
         profile,
         {"browser": "chrome", "profile_name": "Default", "locked_profile.state": "locked-or-running"},
     )
+    assert_payload_schema(profile["locked_profile"], LOCKED_STATE_SCHEMA)
+    assert_field_values(
+        profile["locked_profile"],
+        {"process_scan_performed": False, "safe_to_execute": False, "method": "filesystem-lock-indicator-scan"},
+    )
+    assert_contains_all(
+        profile["locked_profile"]["blocked_reasons"],
+        [
+            "profile-lock-file-present",
+            "browser-singleton-lock-present",
+            "profile-database-write-ahead-log-present",
+        ],
+    )
     layers = {layer["name"]: layer for layer in profile["cache_layers"]}
     assert_field_values(layers["Cache"], {"type": "http-cache", "exists": True, "promotable": True})
+    assert_payload_schema(layers["Cache"]["locked_state"], LOCKED_STATE_SCHEMA)
+    assert_contains_all(layers["Cache"]["blocked_reasons"], ["cache-layer-lock-present", "profile-lock-file-present"])
     assert_field_values(layers["Code Cache"], {"type": "code-cache"})
     for layer in profile["cache_layers"]:
         assert_safe_to_execute_disabled(layer)
@@ -94,4 +119,4 @@ def test_cli_ai_provider_exposes_browser_inventory(
 
 
 def test_schema_registry_exposes_browser_inventory(assert_schema_samples: AssertSchemaSamples) -> None:
-    assert_schema_samples([BROWSER_PROFILE_INVENTORY_SCHEMA])
+    assert_schema_samples([BROWSER_PROFILE_INVENTORY_SCHEMA, LOCKED_STATE_SCHEMA])

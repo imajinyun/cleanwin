@@ -84,6 +84,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.appx-package-snapshot.v1", 1, "cleanwincli.windows_inventory", "stable", "artifact", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.provisioned-appx-package-snapshot.v1", 1, "cleanwincli.windows_inventory", "stable", "artifact", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.browser-profile-inventory.v1", 1, "cleanwincli.browser_inventory", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.locked-state.v1", 1, "cleanwincli.browser_inventory", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-command-plan.v1", 1, "cleanwincli.official_commands", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.official-action-contract.v1", 1, "cleanwincli.official_commands", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.preset-catalog.v1", 1, "cleanwincli.presets", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1139,7 +1140,16 @@ def _sample_browser_profile_inventory() -> dict[str, Any]:
                 "profile_name": "Default",
                 "profile_path": r"C:\\Users\\tester\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
                 "profile_exists": True,
-                "locked_profile": {"locked": True, "state": "locked-or-running", "evidence": [{"path": r"C:\\...\\SingletonLock", "exists": True}], "method": "lock-file-presence"},
+                "locked_profile": {
+                    "schema": "cleanwin.locked-state.v1",
+                    "locked": True,
+                    "state": "locked-or-running",
+                    "evidence": [{"path": r"C:\\...\\SingletonLock", "exists": True, "indicator_type": "process-lock-file"}],
+                    "blocked_reasons": ["profile-lock-file-present"],
+                    "method": "filesystem-lock-indicator-scan",
+                    "process_scan_performed": False,
+                    "safe_to_execute": False,
+                },
                 "cache_layers": [
                     {
                         "name": "Cache",
@@ -1148,6 +1158,17 @@ def _sample_browser_profile_inventory() -> dict[str, Any]:
                         "exists": True,
                         "size_bytes": 1024,
                         "promotable": True,
+                        "locked_state": {
+                            "schema": "cleanwin.locked-state.v1",
+                            "locked": True,
+                            "state": "locked-or-running",
+                            "evidence": [{"path": r"C:\\...\\SingletonLock", "exists": True, "indicator_type": "process-lock-file"}],
+                            "blocked_reasons": ["profile-lock-file-present"],
+                            "method": "profile-and-cache-layer-lock-indicator-scan",
+                            "process_scan_performed": False,
+                            "safe_to_execute": False,
+                        },
+                        "blocked_reasons": ["profile-lock-file-present"],
                         "safe_to_execute": False,
                     }
                 ],
@@ -1155,7 +1176,7 @@ def _sample_browser_profile_inventory() -> dict[str, Any]:
                 "safe_to_execute": False,
             }
         ],
-        "summary": {"profile_count": 1, "locked_profile_count": 1, "cache_layer_count": 1, "existing_cache_layer_count": 1, "promotable_cache_layer_count": 1, "bytes_reported": 1024},
+        "summary": {"profile_count": 1, "locked_profile_count": 1, "locked_cache_layer_count": 1, "cache_layer_count": 1, "existing_cache_layer_count": 1, "promotable_cache_layer_count": 1, "bytes_reported": 1024},
         "execution_gate": {"system_execution_enabled": False, "cache_execution_enabled": False, "requires_locked_profile_check": True, "requires_sensitive_exclusions": True, "ai_auto_call_allowed": False},
         "non_goals": ["This report does not delete browser cache files."],
     }
@@ -1618,6 +1639,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return appx_snapshot_artifact_contract(provisioned=True)
     if schema_name == "cleanwin.browser-profile-inventory.v1":
         return _sample_browser_profile_inventory()
+    if schema_name == "cleanwin.locked-state.v1":
+        return _sample_browser_profile_inventory()["profiles"][0]["locked_profile"]
     if schema_name == "cleanwin.official-command-plan.v1":
         return _sample_official_command_plan()
     if schema_name == "cleanwin.official-action-contract.v1":

@@ -250,6 +250,7 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json rule-quality-dashboard
+python3 cleanwin.py --json browser-profile-inventory
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
 python3 cleanwin.py --json appx-removal-plan
@@ -376,6 +377,12 @@ rules without importing external catalogs or enabling execution. Rule metadata
 also includes machine-readable `cache_layer` and `cache_layer_family` fields so
 browser, developer, package, renderer, diagnostic, media, build, and dependency
 cache surfaces can be reviewed separately by scripts and AI agents.
+
+`browser-profile-inventory` reports browser cache layers and a structured
+`cleanwin.locked-state.v1` contract for profile and cache-layer lock indicators,
+including singleton locks, socket/cookie locks, and database WAL/SHM files. The
+report does not scan processes, unlock files, close browsers, or delete cache
+layers.
 
 ---
 
