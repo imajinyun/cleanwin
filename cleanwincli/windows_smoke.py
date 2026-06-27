@@ -7,6 +7,7 @@ import platform
 from typing import Any
 
 WINDOWS_SMOKE_MATRIX_SCHEMA = "cleanwin.windows-smoke-matrix.v1"
+WINDOWS_SNAPSHOT_ARTIFACT_MATRIX_SCHEMA = "cleanwin.windows-snapshot-artifact-matrix.v1"
 
 
 def _scenario(
@@ -30,6 +31,161 @@ def _scenario(
         "acceptance": acceptance,
         "risk": risk,
         "destructive": False,
+    }
+
+
+def _snapshot_artifact(
+    artifact_id: str,
+    *,
+    title: str,
+    schema: str,
+    collector: str,
+    windows_versions: list[str],
+    user_contexts: list[str],
+    host_contexts: list[str],
+    package_manager_contexts: list[str],
+    required_fields: list[str],
+    golden_fixture: str,
+    promotion_surfaces: list[str],
+) -> dict[str, Any]:
+    return {
+        "id": artifact_id,
+        "title": title,
+        "schema": schema,
+        "collector": collector,
+        "windows_versions": windows_versions,
+        "user_contexts": user_contexts,
+        "host_contexts": host_contexts,
+        "package_manager_contexts": package_manager_contexts,
+        "required_fields": required_fields,
+        "golden_fixture": golden_fixture,
+        "promotion_surfaces": promotion_surfaces,
+        "destructive": False,
+        "executes_by_report": False,
+    }
+
+
+def windows_snapshot_artifact_matrix() -> dict[str, Any]:
+    windows_versions = ["Windows 10 22H2", "Windows 11 23H2", "Windows 11 24H2"]
+    standard_and_admin = ["standard-user", "administrator"]
+    host_contexts = ["managed-device", "unmanaged-device"]
+    artifacts = [
+        _snapshot_artifact(
+            "appx-package-snapshot",
+            title="Installed AppX package snapshot",
+            schema="cleanwin.appx-package-snapshot.v1",
+            collector="powershell-appx-packages",
+            windows_versions=windows_versions,
+            user_contexts=standard_and_admin,
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["Name", "PackageFullName", "PackageFamilyName", "Publisher", "InstallLocation", "NonRemovable"],
+            golden_fixture="tests/fixtures/windows/appx-package-snapshot.json",
+            promotion_surfaces=["appx-removal-plan"],
+        ),
+        _snapshot_artifact(
+            "provisioned-appx-package-snapshot",
+            title="Provisioned AppX package snapshot",
+            schema="cleanwin.provisioned-appx-package-snapshot.v1",
+            collector="powershell-provisioned-appx",
+            windows_versions=windows_versions,
+            user_contexts=["administrator"],
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["PackageName", "DisplayName", "PackageFamilyName", "InstallLocation", "future_user_impact"],
+            golden_fixture="tests/fixtures/windows/provisioned-appx-package-snapshot.json",
+            promotion_surfaces=["appx-removal-plan"],
+        ),
+        _snapshot_artifact(
+            "registry-export-artifact",
+            title="Registry export artifact",
+            schema="cleanwin.registry-export-artifact.v1",
+            collector="registry-export",
+            windows_versions=windows_versions,
+            user_contexts=standard_and_admin,
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["registry_keys", "value_count", "export_command", "policy_owner", "managed_state"],
+            golden_fixture="tests/fixtures/windows/registry-export.reg",
+            promotion_surfaces=["registry-privacy-plan", "service-task-disable-plan"],
+        ),
+        _snapshot_artifact(
+            "scheduled-task-xml-artifact",
+            title="Scheduled task XML artifact",
+            schema="cleanwin.scheduled-task-xml-artifact.v1",
+            collector="scheduled-task-xml",
+            windows_versions=windows_versions,
+            user_contexts=standard_and_admin,
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["TaskName", "Actions", "Triggers", "Principals", "Settings"],
+            golden_fixture="tests/fixtures/windows/scheduled-task.xml",
+            promotion_surfaces=["service-task-disable-plan"],
+        ),
+        _snapshot_artifact(
+            "service-config-artifact",
+            title="Service configuration artifact",
+            schema="cleanwin.service-config-artifact.v1",
+            collector="service-query-config",
+            windows_versions=windows_versions,
+            user_contexts=standard_and_admin,
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["SERVICE_NAME", "START_TYPE", "BINARY_PATH_NAME", "DEPENDENCIES", "SERVICE_START_NAME"],
+            golden_fixture="tests/fixtures/windows/service-config.txt",
+            promotion_surfaces=["service-task-disable-plan"],
+        ),
+        _snapshot_artifact(
+            "dism-component-store-analysis",
+            title="DISM component store analysis",
+            schema="cleanwin.dism-component-store-analysis.v1",
+            collector="dism-component-store",
+            windows_versions=windows_versions,
+            user_contexts=["administrator"],
+            host_contexts=host_contexts,
+            package_manager_contexts=["none"],
+            required_fields=["component_store_cleanup_recommended", "reclaimable_packages", "component_store_size", "reboot_pending"],
+            golden_fixture="tests/fixtures/windows/dism-component-store.txt",
+            promotion_surfaces=["official-command-plan", "system-health-report"],
+        ),
+        _snapshot_artifact(
+            "package-manager-inventory-artifacts",
+            title="Package manager inventory artifacts",
+            schema="cleanwin.package-manager-inventory-artifacts.v1",
+            collector="collect-package-managers",
+            windows_versions=windows_versions,
+            user_contexts=standard_and_admin,
+            host_contexts=host_contexts,
+            package_manager_contexts=["winget-present", "scoop-present", "chocolatey-present", "package-manager-absent"],
+            required_fields=["package_id", "name", "version", "source", "install_scope"],
+            golden_fixture="tests/fixtures/windows/package-manager-inventory.json",
+            promotion_surfaces=["installed-app-inventory", "app-leftovers-review"],
+        ),
+    ]
+    return {
+        "schema": WINDOWS_SNAPSHOT_ARTIFACT_MATRIX_SCHEMA,
+        "destructive": False,
+        "dry_run": True,
+        "executes_system_commands": False,
+        "artifacts": artifacts,
+        "summary": {
+            "artifact_count": len(artifacts),
+            "windows_version_count": len(windows_versions),
+            "managed_context_required": True,
+            "package_manager_context_count": len(
+                {context for artifact in artifacts for context in artifact["package_manager_contexts"]}
+            ),
+            "execution_enabled_count": sum(1 for artifact in artifacts if artifact["executes_by_report"]),
+        },
+        "release_gate": {
+            "required_before_execution_expansion": True,
+            "requires_windows_10_evidence": True,
+            "requires_windows_11_evidence": True,
+            "requires_admin_and_standard_user_evidence": True,
+            "requires_managed_and_unmanaged_evidence": True,
+            "requires_package_manager_presence_matrix": True,
+            "allows_synthetic_fixture_only": False,
+        },
     }
 
 
@@ -193,6 +349,7 @@ def windows_smoke_matrix_report() -> dict[str, Any]:
         "platform": {"os_name": os.name, "platform": platform.platform(), "is_windows": os.name == "nt"},
         "scenario_count": len(scenarios),
         "scenarios": scenarios,
+        "snapshot_artifact_matrix": windows_snapshot_artifact_matrix(),
         "summary": {
             "windows_version_count": len({version for scenario in scenarios for version in scenario["windows_versions"]}),
             "admin_scenario_count": sum(1 for scenario in scenarios if "administrator" in scenario["user_contexts"]),

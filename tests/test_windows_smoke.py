@@ -3,7 +3,11 @@ from __future__ import annotations
 from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
-from cleanwincli.windows_smoke import WINDOWS_SMOKE_MATRIX_SCHEMA, windows_smoke_matrix_report
+from cleanwincli.windows_smoke import (
+    WINDOWS_SMOKE_MATRIX_SCHEMA,
+    WINDOWS_SNAPSHOT_ARTIFACT_MATRIX_SCHEMA,
+    windows_smoke_matrix_report,
+)
 
 JSONPayload = dict[str, Any]
 CleanWinJSON = Callable[..., JSONPayload]
@@ -64,6 +68,46 @@ def test_windows_smoke_matrix_covers_expected_edge_scenarios(assert_contains_all
     browser = by_id["browser-profile-lock-and-sensitive-exclusion"]
     assert_contains_all(browser["commands"], [["python", "cleanwin.py", "--json", "browser-profile-inventory"]])
     assert_contains_all(browser["required_evidence"], ["sensitive_exclusions"])
+
+
+def test_windows_smoke_matrix_includes_real_snapshot_artifact_matrix(
+    assert_payload_schema: Callable[[JSONPayload, str], JSONPayload],
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    matrix = windows_smoke_matrix_report()["snapshot_artifact_matrix"]
+    by_id = {artifact["id"]: artifact for artifact in matrix["artifacts"]}
+
+    assert_payload_schema(matrix, WINDOWS_SNAPSHOT_ARTIFACT_MATRIX_SCHEMA)
+    assert_summary_counts(matrix, {"artifact_count": 7, "execution_enabled_count": 0})
+    assert_field_values(
+        matrix["release_gate"],
+        {
+            "requires_admin_and_standard_user_evidence": True,
+            "requires_managed_and_unmanaged_evidence": True,
+            "requires_package_manager_presence_matrix": True,
+            "allows_synthetic_fixture_only": False,
+        },
+    )
+    assert_contains_all(
+        by_id,
+        [
+            "appx-package-snapshot",
+            "provisioned-appx-package-snapshot",
+            "registry-export-artifact",
+            "scheduled-task-xml-artifact",
+            "service-config-artifact",
+            "dism-component-store-analysis",
+            "package-manager-inventory-artifacts",
+        ],
+    )
+    assert_contains_all(by_id["appx-package-snapshot"]["windows_versions"], ["Windows 10 22H2", "Windows 11 24H2"])
+    assert_contains_all(by_id["appx-package-snapshot"]["host_contexts"], ["managed-device", "unmanaged-device"])
+    assert_contains_all(
+        by_id["package-manager-inventory-artifacts"]["package_manager_contexts"],
+        ["winget-present", "scoop-present", "chocolatey-present", "package-manager-absent"],
+    )
 
 
 def test_windows_smoke_matrix_covers_readonly_debloat_startup_and_health(assert_contains_all: AssertContainsAll) -> None:

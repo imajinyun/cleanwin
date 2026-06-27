@@ -25,6 +25,7 @@ from cleanwincli.windows_native_artifacts import (
     windows_native_artifacts_report,
     windows_native_collector_wrapper_contract,
 )
+from cleanwincli.windows_smoke import windows_snapshot_artifact_matrix
 
 
 @dataclass(frozen=True)
@@ -122,6 +123,7 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.windows-native-collector-wrapper.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-native-artifact-parse.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.windows-smoke-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
+    ("cleanwin.windows-snapshot-artifact-matrix.v1", 1, "cleanwincli.windows_smoke", "stable", "governance", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.mcp-tool-error.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
     ("cleanwin.mcp-text-output.v1", 1, "cleanwincli.mcp_server", "stable", "mcp", "cleanwin", ("mcp",)),
 )
@@ -1717,6 +1719,8 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return windows_native_artifact_parse_sample()
     if schema_name == "cleanwin.windows-smoke-matrix.v1":
         return _sample_windows_smoke_matrix()
+    if schema_name == "cleanwin.windows-snapshot-artifact-matrix.v1":
+        return windows_snapshot_artifact_matrix()
     if schema_name == "cleanwin.workflow-router.v1":
         return _sample_workflow_router()
     if schema_name == "cleanwin.environment-index.v1":
