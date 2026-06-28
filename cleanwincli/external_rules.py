@@ -13,6 +13,7 @@ from typing import Any
 EXTERNAL_RULE_TRANSLATION_SCHEMA = "cleanwin.external-rule-translation.v1"
 EXTERNAL_RULE_CANDIDATE_SCHEMA = "cleanwin.external-rule-candidate.v1"
 EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA = "cleanwin.external-rule-import-sandbox.v1"
+EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA = "cleanwin.external-rule-quality-summary.v1"
 
 SUPPORTED_FORMATS = ("auto", "winapp2", "cleanerml")
 DEFAULT_LICENSE = "external-review-required"
@@ -259,12 +260,38 @@ def _dangerous_path_scan(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _quality_gate_summary(candidates: list[dict[str, Any]], dangerous_path_count: int, unsupported_semantic_count: int) -> dict[str, Any]:
+def external_rule_quality_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]:
     quality_gates = [candidate.get("quality_gate", {}) for candidate in candidates]
+    risk_counts: dict[str, int] = {"low": 0, "medium": 0, "high": 0}
+    recoverability_counts: dict[str, int] = {"high": 0, "medium": 0, "low": 0}
+    blocker_counts: dict[str, int] = {}
+    for gate in quality_gates:
+        risk = str(gate.get("risk") or "unknown")
+        risk_counts[risk] = risk_counts.get(risk, 0) + 1
+        recoverability = str(gate.get("recoverability") or "unknown")
+        recoverability_counts[recoverability] = recoverability_counts.get(recoverability, 0) + 1
+        blockers = gate.get("promotion_blockers", [])
+        if isinstance(blockers, list):
+            for blocker in blockers:
+                key = str(blocker)
+                blocker_counts[key] = blocker_counts.get(key, 0) + 1
+    unsupported_semantic_count = sum(int(gate.get("unsupported_semantic_count", 0) or 0) for gate in quality_gates)
+    dangerous_path_count = sum(int(gate.get("dangerous_path_count", 0) or 0) for gate in quality_gates)
+    provenance_counts: dict[str, int] = {}
+    for candidate in candidates:
+        provenance = str(candidate.get("provenance") or "unknown")
+        provenance_counts[provenance] = provenance_counts.get(provenance, 0) + 1
     return {
-        "schema": "cleanwin.external-rule-quality-gate-summary.v1",
+        "schema": EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA,
         "execution_enabled": False,
         "promotion_allowed": False,
+        "candidate_count": len(candidates),
+        "risk_counts": dict(sorted(risk_counts.items())),
+        "recoverability_counts": dict(sorted(recoverability_counts.items())),
+        "promotion_blocker_counts": dict(sorted(blocker_counts.items())),
+        "provenance_counts": dict(sorted(provenance_counts.items())),
+        "external_untrusted_count": provenance_counts.get("external-untrusted", 0),
+        "promotion_blocker_count": sum(blocker_counts.values()),
         "dangerous_path_count": dangerous_path_count,
         "unsupported_semantic_count": unsupported_semantic_count,
         "active_marker_missing_count": sum(1 for gate in quality_gates if gate.get("active_marker_missing")),
@@ -372,7 +399,7 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
     rationale_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("rationale") or ""))
     dangerous_path_scan = _dangerous_path_scan(candidates)
     unsupported_semantic_count = sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates)
-    quality_gate = _quality_gate_summary(candidates, dangerous_path_scan["dangerous_path_count"], unsupported_semantic_count)
+    quality_gate = external_rule_quality_summary(candidates)
     review_queue = _review_queue(candidates, source)
     provenance_index = _provenance_index(candidates, source)
     promotion_blockers = [

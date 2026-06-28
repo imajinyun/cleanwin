@@ -11,8 +11,10 @@ from cleanwincli.execution_contracts import (
     rollback_drill_report,
     service_task_disable_plan_report,
 )
+from cleanwincli.external_rules import EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA
 from cleanwincli.promotion_gates import promotion_gates_report
 from cleanwincli.recovery import recovery_readiness_report
+from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dashboard_report
 from cleanwincli.windows_inventory import windows_inventory_report
 from cleanwincli.windows_native_artifacts import windows_native_artifacts_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
@@ -59,6 +61,8 @@ def windows_evidence_bundle_report() -> dict[str, Any]:
     rollback_drills = rollback_drill_report()
     promotion_gates = promotion_gates_report()
     recovery = recovery_readiness_report()
+    rule_packs = rule_pack_catalog_report()
+    rule_quality = rule_quality_dashboard_report()
 
     records = [
         _record(
@@ -137,6 +141,47 @@ def windows_evidence_bundle_report() -> dict[str, Any]:
             },
         ),
         _record(
+            "rules.rule-pack-catalog",
+            kind="rule-governance-ref",
+            ref="rules://catalog/current",
+            schema=str(rule_packs["schema"]),
+            producer="rule-pack-catalog",
+            required_for=["external-rule-review", "promotion-gates", "rule-quality-dashboard"],
+            payload_summary={
+                "pack_count": rule_packs["summary"]["pack_count"],
+                "rule_count": rule_packs["summary"]["rule_count"],
+                "external_rule_import_enabled": rule_packs["promotion_gate"]["external_rule_import_enabled"],
+            },
+        ),
+        _record(
+            "rules.quality-dashboard",
+            kind="rule-governance-ref",
+            ref="rules://quality-dashboard/current",
+            schema=str(rule_quality["schema"]),
+            producer="rule-quality-dashboard",
+            required_for=["external-rule-review", "promotion-gates"],
+            payload_summary={
+                "rule_count": rule_quality["summary"]["rule_count"],
+                "review_queue_count": rule_quality["summary"]["review_queue_count"],
+                "external_quality_gate_required": rule_quality["external_import_quality"]["quality_gate_required"],
+                "promotion_validator_gate": rule_quality["external_import_quality"]["promotion_validator_gate"],
+            },
+        ),
+        _record(
+            "rules.external-quality-summary",
+            kind="rule-governance-ref",
+            ref="rules://external-quality-summary/current",
+            schema=EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA,
+            producer="external-rule-translate",
+            required_for=["external-rule-review", "promotion-gates"],
+            payload_summary={
+                "write_behavior": "caller-provided-translation-payload",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "tracked_counts": rule_quality["external_import_quality"]["tracked_counts"],
+            },
+        ),
+        _record(
             "recovery.readiness",
             kind="recovery-ref",
             ref="recovery://readiness/current",
@@ -186,6 +231,7 @@ def windows_evidence_bundle_report() -> dict[str, Any]:
         "non_goals": [
             "This report does not write files.",
             "This report does not collect Windows artifacts.",
+            "This report does not import external rule catalogs.",
             "This report does not execute cleanup, registry, AppX, service, task, DISM, or PowerShell commands.",
         ],
     }

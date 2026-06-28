@@ -252,6 +252,7 @@ def promotion_gates_report() -> dict[str, Any]:
                 "profile_path",
                 "cache_layer",
                 "locked_profile_state",
+                "locked_state_ref",
                 "sensitive_exclusions",
             ],
             required_snapshots=[],
@@ -396,6 +397,44 @@ def _external_rule_quality_errors(source_report: Mapping[str, Any], proposed_act
     return sorted(set(missing_reviews)), blockers, errors
 
 
+def _locked_state_from_payload(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> Mapping[str, Any]:
+    locked_state = proposed_action.get("locked_state")
+    if isinstance(locked_state, Mapping):
+        return locked_state
+    locked_state = proposed_action.get("locked_profile_state")
+    if isinstance(locked_state, Mapping):
+        return locked_state
+    locked_state = source_report.get("locked_state")
+    if isinstance(locked_state, Mapping):
+        return locked_state
+    profiles = source_report.get("profiles")
+    if isinstance(profiles, Iterable) and not isinstance(profiles, str | bytes):
+        for profile in profiles:
+            if isinstance(profile, Mapping) and isinstance(profile.get("locked_profile"), Mapping):
+                return profile["locked_profile"]
+    return {}
+
+
+def _browser_cache_locked_state_errors(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> tuple[list[str], list[dict[str, str]]]:
+    locked_state = _locked_state_from_payload(source_report, proposed_action)
+    missing: list[str] = []
+    errors: list[dict[str, str]] = []
+    if "locked_state_ref" not in _values_from_mapping(proposed_action, "evidence"):
+        missing.append("locked_state_ref")
+    if not locked_state:
+        missing.append("locked_state")
+        errors.append({"code": "MISSING_LOCKED_STATE_EVIDENCE", "detail": "locked_state or locked_profile_state"})
+        return sorted(set(missing)), errors
+    if locked_state.get("locked") is not False or str(locked_state.get("state") or "") not in {"not-observed", "unlocked"}:
+        errors.append(
+            {
+                "code": "LOCKED_STATE_BLOCKS_CACHE_PROMOTION",
+                "detail": ", ".join(str(reason) for reason in locked_state.get("blocked_reasons", [])) or str(locked_state.get("state") or "locked"),
+            }
+        )
+    return sorted(set(missing)), errors
+
+
 def validate_promotion_gate_action(
     *,
     source_report: Mapping[str, Any],
@@ -453,6 +492,10 @@ def validate_promotion_gate_action(
     if gate["id"] == "external-rule-to-reviewed-rule-pack":
         missing_quality_gate_reviews, quality_gate_blockers, quality_errors = _external_rule_quality_errors(source_report, proposed_action)
         errors.extend(quality_errors)
+    missing_locked_state_evidence: list[str] = []
+    if gate["id"] == "browser-profile-to-cache-plan":
+        missing_locked_state_evidence, locked_state_errors = _browser_cache_locked_state_errors(source_report, proposed_action)
+        errors.extend(locked_state_errors)
 
     return {
         "schema": PROMOTION_GATE_VALIDATION_SCHEMA,
@@ -471,6 +514,7 @@ def validate_promotion_gate_action(
         "missing_human_confirmations": missing_confirmations,
         "missing_quality_gate_reviews": missing_quality_gate_reviews,
         "quality_gate_blockers": quality_gate_blockers,
+        "missing_locked_state_evidence": missing_locked_state_evidence,
         "errors": errors,
         "safe_to_execute": False,
     }

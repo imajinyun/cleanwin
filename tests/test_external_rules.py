@@ -7,7 +7,9 @@ from typing import Any
 from cleanwincli.external_rules import (
     EXTERNAL_RULE_CANDIDATE_SCHEMA,
     EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA,
+    EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA,
     EXTERNAL_RULE_TRANSLATION_SCHEMA,
+    external_rule_quality_summary,
     external_rule_translation_sample,
     translate_external_rules_text,
 )
@@ -154,9 +156,15 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
             "quality_gate.dangerous_path_count": 2,
             "quality_gate.unsupported_semantic_count": 3,
             "quality_gate.active_marker_missing_count": 3,
+            "quality_gate.promotion_blocker_count": 17,
+            "quality_gate.external_untrusted_count": 3,
             "quality_gate.fixture_missing_count": 3,
         },
     )
+    assert_payload_schema(sandbox["quality_gate"], EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA)
+    assert_contains_all(sandbox["quality_gate"]["risk_counts"], ["medium", "high"])
+    assert_contains_all(sandbox["quality_gate"]["recoverability_counts"], ["medium", "low"])
+    assert_contains_all(sandbox["quality_gate"]["promotion_blocker_counts"], ["external-untrusted-provenance", "fixture-coverage-required"])
     assert_contains_all(
         sandbox["promotion_blockers"],
         [
@@ -281,6 +289,44 @@ FileKey2=%UserProfile%\\Documents|*.*|RECURSE
     assert_contains_all(provenance["provenance_counts"], ["builtin", "translated-winapp2", "manual-reviewed", "external-untrusted"])
 
 
+def test_external_rule_quality_summary_aggregates_candidates(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    payload = translate_external_rules_text(
+        """
+[Example Browser Cache *]
+SpecialDetect=DetectWinApp
+FileKey1=%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache|*.*|RECURSE
+FileKey2=%UserProfile%\\Documents|*.*|RECURSE
+RegKey1=HKCU\\Software\\Example\\Telemetry
+""".strip(),
+        source_format="winapp2",
+        upstream_project="BleachBit/winapp2.ini",
+        upstream_rule_id_or_commit="fixture",
+    )
+
+    summary = assert_payload_schema(external_rule_quality_summary(payload["candidates"]), EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA)
+    assert_execution_disabled(summary)
+    assert_field_values(
+        summary,
+        {
+            "candidate_count": 3,
+            "dangerous_path_count": 2,
+            "unsupported_semantic_count": 3,
+            "active_marker_missing_count": 3,
+            "fixture_missing_count": 3,
+            "external_untrusted_count": 3,
+            "promotion_allowed": False,
+        },
+    )
+    assert_contains_all(summary["risk_counts"], ["medium", "high"])
+    assert_contains_all(summary["recoverability_counts"], ["medium", "low"])
+    assert_contains_all(summary["promotion_blocker_counts"], ["external-untrusted-provenance", "owner-review-required", "fixture-coverage-required"])
+
+
 def test_external_rule_translate_cli_reads_local_catalog(
     tmp_path: Path,
     write_text_file: WriteTextFile,
@@ -322,13 +368,14 @@ def test_external_rule_translation_schema_samples_are_registered(
     assert_payload_schema: AssertPayloadSchema,
 ) -> None:
     samples = assert_schema_samples(
-        [EXTERNAL_RULE_TRANSLATION_SCHEMA, EXTERNAL_RULE_CANDIDATE_SCHEMA, EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA]
+        [EXTERNAL_RULE_TRANSLATION_SCHEMA, EXTERNAL_RULE_CANDIDATE_SCHEMA, EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA, EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA]
     )
     assert_readonly_report(samples[EXTERNAL_RULE_TRANSLATION_SCHEMA], EXTERNAL_RULE_TRANSLATION_SCHEMA)
     assert_execution_disabled(samples[EXTERNAL_RULE_TRANSLATION_SCHEMA])
     assert_payload_schema(samples[EXTERNAL_RULE_CANDIDATE_SCHEMA], EXTERNAL_RULE_CANDIDATE_SCHEMA)
     assert_readonly_report(samples[EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA], EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA)
     assert_execution_disabled(samples[EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA])
+    assert_payload_schema(samples[EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA], EXTERNAL_RULE_QUALITY_SUMMARY_SCHEMA)
 
 
 def test_external_rule_translation_sample_matches_contract(

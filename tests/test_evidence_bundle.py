@@ -41,8 +41,8 @@ def test_windows_evidence_bundle_is_readonly_jsonl_chain(
     records = _jsonl_records(report)
     by_id = {record["id"]: record for record in records}
 
-    assert_summary_counts(report, {"record_count": 9, "jsonl_line_count": 9, "execution_enabled_count": 0})
-    assert_exact_count(records, 9)
+    assert_summary_counts(report, {"record_count": 12, "jsonl_line_count": 12, "execution_enabled_count": 0})
+    assert_exact_count(records, 12)
     assert_contains_all(
         by_id,
         [
@@ -53,14 +53,28 @@ def test_windows_evidence_bundle_is_readonly_jsonl_chain(
             "plan.service-task-disable",
             "drill.rollback",
             "gate.promotion",
+            "rules.rule-pack-catalog",
+            "rules.quality-dashboard",
+            "rules.external-quality-summary",
             "recovery.readiness",
             "matrix.windows-smoke",
         ],
     )
     assert_contains_all(
         report["summary"]["kind_counts"],
-        ["report-ref", "snapshot-ref", "plan-ref", "drill-ref", "gate-ref", "recovery-ref", "ci-artifact-ref"],
+        ["report-ref", "snapshot-ref", "plan-ref", "drill-ref", "gate-ref", "rule-governance-ref", "recovery-ref", "ci-artifact-ref"],
     )
+    assert_field_values(
+        by_id["rules.external-quality-summary"],
+        {
+            "schema": WINDOWS_EVIDENCE_BUNDLE_RECORD_SCHEMA,
+            "kind": "rule-governance-ref",
+            "payload_schema": "cleanwin.external-rule-quality-summary.v1",
+            "payload_summary.execution_enabled": False,
+            "payload_summary.promotion_allowed": False,
+        },
+    )
+    assert_contains_all(by_id["rules.external-quality-summary"]["required_for"], ["external-rule-review", "promotion-gates"])
     assert_field_values(
         report["usage"],
         {
