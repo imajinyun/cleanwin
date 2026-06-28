@@ -23,6 +23,8 @@ from cleanwincli.execution_contracts import (
     REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA,
     ROLLBACK_DRILL_CASE_SCHEMA,
     ROLLBACK_DRILL_REPORT_SCHEMA,
+    ROLLBACK_DRILL_REQUIRED_ARTIFACT_REFS,
+    ROLLBACK_DRILL_REQUIRED_STAGES,
     ROLLBACK_DRILL_VALIDATION_SCHEMA,
     SERVICE_DISABLE_CHANGE_SCHEMA,
     SERVICE_TASK_DISABLE_PLAN_SCHEMA,
@@ -627,6 +629,11 @@ def test_rollback_drill_report_covers_fixture_restore_paths(
         report["execution_gate"],
         {
             "rollback_drill_execution_enabled": False,
+            "real_rollback_drill_closure_enabled": False,
+            "requires_windows_sandbox_or_ephemeral_vm": True,
+            "requires_non_production_host": True,
+            "requires_jsonl_evidence_bundle": True,
+            "requires_hash_manifest": True,
             "requires_snapshot_refs": True,
             "requires_restore_command": True,
             "requires_required_metadata": True,
@@ -653,7 +660,20 @@ def test_rollback_drill_report_covers_fixture_restore_paths(
     appx_drill = by_id["rollback-drill.appx-restore-metadata"]
     for drill in by_id.values():
         assert_execution_disabled(drill)
-        assert_contains_all(drill["drill_chain"], ["snapshot", "simulate-rollback", "verify-after-rollback"])
+        assert_contains_all(drill["drill_chain"], ROLLBACK_DRILL_REQUIRED_STAGES)
+        assert_contains_all(drill["artifact_refs"], ROLLBACK_DRILL_REQUIRED_ARTIFACT_REFS)
+        assert_field_values(
+            drill,
+            {
+                "drill_environment.required_host": "windows-sandbox-or-ephemeral-vm",
+                "drill_environment.requires_non_production_host": True,
+                "drill_environment.production_host_allowed": False,
+                "closure_requirements.requires_jsonl_evidence_bundle": True,
+                "closure_requirements.requires_hash_manifest": True,
+                "closure_requirements.requires_manual_review": True,
+                "closure_status": "contract-only",
+            },
+        )
     assert_contains_all(registry_drill["restore_command"], ["reg.exe", "import"])
     registry_fixture = assert_payload_schema(
         registry_drill["registry_rollback_fixture"], REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA
@@ -730,6 +750,11 @@ def test_rollback_drill_validator_reports_missing_fixture_evidence(
                             "execution_enabled": True,
                             "executes_system_commands": True,
                         "snapshot_refs": [],
+                        "drill_chain": ["snapshot"],
+                        "drill_environment": {"production_host_allowed": True},
+                        "artifact_refs": {"snapshot": "snapshot://registry/example.reg"},
+                        "closure_requirements": {"requires_jsonl_evidence_bundle": False},
+                        "closure_status": "ready-for-real-execution",
                         "restore_command": [],
                         "required_metadata": {},
                         "verification_steps": [],
@@ -750,6 +775,11 @@ def test_rollback_drill_validator_reports_missing_fixture_evidence(
             "RESTORE_COMMAND_REQUIRED",
             "ROLLBACK_METADATA_REQUIRED",
             "POST_ROLLBACK_VERIFICATION_REQUIRED",
+            "ROLLBACK_DRILL_CHAIN_INCOMPLETE",
+            "NON_PRODUCTION_DRILL_ENVIRONMENT_REQUIRED",
+            "ROLLBACK_DRILL_ARTIFACT_REFS_REQUIRED",
+            "ROLLBACK_DRILL_CLOSURE_REQUIREMENTS_REQUIRED",
+            "ROLLBACK_DRILL_CLOSURE_MUST_STAY_CONTRACT_ONLY",
             "REGISTRY_ROLLBACK_FIXTURE_REQUIRED",
         ],
     )

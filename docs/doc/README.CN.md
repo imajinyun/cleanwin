@@ -333,6 +333,13 @@ Add-AppxPackage restore metadata、blocked target classes、dry-run token eviden
 和 registration-state rollback assertions。该报告不会导入 registry 文件、重建
 scheduled task、修改 service start type 或重新安装 AppX 包。
 
+真实 rollback drill 闭环仍然通过 contract 禁用。每个 drill 现在都会声明必须
+在 sandbox/ephemeral-VM 中完成，并记录 precheck -> snapshot -> simulate
+action -> verify -> simulate rollback -> verify -> JSONL evidence bundle
+链路、artifact refs、hash manifest 要求、人工 review 和 promotion blockers。
+在真实 sandbox/VM artifact bundle 证明 rollback 闭环前，production host 会被
+明确禁止。
+
 `startup-service-inventory` 仍然只读，报告 registry Run entries、
 StartupApproved 状态、Winlogon/Shell extension surface、Startup folder、
 services、driver services 和 scheduled tasks。Service 和 scheduled task

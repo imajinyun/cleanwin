@@ -25,6 +25,23 @@ ROLLBACK_DRILL_CASE_SCHEMA = "cleanwin.rollback-drill-case.v1"
 ROLLBACK_DRILL_VALIDATION_SCHEMA = "cleanwin.rollback-drill-validation.v1"
 REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA = "cleanwin.registry-privacy-rollback-drill.v1"
 APPX_PER_USER_ROLLBACK_DRILL_SCHEMA = "cleanwin.appx-per-user-rollback-drill.v1"
+ROLLBACK_DRILL_REQUIRED_STAGES = [
+    "precheck",
+    "snapshot",
+    "simulate-action",
+    "verify-after-simulation",
+    "simulate-rollback",
+    "verify-after-rollback",
+    "evidence-bundle",
+]
+ROLLBACK_DRILL_REQUIRED_ARTIFACT_REFS = [
+    "precheck",
+    "snapshot",
+    "post_action",
+    "rollback",
+    "post_rollback",
+    "evidence_bundle",
+]
 
 _PROTECTED_SERVICE_TASK_TOKENS = (
     "microsoft",
@@ -57,6 +74,14 @@ def _rollback_drill_case(
     required_metadata: dict[str, Any],
     verification_steps: list[str],
 ) -> dict[str, Any]:
+    artifact_refs = {
+        "precheck": f"artifact://rollback-drill/{drill_id}/precheck.json",
+        "snapshot": snapshot_refs[0],
+        "post_action": f"artifact://rollback-drill/{drill_id}/post-action.json",
+        "rollback": f"artifact://rollback-drill/{drill_id}/rollback.json",
+        "post_rollback": f"artifact://rollback-drill/{drill_id}/post-rollback.json",
+        "evidence_bundle": f"artifact://rollback-drill/{drill_id}/evidence.jsonl",
+    }
     return {
         "schema": ROLLBACK_DRILL_CASE_SCHEMA,
         "id": drill_id,
@@ -64,7 +89,31 @@ def _rollback_drill_case(
         "source_plan_schema": source_schema,
         "fixture_only": True,
         "snapshot_refs": snapshot_refs,
-        "drill_chain": ["snapshot", "simulate-action", "verify-after-simulation", "simulate-rollback", "verify-after-rollback"],
+        "drill_chain": ROLLBACK_DRILL_REQUIRED_STAGES,
+        "drill_environment": {
+            "required_host": "windows-sandbox-or-ephemeral-vm",
+            "allowed_contexts": ["windows-sandbox", "ephemeral-vm", "ci-fixture"],
+            "requires_non_production_host": True,
+            "requires_operator_attestation": True,
+            "production_host_allowed": False,
+        },
+        "artifact_refs": artifact_refs,
+        "closure_requirements": {
+            "requires_precheck_artifact": True,
+            "requires_snapshot_artifact": True,
+            "requires_post_action_artifact": True,
+            "requires_rollback_artifact": True,
+            "requires_post_rollback_artifact": True,
+            "requires_jsonl_evidence_bundle": True,
+            "requires_hash_manifest": True,
+            "requires_manual_review": True,
+        },
+        "closure_status": "contract-only",
+        "promotion_blockers": [
+            "real sandbox/VM artifact bundle is not attached",
+            "precheck, snapshot, action, rollback, and post-rollback hashes must be validated",
+            "operator attestation is required before any future execution promotion",
+        ],
         "planned_action": planned_action,
         "restore_command": restore_command,
         "required_metadata": required_metadata,
@@ -210,6 +259,12 @@ def rollback_drill_report() -> dict[str, Any]:
         "validation": validation,
         "execution_gate": {
             "rollback_drill_execution_enabled": False,
+            "real_rollback_drill_closure_enabled": False,
+            "requires_windows_sandbox_or_ephemeral_vm": True,
+            "requires_non_production_host": True,
+            "requires_operator_attestation": True,
+            "requires_jsonl_evidence_bundle": True,
+            "requires_hash_manifest": True,
             "requires_snapshot_refs": True,
             "requires_restore_command": True,
             "requires_required_metadata": True,
@@ -252,6 +307,50 @@ def validate_rollback_drills(report: dict[str, Any]) -> dict[str, Any]:
         ):
             if not drill.get(field):
                 violations.append({"path": f"{prefix}.{field}", "code": code, "message": f"{field} is required"})
+        drill_chain = drill.get("drill_chain")
+        if not isinstance(drill_chain, list) or any(stage not in drill_chain for stage in ROLLBACK_DRILL_REQUIRED_STAGES):
+            violations.append(
+                {
+                    "path": f"{prefix}.drill_chain",
+                    "code": "ROLLBACK_DRILL_CHAIN_INCOMPLETE",
+                    "message": "rollback drills must include precheck, snapshot, action, rollback, post-rollback, and evidence bundle stages",
+                }
+            )
+        environment = drill.get("drill_environment")
+        if not isinstance(environment, dict) or environment.get("production_host_allowed") is not False:
+            violations.append(
+                {
+                    "path": f"{prefix}.drill_environment",
+                    "code": "NON_PRODUCTION_DRILL_ENVIRONMENT_REQUIRED",
+                    "message": "real rollback drill closure must require a Windows sandbox or ephemeral VM and block production hosts",
+                }
+            )
+        artifact_refs = drill.get("artifact_refs")
+        if not isinstance(artifact_refs, dict) or any(not artifact_refs.get(key) for key in ROLLBACK_DRILL_REQUIRED_ARTIFACT_REFS):
+            violations.append(
+                {
+                    "path": f"{prefix}.artifact_refs",
+                    "code": "ROLLBACK_DRILL_ARTIFACT_REFS_REQUIRED",
+                    "message": "rollback drills must link precheck, snapshot, action, rollback, post-rollback, and JSONL evidence artifacts",
+                }
+            )
+        closure_requirements = drill.get("closure_requirements")
+        if not isinstance(closure_requirements, dict) or not all(closure_requirements.get(field) is True for field in ("requires_jsonl_evidence_bundle", "requires_hash_manifest", "requires_manual_review")):
+            violations.append(
+                {
+                    "path": f"{prefix}.closure_requirements",
+                    "code": "ROLLBACK_DRILL_CLOSURE_REQUIREMENTS_REQUIRED",
+                    "message": "rollback drills must require a JSONL evidence bundle, hash manifest, and manual review",
+                }
+            )
+        if drill.get("closure_status") != "contract-only":
+            violations.append(
+                {
+                    "path": f"{prefix}.closure_status",
+                    "code": "ROLLBACK_DRILL_CLOSURE_MUST_STAY_CONTRACT_ONLY",
+                    "message": "rollback drill closure must remain contract-only until sandbox/VM evidence is attached",
+                }
+            )
         if drill.get("target_type") == "registry-privacy":
             fixture = drill.get("registry_rollback_fixture")
             if not isinstance(fixture, dict) or fixture.get("schema") != REGISTRY_PRIVACY_ROLLBACK_DRILL_SCHEMA:

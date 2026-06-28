@@ -338,6 +338,13 @@ evidence, and registration-state rollback assertions. The report never imports
 registry files, recreates scheduled tasks, changes service start types, or
 reinstalls AppX packages.
 
+Real rollback drill closure is still disabled by contract. Every drill now
+declares the required sandbox/ephemeral-VM environment, precheck -> snapshot ->
+simulate action -> verify -> simulate rollback -> verify -> JSONL evidence
+bundle chain, artifact refs, hash-manifest requirements, manual review, and
+promotion blockers. Production hosts are explicitly disallowed until a real
+sandbox/VM artifact bundle proves rollback closure.
+
 `startup-service-inventory` remains read-only and reports registry Run entries,
 StartupApproved state, Winlogon/Shell extension surfaces, startup folders,
 services, driver services, and scheduled tasks. Service and task entries include
