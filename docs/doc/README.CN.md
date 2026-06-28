@@ -374,16 +374,20 @@ confirmations，但不会启用执行。
 `external-rule-translate` 会把本地 `winapp2.ini` 或 CleanerML XML 文件解析成
 `cleanwin.external-rule-translation.v1` 候选项。Translator 只读运行：不会下载
 外部 catalog、不会执行命令，也不会把规则写入 builtin catalog。每个 candidate
-都会记录 upstream provenance、原始 pattern、转换后的 CleanWin review metadata、
-sensitive exclusions、危险路径标记和 `review_required=true`，确保外部规则在未来
-owner review 和 promotion gate 批准前始终保持 report-only。
+都会记录 upstream provenance、source hash、import batch id、原始 pattern、
+转换后的 CleanWin review metadata、detection metadata、exclusions、unsupported
+semantics、sensitive exclusions、危险路径标记和 `review_required=true`。Import
+sandbox 还会输出 review queue 和 provenance index，确保 translated winapp2 /
+CleanerML 规则在未来 owner review 和 promotion gate 批准前始终保持 report-only。
 
 `rule-pack-catalog` 会把 builtin cleanup rules 暴露成 versioned read-only
 packs，覆盖 developer cache、package cache、browser cache、browser profile
 cache 和 app leftovers。每条规则都会附带 quality score，包含 risk、
 recoverability、owner evidence、official cleanup evidence、sensitive exclusion
-scan、test coverage、provenance 和 review status。该报告不会导入外部 pack、
-不会提升 translated rules，也不会执行 cleanup rules。
+scan、test coverage、provenance 和 review status。External import sandbox 会描述
+必需的 `import_batch_id`、`source_hash`、reviewer、unsupported semantics、review
+queue 和 provenance index 字段。该报告不会导入外部 pack、不会提升 translated
+rules，也不会执行 cleanup rules。
 
 `rule-quality-dashboard` 是基于同一 builtin rules 的只读治理报告，会汇总
 quality buckets、risk/recoverability counts、evidence gaps、每个 pack 的质量

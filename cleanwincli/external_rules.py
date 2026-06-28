@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import configparser
+import hashlib
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -50,6 +51,8 @@ class ExternalRuleSource:
     upstream_project: str
     upstream_rule_id_or_commit: str
     license: str
+    source_hash: str
+    import_batch_id: str
     source_path: str | None = None
 
 
@@ -214,6 +217,8 @@ def _external_rule_pack_candidate(candidates: list[dict[str, Any]], source: Exte
         "review_status": "unreviewed",
         "source_format": source.source_format,
         "upstream_project": source.upstream_project,
+        "source_hash": source.source_hash,
+        "import_batch_id": source.import_batch_id,
         "license": source.license,
         "rule_count": len(candidates),
         "rule_ids": [str(candidate.get("translated_cleanwin_rule", {}).get("rule_id")) for candidate in candidates],
@@ -222,11 +227,78 @@ def _external_rule_pack_candidate(candidates: list[dict[str, Any]], source: Exte
     }
 
 
+def _review_queue(candidates: list[dict[str, Any]], source: ExternalRuleSource) -> list[dict[str, Any]]:
+    queue: list[dict[str, Any]] = []
+    for candidate in candidates:
+        translated = candidate.get("translated_cleanwin_rule", {})
+        blockers = [
+            "external-untrusted-provenance",
+            "owner-review-required",
+            "fixture-coverage-required",
+            "execution-disabled-by-default",
+        ]
+        if candidate.get("dangerous_path"):
+            blockers.append("dangerous-path-review-required")
+        if candidate.get("unsupported_semantics"):
+            blockers.append("unsupported-semantics-review-required")
+        queue.append(
+            {
+                "schema": "cleanwin.external-rule-review-queue-item.v1",
+                "import_batch_id": source.import_batch_id,
+                "source_hash": source.source_hash,
+                "external_rule_id": candidate.get("external_rule_id"),
+                "translated_rule_id": translated.get("rule_id"),
+                "source_format": source.source_format,
+                "provenance": candidate.get("provenance"),
+                "owner": translated.get("owner") or "",
+                "reviewer": "cleanwin-maintainer-required",
+                "license": source.license,
+                "review_status": "queued",
+                "dangerous_path": bool(candidate.get("dangerous_path")),
+                "risk_flags": list(candidate.get("risk_flags", [])),
+                "unsupported_semantics": list(candidate.get("unsupported_semantics", [])),
+                "promotion_blockers": blockers,
+                "execution_enabled": False,
+                "promotion_allowed": False,
+            }
+        )
+    return queue
+
+
+def _provenance_index(candidates: list[dict[str, Any]], source: ExternalRuleSource) -> dict[str, Any]:
+    provenance_counts: dict[str, int] = {"builtin": 0, "translated-winapp2": 0, "translated-cleanerml": 0, "manual-reviewed": 0, "external-untrusted": 0}
+    source_format_counts: dict[str, int] = {}
+    review_status_counts: dict[str, int] = {"queued": len(candidates), "manual-reviewed": 0, "blocked": 0}
+    translated_key = "translated-winapp2" if source.source_format == "winapp2" else "translated-cleanerml"
+    provenance_counts[translated_key] = len(candidates)
+    provenance_counts["external-untrusted"] = len(candidates)
+    source_format_counts[source.source_format] = len(candidates)
+    return {
+        "schema": "cleanwin.external-rule-provenance-index.v1",
+        "import_batch_id": source.import_batch_id,
+        "source_hash": source.source_hash,
+        "source_format": source.source_format,
+        "upstream_project": source.upstream_project,
+        "license": source.license,
+        "provenance_counts": provenance_counts,
+        "source_format_counts": source_format_counts,
+        "review_status_counts": review_status_counts,
+        "promotion_effect": {
+            "external_untrusted_blocks_execution": True,
+            "translated_rules_require_manual_review": True,
+            "manual_review_required_before_builtin_pack": True,
+            "execution_enabled": False,
+        },
+    }
+
+
 def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource) -> dict[str, Any]:
     owner_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("owner") or ""))
     rationale_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("rationale") or ""))
     dangerous_path_scan = _dangerous_path_scan(candidates)
     unsupported_semantic_count = sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates)
+    review_queue = _review_queue(candidates, source)
+    provenance_index = _provenance_index(candidates, source)
     promotion_blockers = [
         "external-untrusted-provenance",
         "owner-review-required",
@@ -245,6 +317,8 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
         "executes_system_commands": False,
         "execution_enabled": False,
         "default_import_mode": "report-only",
+        "import_batch_id": source.import_batch_id,
+        "source_hash": source.source_hash,
         "supported_formats": ["winapp2", "cleanerml"],
         "allowed_sources": ["local-file"],
         "external_rule_pack_candidate": _external_rule_pack_candidate(candidates, source),
@@ -258,8 +332,11 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
             "default_execution_enabled": False,
         },
         "dangerous_path_scan": dangerous_path_scan,
+        "review_queue": review_queue,
+        "provenance_index": provenance_index,
         "summary": {
             "candidate_count": len(candidates),
+            "review_queue_count": len(review_queue),
             "dangerous_path_count": dangerous_path_scan["dangerous_path_count"],
             "unsupported_semantic_count": unsupported_semantic_count,
             "owner_missing_count": owner_missing_count,
@@ -431,11 +508,15 @@ def translate_external_rules_text(
 ) -> dict[str, Any]:
     resolved_format = _normalise_format(source_format, text)
     project = upstream_project or ("BleachBit/winapp2.ini" if resolved_format == "winapp2" else "BleachBit/CleanerML")
+    source_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    import_batch_id = f"external-{resolved_format}-{source_hash[:12]}"
     source = ExternalRuleSource(
         source_format=resolved_format,
         upstream_project=project,
         upstream_rule_id_or_commit=upstream_rule_id_or_commit,
         license=license_name,
+        source_hash=source_hash,
+        import_batch_id=import_batch_id,
         source_path=source_path,
     )
     raw_rules = _parse_winapp2(text) if resolved_format == "winapp2" else _parse_cleanerml(text)
@@ -453,11 +534,14 @@ def translate_external_rules_text(
             "upstream_project": source.upstream_project,
             "upstream_rule_id_or_commit": source.upstream_rule_id_or_commit,
             "license": source.license,
+            "source_hash": source.source_hash,
+            "import_batch_id": source.import_batch_id,
         },
         "candidates": candidates,
         "import_sandbox": import_sandbox,
         "summary": {
             "candidate_count": len(candidates),
+            "review_queue_count": import_sandbox["summary"]["review_queue_count"],
             "review_required_count": sum(1 for candidate in candidates if candidate["review_required"]),
             "dangerous_path_count": sum(1 for candidate in candidates if candidate["dangerous_path"]),
             "unsupported_semantic_count": sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates),

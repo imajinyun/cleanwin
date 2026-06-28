@@ -484,11 +484,15 @@ def rule_pack_catalog_report() -> dict[str, Any]:
         "supported_formats": ["winapp2", "cleanerml"],
         "allowed_sources": ["local-file"],
         "required_review_fields": [
+            "import_batch_id",
+            "source_hash",
             "owner",
+            "reviewer",
             "rationale",
             "sensitive_exclusions",
             "fixture_coverage",
             "quality_score",
+            "unsupported_semantics",
         ],
         "promotion_blockers": [
             "external-untrusted-provenance",
@@ -497,7 +501,35 @@ def rule_pack_catalog_report() -> dict[str, Any]:
             "owner-review-required",
             "fixture-coverage-required",
             "dangerous-path-review-required",
+            "unsupported-semantics-review-required",
         ],
+        "provenance_index": {
+            "schema": "cleanwin.external-rule-provenance-index.v1",
+            "tracked_provenance": [
+                "builtin",
+                "translated-winapp2",
+                "translated-cleanerml",
+                "manual-reviewed",
+                "external-untrusted",
+            ],
+            "external_untrusted_blocks_execution": True,
+            "manual_review_required_before_builtin_pack": True,
+        },
+        "review_queue_contract": {
+            "schema": "cleanwin.external-rule-review-queue.v1",
+            "default_status": "queued",
+            "required_fields": [
+                "import_batch_id",
+                "source_hash",
+                "external_rule_id",
+                "translated_rule_id",
+                "owner",
+                "reviewer",
+                "license",
+                "promotion_blockers",
+            ],
+            "execution_enabled": False,
+        },
     }
     return {
         "schema": RULE_PACK_CATALOG_SCHEMA,

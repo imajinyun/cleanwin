@@ -182,11 +182,19 @@ def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
     )
     assert_contains_all(
         report["external_import_sandbox"]["required_review_fields"],
-        ["owner", "rationale", "sensitive_exclusions", "fixture_coverage", "quality_score"],
+        ["import_batch_id", "source_hash", "owner", "reviewer", "rationale", "sensitive_exclusions", "fixture_coverage", "quality_score"],
     )
     assert_contains_all(
         report["external_import_sandbox"]["promotion_blockers"],
-        ["external-untrusted-provenance", "execution-disabled-by-default", "schema-validation-required"],
+        ["external-untrusted-provenance", "execution-disabled-by-default", "schema-validation-required", "unsupported-semantics-review-required"],
+    )
+    assert_contains_all(
+        report["external_import_sandbox"]["provenance_index"]["tracked_provenance"],
+        ["builtin", "translated-winapp2", "translated-cleanerml", "manual-reviewed", "external-untrusted"],
+    )
+    assert_contains_all(
+        report["external_import_sandbox"]["review_queue_contract"]["required_fields"],
+        ["import_batch_id", "source_hash", "external_rule_id", "translated_rule_id", "promotion_blockers"],
     )
 
 

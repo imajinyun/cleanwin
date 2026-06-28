@@ -56,6 +56,7 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
         payload["summary"],
         {
             "candidate_count": 3,
+            "review_queue_count": 3,
             "review_required_count": 3,
             "dangerous_path_count": 2,
             "execution_enabled_count": 0,
@@ -173,8 +174,18 @@ def test_cleanerml_translation_keeps_external_rules_untrusted(
 
     assert_readonly_report(payload, EXTERNAL_RULE_TRANSLATION_SCHEMA)
     assert_execution_disabled(payload)
-    assert_field_values(payload["source"], {"format": "cleanerml", "upstream_project": "BleachBit/CleanerML"})
-    assert_field_values(payload["summary"], {"candidate_count": 3, "execution_enabled_count": 0, "unsupported_semantic_count": 2})
+    assert_field_values(
+        payload["source"],
+        {
+            "format": "cleanerml",
+            "upstream_project": "BleachBit/CleanerML",
+            "import_batch_id": payload["import_sandbox"]["import_batch_id"],
+        },
+    )
+    assert_field_values(
+        payload["summary"],
+        {"candidate_count": 3, "review_queue_count": 3, "execution_enabled_count": 0, "unsupported_semantic_count": 2},
+    )
     assert {candidate["provenance"] for candidate in payload["candidates"]} == {"external-untrusted"}
     assert_field_values(
         payload["candidates"][0],
@@ -187,6 +198,58 @@ def test_cleanerml_translation_keeps_external_rules_untrusted(
     )
     assert_contains_all(payload["candidates"][1]["unsupported_semantics"], ["action-command:wipe", "action-regex"])
     assert_contains_all(payload["candidates"][2]["risk_flags"], ["user-document-directory"])
+
+
+def test_external_rule_import_sandbox_builds_review_queue_and_provenance_index(
+    assert_field_values: AssertFieldValues,
+    assert_contains_all: AssertContainsAll,
+    assert_execution_disabled: AssertExecutionDisabled,
+) -> None:
+    payload = translate_external_rules_text(
+        """
+[Example Browser Cache *]
+SpecialDetect=DetectWinApp
+FileKey1=%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache|*.*|RECURSE
+FileKey2=%UserProfile%\\Documents|*.*|RECURSE
+""".strip(),
+        source_format="winapp2",
+        upstream_project="BleachBit/winapp2.ini",
+        upstream_rule_id_or_commit="fixture",
+        license_name="GPL-3.0-or-later-or-upstream-license-review",
+    )
+    sandbox = payload["import_sandbox"]
+    review_queue = sandbox["review_queue"]
+    provenance = sandbox["provenance_index"]
+
+    assert_field_values(
+        sandbox,
+        {
+            "import_batch_id": payload["source"]["import_batch_id"],
+            "source_hash": payload["source"]["source_hash"],
+            "summary.review_queue_count": 2,
+            "provenance_index.provenance_counts.translated-winapp2": 2,
+            "provenance_index.provenance_counts.external-untrusted": 2,
+            "provenance_index.promotion_effect.external_untrusted_blocks_execution": True,
+            "provenance_index.promotion_effect.execution_enabled": False,
+        },
+    )
+    assert len(payload["source"]["source_hash"]) == 64
+    assert payload["source"]["import_batch_id"].startswith("external-winapp2-")
+    assert_execution_disabled(review_queue[0])
+    assert_field_values(
+        review_queue[0],
+        {
+            "schema": "cleanwin.external-rule-review-queue-item.v1",
+            "review_status": "queued",
+            "reviewer": "cleanwin-maintainer-required",
+            "promotion_allowed": False,
+        },
+    )
+    assert_contains_all(
+        review_queue[0]["promotion_blockers"],
+        ["external-untrusted-provenance", "owner-review-required", "fixture-coverage-required"],
+    )
+    assert_contains_all(provenance["provenance_counts"], ["builtin", "translated-winapp2", "manual-reviewed", "external-untrusted"])
 
 
 def test_external_rule_translate_cli_reads_local_catalog(

@@ -385,17 +385,22 @@ tests, and human confirmations without enabling execution.
 `external-rule-translate` parses a local `winapp2.ini` or CleanerML XML file
 into `cleanwin.external-rule-translation.v1` candidates. The translator is
 read-only: it does not download catalogs, execute commands, or add rules to the
-builtin catalog. Each candidate records upstream provenance, original pattern,
-translated CleanWin review metadata, sensitive exclusions, dangerous path
-flags, and `review_required=true` so external rules stay report-only until a
-future owner review and promotion gate approves them.
+builtin catalog. Each candidate records upstream provenance, source hash,
+import batch id, original pattern, translated CleanWin review metadata,
+detection metadata, exclusions, unsupported semantics, sensitive exclusions,
+dangerous path flags, and `review_required=true`. The import sandbox also emits
+a review queue and provenance index so translated winapp2/CleanerML rules remain
+report-only until owner review and promotion gates approve them.
 
 `rule-pack-catalog` exposes the builtin cleanup rules as versioned read-only
 packs for developer cache, package cache, browser cache, browser profile cache,
 and app leftovers. Each rule includes a quality score with risk,
 recoverability, owner evidence, official cleanup evidence, sensitive exclusion
-scan results, test coverage, provenance, and review status. The report does not
-import external packs, promote translated rules, or execute cleanup rules.
+scan results, test coverage, provenance, and review status. The external import
+sandbox describes required `import_batch_id`, `source_hash`, reviewer,
+unsupported semantics, review queue, and provenance index fields. The report
+does not import external packs, promote translated rules, or execute cleanup
+rules.
 
 `rule-quality-dashboard` is a read-only governance report over the same builtin
 rules. It summarizes quality buckets, risk and recoverability counts, evidence
