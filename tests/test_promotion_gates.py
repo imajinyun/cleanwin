@@ -34,7 +34,7 @@ def test_promotion_gates_are_non_destructive_and_keep_system_execution_disabled(
 
     assert_readonly_report(report, PROMOTION_GATES_SCHEMA)
     assert_execution_disabled(report)
-    assert_summary_counts(report, {"report_only_gate_count": 9})
+    assert_summary_counts(report, {"report_only_gate_count": 10})
     assert_any_text_contains(report["non_goals"], "does not enable registry")
 
 
@@ -59,6 +59,7 @@ def test_promotion_gates_cover_high_risk_report_surfaces(
             "windows-inventory-to-installer-cache-cleanup",
             "windows-inventory-to-recycle-bin-empty",
             "browser-profile-to-cache-plan",
+            "external-rule-to-reviewed-rule-pack",
         ],
     )
 
@@ -75,6 +76,13 @@ def test_promotion_gates_cover_high_risk_report_surfaces(
     browser_gate = by_id["browser-profile-to-cache-plan"]
     assert_field_values(browser_gate, {"default_state": "low-risk-cache-only", "ai_auto_call_allowed": True})
     assert_contains_all(browser_gate["required_evidence"], ["sensitive_exclusions"])
+
+    external_rule_gate = by_id["external-rule-to-reviewed-rule-pack"]
+    assert_field_values(external_rule_gate, {"target_action": "external-rule-review", "default_state": "report-only"})
+    assert_execution_disabled(external_rule_gate, "ai_auto_call_allowed")
+    assert_contains_all(external_rule_gate["source_reports"], ["cleanwin.external-rule-translation.v1", "cleanwin.external-rule-import-sandbox.v1"])
+    assert_contains_all(external_rule_gate["required_evidence"], ["quality_gate", "owner", "sensitive_exclusions", "active_install_marker"])
+    assert_contains_all(external_rule_gate["required_tests"], ["fixture-dangerous-path-blocked", "fixture-unsupported-semantics-blocked"])
 
 
 def test_promotion_gates_cover_windows_inventory_system_surfaces(
@@ -175,6 +183,116 @@ def test_promotion_gate_validator_accepts_complete_report_only_contract(
             "missing_tests": [],
             "missing_human_confirmations": [],
             "errors": [],
+        },
+    )
+    assert_execution_disabled(validation)
+
+
+def test_promotion_gate_validator_blocks_external_rule_quality_gaps(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_promotion_gate_action(
+        source_report={
+            "schema": "cleanwin.external-rule-translation.v1",
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "risk": "high",
+                "recoverability": "low",
+                "dangerous_path_count": 1,
+                "unsupported_semantic_count": 2,
+                "active_marker_missing": True,
+                "sensitive_exclusion_missing": True,
+                "fixture_missing": True,
+                "review_required": True,
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": [
+                    "external-untrusted-provenance",
+                    "fixture-coverage-required",
+                    "dangerous-path-review-required",
+                    "unsupported-semantics-review-required",
+                ],
+            },
+        },
+        proposed_action={
+            "target_action": "external-rule-review",
+            "evidence": ["quality_gate"],
+            "tests": [],
+            "human_confirmations": [],
+        },
+    )
+
+    assert_payload_schema(validation, PROMOTION_GATE_VALIDATION_SCHEMA)
+    assert_field_values(validation, {"valid": False, "gate_id": "external-rule-to-reviewed-rule-pack"})
+    assert_contains_all(validation["missing_evidence"], ["owner", "reviewer", "sensitive_exclusions", "active_install_marker"])
+    assert_contains_all(validation["missing_tests"], ["fixture-dangerous-path-blocked", "fixture-unsupported-semantics-blocked"])
+    assert_contains_all(validation["missing_quality_gate_reviews"], ["active-marker-review", "sensitive-exclusion-review", "fixture-coverage"])
+    assert_contains_all(validation["missing_quality_gate_reviews"], ["dangerous-path-review", "unsupported-semantics-review", "owner-review"])
+    assert_contains_all(validation["quality_gate_blockers"], ["external-untrusted-provenance", "fixture-coverage-required"])
+    assert_contains_all(
+        {error["code"] for error in validation["errors"]},
+        ["EXTERNAL_RULE_QUALITY_BLOCKERS", "MISSING_EXTERNAL_RULE_REVIEWS"],
+    )
+    assert_execution_disabled(validation)
+
+
+def test_promotion_gate_validator_keeps_external_rules_report_only_even_when_reviewed(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_promotion_gate_action(
+        source_report={"schema": "cleanwin.external-rule-import-sandbox.v1"},
+        proposed_action={
+            "target_action": "external-rule-review",
+            "evidence": [
+                "import_batch_id",
+                "source_hash",
+                "external_rule_id",
+                "translated_rule_id",
+                "quality_gate",
+                "owner",
+                "reviewer",
+                "rationale",
+                "sensitive_exclusions",
+                "active_install_marker",
+            ],
+            "tests": [
+                "fixture-external-rule-golden",
+                "fixture-dangerous-path-blocked",
+                "fixture-unsupported-semantics-blocked",
+                "fixture-sensitive-exclusion-required",
+            ],
+            "human_confirmations": ["explicit-external-rule-owner-review"],
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "risk": "low",
+                "recoverability": "high",
+                "dangerous_path_count": 0,
+                "unsupported_semantic_count": 0,
+                "active_marker_missing": False,
+                "sensitive_exclusion_missing": False,
+                "fixture_missing": False,
+                "review_required": False,
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": [],
+            },
+        },
+    )
+
+    assert_payload_schema(validation, PROMOTION_GATE_VALIDATION_SCHEMA)
+    assert_field_values(
+        validation,
+        {
+            "valid": True,
+            "gate_id": "external-rule-to-reviewed-rule-pack",
+            "missing_quality_gate_reviews": [],
+            "quality_gate_blockers": [],
+            "safe_to_execute": False,
         },
     )
     assert_execution_disabled(validation)

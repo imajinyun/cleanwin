@@ -233,6 +233,10 @@ def test_rule_quality_dashboard_is_readonly_and_summarizes_rule_health(
             "summary.execution_enabled_count": 0,
             "promotion_gate.requires_quality_score": True,
             "promotion_gate.execution_enabled": False,
+            "external_import_quality.execution_enabled": False,
+            "external_import_quality.promotion_allowed": False,
+            "external_import_quality.quality_gate_required": True,
+            "external_import_quality.promotion_validator_gate": "external-rule-to-reviewed-rule-pack",
         },
     )
     assert_at_least(dashboard["summary"]["rule_count"], 40)
@@ -251,6 +255,22 @@ def test_rule_quality_dashboard_is_readonly_and_summarizes_rule_health(
             "missing_active_install_marker",
             "sensitive_exclusion_match",
         ],
+    )
+    assert_contains_all(
+        dashboard["external_import_quality"]["tracked_counts"],
+        [
+            "risk_count",
+            "recoverability_count",
+            "dangerous_path_count",
+            "unsupported_semantic_count",
+            "fixture_missing_count",
+            "promotion_blocker_count",
+            "external_untrusted_count",
+        ],
+    )
+    assert_contains_all(
+        dashboard["external_import_quality"]["required_blockers"],
+        ["external-untrusted-provenance", "fixture-coverage-required", "unsupported-semantics-review-required"],
     )
     assert {pack["pack_id"] for pack in dashboard["packs"]} == {
         "app-leftovers",

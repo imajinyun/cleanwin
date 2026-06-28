@@ -261,6 +261,34 @@ def promotion_gates_report() -> dict[str, Any]:
             ai_auto_call_allowed=True,
             rationale="Only regenerated browser cache layers may be promoted; cookies, passwords, sessions, extensions, and profile databases stay excluded.",
         ),
+        _gate(
+            "external-rule-to-reviewed-rule-pack",
+            source_reports=["cleanwin.external-rule-translation.v1", "cleanwin.external-rule-import-sandbox.v1"],
+            target_action="external-rule-review",
+            default_state="report-only",
+            required_evidence=[
+                "import_batch_id",
+                "source_hash",
+                "external_rule_id",
+                "translated_rule_id",
+                "quality_gate",
+                "owner",
+                "reviewer",
+                "rationale",
+                "sensitive_exclusions",
+                "active_install_marker",
+            ],
+            required_snapshots=[],
+            rollback_metadata=[],
+            required_tests=[
+                "fixture-external-rule-golden",
+                "fixture-dangerous-path-blocked",
+                "fixture-unsupported-semantics-blocked",
+                "fixture-sensitive-exclusion-required",
+            ],
+            human_confirmations=["explicit-external-rule-owner-review"],
+            rationale="Translated external cleaner rules must stay report-only until quality gates, owner review, active markers, sensitive exclusions, and fixture coverage are complete.",
+        ),
     ]
     return {
         "schema": PROMOTION_GATES_SCHEMA,
@@ -305,6 +333,67 @@ def _gate_for_action(gates: list[dict[str, Any]], proposed_action: Mapping[str, 
         if target_action and gate["target_action"] == target_action:
             return gate
     return None
+
+
+def _quality_gate_from_payload(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> Mapping[str, Any]:
+    quality_gate = proposed_action.get("quality_gate")
+    if isinstance(quality_gate, Mapping):
+        return quality_gate
+    quality_gate = source_report.get("quality_gate")
+    if isinstance(quality_gate, Mapping):
+        return quality_gate
+    candidates = source_report.get("candidates")
+    if isinstance(candidates, Iterable) and not isinstance(candidates, str | bytes):
+        for candidate in candidates:
+            if isinstance(candidate, Mapping) and isinstance(candidate.get("quality_gate"), Mapping):
+                return candidate["quality_gate"]
+    review_queue = source_report.get("review_queue")
+    if isinstance(review_queue, Iterable) and not isinstance(review_queue, str | bytes):
+        for item in review_queue:
+            if isinstance(item, Mapping) and isinstance(item.get("quality_gate"), Mapping):
+                return item["quality_gate"]
+    return {}
+
+
+def _external_rule_quality_errors(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> tuple[list[str], list[str], list[dict[str, str]]]:
+    quality_gate = _quality_gate_from_payload(source_report, proposed_action)
+    missing_reviews: list[str] = []
+    blockers: list[str] = []
+    errors: list[dict[str, str]] = []
+
+    if not quality_gate:
+        missing_reviews.append("quality_gate")
+        errors.append({"code": "MISSING_EXTERNAL_RULE_QUALITY_GATE", "detail": "quality_gate"})
+        return missing_reviews, blockers, errors
+
+    promotion_blockers = quality_gate.get("promotion_blockers")
+    if isinstance(promotion_blockers, Iterable) and not isinstance(promotion_blockers, str | bytes):
+        blockers = [str(blocker) for blocker in promotion_blockers if str(blocker)]
+
+    required_quality_reviews = [
+        ("active_marker_missing", "active-marker-review"),
+        ("sensitive_exclusion_missing", "sensitive-exclusion-review"),
+        ("fixture_missing", "fixture-coverage"),
+    ]
+    for field, review in required_quality_reviews:
+        if quality_gate.get(field):
+            missing_reviews.append(review)
+
+    if int(quality_gate.get("dangerous_path_count", 0) or 0) > 0:
+        missing_reviews.append("dangerous-path-review")
+    if int(quality_gate.get("unsupported_semantic_count", 0) or 0) > 0:
+        missing_reviews.append("unsupported-semantics-review")
+    if quality_gate.get("review_required") is not False:
+        missing_reviews.append("owner-review")
+    if quality_gate.get("execution_enabled") is not False or quality_gate.get("promotion_allowed") is not False:
+        errors.append({"code": "EXTERNAL_RULE_GATE_MUST_STAY_REPORT_ONLY", "detail": "execution_enabled and promotion_allowed must remain false"})
+
+    if blockers:
+        errors.append({"code": "EXTERNAL_RULE_QUALITY_BLOCKERS", "detail": ", ".join(blockers)})
+    if missing_reviews:
+        errors.append({"code": "MISSING_EXTERNAL_RULE_REVIEWS", "detail": ", ".join(sorted(set(missing_reviews)))})
+
+    return sorted(set(missing_reviews)), blockers, errors
 
 
 def validate_promotion_gate_action(
@@ -359,6 +448,11 @@ def validate_promotion_gate_action(
     ]:
         if missing:
             errors.append({"code": code, "detail": ", ".join(missing)})
+    missing_quality_gate_reviews: list[str] = []
+    quality_gate_blockers: list[str] = []
+    if gate["id"] == "external-rule-to-reviewed-rule-pack":
+        missing_quality_gate_reviews, quality_gate_blockers, quality_errors = _external_rule_quality_errors(source_report, proposed_action)
+        errors.extend(quality_errors)
 
     return {
         "schema": PROMOTION_GATE_VALIDATION_SCHEMA,
@@ -375,6 +469,8 @@ def validate_promotion_gate_action(
         "missing_rollback_metadata": missing_rollback_metadata,
         "missing_tests": missing_tests,
         "missing_human_confirmations": missing_confirmations,
+        "missing_quality_gate_reviews": missing_quality_gate_reviews,
+        "quality_gate_blockers": quality_gate_blockers,
         "errors": errors,
         "safe_to_execute": False,
     }
