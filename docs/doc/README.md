@@ -405,6 +405,9 @@ detection metadata, exclusions, unsupported semantics, sensitive exclusions,
 dangerous path flags, and `review_required=true`. The import sandbox also emits
 a review queue and provenance index so translated winapp2/CleanerML rules remain
 report-only until owner review and promotion gates approve them.
+Translated candidates also expose a quality gate with risk, recoverability,
+dangerous path count, unsupported semantic count, active marker gaps, sensitive
+exclusion gaps, and fixture coverage gaps.
 
 `rule-pack-catalog` exposes the builtin cleanup rules as versioned read-only
 packs for developer cache, package cache, browser cache, browser profile cache,

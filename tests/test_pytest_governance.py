@@ -323,6 +323,35 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
     )
 
 
+def test_aiflow_workflow_config_is_rooted_and_local_state_is_ignored(
+    repo_root: Path,
+    assert_text_contains_all: AssertTextContainsAll,
+    assert_contains_none: AssertContainsNone,
+) -> None:
+    gitignore = (repo_root / ".gitignore").read_text(encoding="utf-8")
+    agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    workflow = (repo_root / "aiflow.yaml").read_text(encoding="utf-8")
+
+    assert_text_contains_all(gitignore, [".aiflow/"])
+    assert_contains_none(gitignore, ["aiflow.yaml"])
+    assert_text_contains_all(
+        agents,
+        [
+            "The root `aiflow.yaml` is the repository workflow profile.",
+            "Keep `aiflow.yaml` in the repository root and commit workflow changes",
+            "The `.aiflow/` directory is local generated governance state only",
+        ],
+    )
+    assert_text_contains_all(
+        workflow,
+        [
+            "store_path: .aiflow/store.json",
+            "- \"aiflow.yaml\"",
+            "- aiflow.yaml stays in the repository root while .aiflow stays local-only",
+        ],
+    )
+
+
 def test_linux_ci_and_docker_use_pytest_governance_entrypoints(
     repo_root: Path,
     assert_none_match: AssertNoneMatch,

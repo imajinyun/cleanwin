@@ -145,6 +145,55 @@ def _sensitive_exclusions(pattern: str) -> list[str]:
     return [*exclusions, "registry values unless export and rollback metadata exist"]
 
 
+def _recoverability_for(flags: list[str], unsupported_semantics: list[str]) -> str:
+    if "registry-pattern" in flags or "browser-profile-root" in flags:
+        return "low"
+    if flags or unsupported_semantics:
+        return "medium"
+    return "high"
+
+
+def _risk_for(flags: list[str], unsupported_semantics: list[str]) -> str:
+    if "registry-pattern" in flags or "raw-command-token" in flags or "browser-profile-root" in flags:
+        return "high"
+    if flags or unsupported_semantics:
+        return "medium"
+    return "low"
+
+
+def _quality_gate_for_candidate(raw: _RawExternalRule, flags: list[str], translated_rule: dict[str, Any]) -> dict[str, Any]:
+    unsupported_semantics = raw.unsupported_semantics
+    active_marker_missing = True
+    sensitive_exclusion_missing = not bool(translated_rule.get("sensitive_exclusions"))
+    fixture_missing = True
+    return {
+        "schema": "cleanwin.external-rule-quality-gate.v1",
+        "risk": _risk_for(flags, unsupported_semantics),
+        "recoverability": _recoverability_for(flags, unsupported_semantics),
+        "dangerous_path_count": 1 if flags else 0,
+        "unsupported_semantic_count": len(unsupported_semantics),
+        "active_marker_missing": active_marker_missing,
+        "sensitive_exclusion_missing": sensitive_exclusion_missing,
+        "fixture_missing": fixture_missing,
+        "review_required": True,
+        "execution_enabled": False,
+        "promotion_allowed": False,
+        "promotion_blockers": [
+            blocker
+            for blocker, blocked in (
+                ("external-untrusted-provenance", True),
+                ("owner-review-required", True),
+                ("fixture-coverage-required", fixture_missing),
+                ("active-marker-review-required", active_marker_missing),
+                ("sensitive-exclusion-review-required", sensitive_exclusion_missing),
+                ("dangerous-path-review-required", bool(flags)),
+                ("unsupported-semantics-review-required", bool(unsupported_semantics)),
+            )
+            if blocked
+        ],
+    }
+
+
 def _candidate_from_raw(raw: _RawExternalRule, source: ExternalRuleSource) -> dict[str, Any]:
     flags = _risk_flags(raw.original_pattern, raw.action)
     category = _category_for(raw.original_pattern, raw.category_hint)
@@ -161,6 +210,7 @@ def _candidate_from_raw(raw: _RawExternalRule, source: ExternalRuleSource) -> di
         "execution_enabled": False,
         "safe_to_execute": False,
     }
+    quality_gate = _quality_gate_for_candidate(raw, flags, translated_rule)
     return {
         "schema": EXTERNAL_RULE_CANDIDATE_SCHEMA,
         "source_format": source.source_format,
@@ -181,6 +231,7 @@ def _candidate_from_raw(raw: _RawExternalRule, source: ExternalRuleSource) -> di
         "execution_enabled": False,
         "dangerous_path": bool(flags),
         "risk_flags": flags,
+        "quality_gate": quality_gate,
         "provenance": "external-untrusted",
     }
 
@@ -205,6 +256,24 @@ def _dangerous_path_scan(candidates: list[dict[str, Any]]) -> dict[str, Any]:
         "dangerous_path_count": len(dangerous_candidates),
         "flag_counts": dict(sorted(flag_counts.items())),
         "dangerous_candidates": dangerous_candidates,
+    }
+
+
+def _quality_gate_summary(candidates: list[dict[str, Any]], dangerous_path_count: int, unsupported_semantic_count: int) -> dict[str, Any]:
+    quality_gates = [candidate.get("quality_gate", {}) for candidate in candidates]
+    return {
+        "schema": "cleanwin.external-rule-quality-gate-summary.v1",
+        "execution_enabled": False,
+        "promotion_allowed": False,
+        "dangerous_path_count": dangerous_path_count,
+        "unsupported_semantic_count": unsupported_semantic_count,
+        "active_marker_missing_count": sum(1 for gate in quality_gates if gate.get("active_marker_missing")),
+        "sensitive_exclusion_missing_count": sum(1 for gate in quality_gates if gate.get("sensitive_exclusion_missing")),
+        "fixture_missing_count": sum(1 for gate in quality_gates if gate.get("fixture_missing")),
+        "requires_owner_review": True,
+        "requires_fixture_coverage": True,
+        "requires_active_marker_review": True,
+        "requires_sensitive_exclusion_review": True,
     }
 
 
@@ -241,6 +310,11 @@ def _review_queue(candidates: list[dict[str, Any]], source: ExternalRuleSource) 
             blockers.append("dangerous-path-review-required")
         if candidate.get("unsupported_semantics"):
             blockers.append("unsupported-semantics-review-required")
+        quality_gate = candidate.get("quality_gate", {})
+        if quality_gate.get("active_marker_missing"):
+            blockers.append("active-marker-review-required")
+        if quality_gate.get("sensitive_exclusion_missing"):
+            blockers.append("sensitive-exclusion-review-required")
         queue.append(
             {
                 "schema": "cleanwin.external-rule-review-queue-item.v1",
@@ -257,6 +331,7 @@ def _review_queue(candidates: list[dict[str, Any]], source: ExternalRuleSource) 
                 "dangerous_path": bool(candidate.get("dangerous_path")),
                 "risk_flags": list(candidate.get("risk_flags", [])),
                 "unsupported_semantics": list(candidate.get("unsupported_semantics", [])),
+                "quality_gate": quality_gate,
                 "promotion_blockers": blockers,
                 "execution_enabled": False,
                 "promotion_allowed": False,
@@ -297,6 +372,7 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
     rationale_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("rationale") or ""))
     dangerous_path_scan = _dangerous_path_scan(candidates)
     unsupported_semantic_count = sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates)
+    quality_gate = _quality_gate_summary(candidates, dangerous_path_scan["dangerous_path_count"], unsupported_semantic_count)
     review_queue = _review_queue(candidates, source)
     provenance_index = _provenance_index(candidates, source)
     promotion_blockers = [
@@ -332,6 +408,7 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
             "default_execution_enabled": False,
         },
         "dangerous_path_scan": dangerous_path_scan,
+        "quality_gate": quality_gate,
         "review_queue": review_queue,
         "provenance_index": provenance_index,
         "summary": {
@@ -339,6 +416,9 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
             "review_queue_count": len(review_queue),
             "dangerous_path_count": dangerous_path_scan["dangerous_path_count"],
             "unsupported_semantic_count": unsupported_semantic_count,
+            "active_marker_missing_count": quality_gate["active_marker_missing_count"],
+            "sensitive_exclusion_missing_count": quality_gate["sensitive_exclusion_missing_count"],
+            "fixture_missing_count": quality_gate["fixture_missing_count"],
             "owner_missing_count": owner_missing_count,
             "rationale_missing_count": rationale_missing_count,
             "execution_enabled_count": sum(1 for candidate in candidates if candidate.get("execution_enabled")),
@@ -356,30 +436,71 @@ def _parse_winapp2(text: str) -> list[_RawExternalRule]:
         title = section.strip()
         owner = title.rstrip("*").strip() or "external-winapp2"
         section_items = dict(parser.items(section))
-        detection = {
-            "detect": [value for key, value in section_items.items() if key.lower().startswith("detect") and not key.lower().startswith("detectos")],
-            "detect_os": [value for key, value in section_items.items() if key.lower().startswith("detectos")],
-            "special_detect": [value for key, value in section_items.items() if key.lower().startswith("specialdetect")],
+        detect_values = [value for key, value in section_items.items() if key.lower().startswith("detect") and not key.lower().startswith(("detectfile", "detectos"))]
+        detect_file_values = [value for key, value in section_items.items() if key.lower().startswith("detectfile")]
+        detect_os_values = [value for key, value in section_items.items() if key.lower().startswith("detectos")]
+        special_detect_values = [value for key, value in section_items.items() if key.lower().startswith("specialdetect")]
+        detection: dict[str, Any] = {
+            "detect": [*detect_values, *detect_file_values],
+            "detect_registry": detect_values,
+            "detect_file": [_normalise_path(value) for value in detect_file_values],
+            "detect_os": detect_os_values,
+            "special_detect": special_detect_values,
+            "structured": [
+                {"kind": "detect-registry", "pattern": value}
+                for value in detect_values
+            ]
+            + [
+                {"kind": "detect-file", "pattern": _normalise_path(value)}
+                for value in detect_file_values
+            ]
+            + [
+                {"kind": "detect-os", "pattern": value}
+                for value in detect_os_values
+            ]
+            + [
+                {"kind": "special-detect", "pattern": value}
+                for value in special_detect_values
+            ],
         }
         exclusions = [
             {"key": key, "pattern": _normalise_path(value)}
             for key, value in section_items.items()
             if key.lower().startswith("excludekey")
         ]
+        parsed_exclusions = []
+        for exclusion in exclusions:
+            parts = [part.strip() for part in exclusion["pattern"].split("|")]
+            parsed_exclusions.append(
+                {
+                    "key": exclusion["key"],
+                    "kind": parts[0] if parts else "",
+                    "path": parts[1] if len(parts) > 1 else exclusion["pattern"],
+                    "pattern": parts[2] if len(parts) > 2 else "",
+                    "raw": exclusion["pattern"],
+                }
+            )
         unsupported_section_semantics = [
             key
             for key in section_items
-            if key.lower().startswith(("specialdetect", "warning", "detectos"))
+            if key.lower().startswith(("specialdetect", "warning", "detectos", "detectfile"))
         ]
         warning = next((value for key, value in section_items.items() if key.lower().startswith("warning")), "")
         section_metadata = {
             "section": section,
             "lang_sec_ref": section_items.get("LangSecRef", ""),
             "detect_count": len(detection["detect"]),
+            "detect_file_count": len(detection["detect_file"]),
             "detect_os_count": len(detection["detect_os"]),
             "special_detect_count": len(detection["special_detect"]),
             "exclude_key_count": len(exclusions),
+            "parsed_exclusions": parsed_exclusions,
             "warning_present": bool(warning),
+            "warning_metadata": {
+                "present": bool(warning),
+                "message": warning,
+                "review_required": bool(warning),
+            },
         }
         for key, value in parser.items(section):
             key_lower = key.lower()

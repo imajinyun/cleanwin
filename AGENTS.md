@@ -155,8 +155,18 @@ Cleanup execution must remain conservative:
 
 ## aiflow Governance
 
-This repository is onboarded to aiflow through `aiflow.yaml`. Use the local
-aiflow checkout when requested to queue or track work:
+Use the local aiflow checkout when requested to queue, track, or validate work.
+The root `aiflow.yaml` is the repository workflow profile. Keep it validation-only
+unless the user explicitly asks for a broader workflow:
+
+- `store_path` should point at `.aiflow/store.json`.
+- `require_command_approval` should stay enabled so command execution appears
+  in the latest approval-request evidence contract.
+- `allow_commit`, `allow_push`, and automatic fix attempts should stay disabled.
+- Register `cleanwin-mcp` as the local stdio MCP provider so governance reports
+  include MCP provider catalog evidence.
+- Keep generated reports, traces, local run evidence, and temporary state under
+  `.aiflow/`.
 
 ```bash
 go run ./cmd/aiflow submit -root /Users/bytedance/Codes/sw/cleanwin \
@@ -172,11 +182,21 @@ go run ./cmd/aiflow complete -root /Users/bytedance/Codes/sw/cleanwin \
   -id TASK-ID \
   -reason "what landed and what passed"
 
+go run ./cmd/aiflow doctor -root /Users/bytedance/Codes/sw/cleanwin
+
 go run ./cmd/aiflow report -root /Users/bytedance/Codes/sw/cleanwin \
-  -output /Users/bytedance/Codes/sw/cleanwin/.aiflow/governance.json
+  -output /Users/bytedance/Codes/sw/cleanwin/.aiflow/governance.json \
+  -validation-output /Users/bytedance/Codes/sw/cleanwin/.aiflow/contract-validation.json \
+  -fail-on-invalid
+
+go run ./cmd/aiflow advisory -root /Users/bytedance/Codes/sw/cleanwin \
+  -fail-on-warning-id contract-validation
 ```
 
-The `.aiflow` directory is local governance state and should stay untracked.
+Keep `aiflow.yaml` in the repository root and commit workflow changes with the
+code or governance change they support.
+The `.aiflow/` directory is local generated governance state only; do not stage
+or commit it.
 
 ## Documentation Updates
 

@@ -96,6 +96,7 @@ Icon?
 
 # Project-local generated artifacts
 .harness/
+.aiflow/
 *.log
 *.json
 !cleanwincli/rules/

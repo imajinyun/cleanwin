@@ -187,7 +187,21 @@ def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
     )
     assert_contains_all(
         report["external_import_sandbox"]["required_review_fields"],
-        ["import_batch_id", "source_hash", "owner", "reviewer", "rationale", "sensitive_exclusions", "fixture_coverage", "quality_score"],
+        [
+            "import_batch_id",
+            "source_hash",
+            "owner",
+            "reviewer",
+            "rationale",
+            "sensitive_exclusions",
+            "fixture_coverage",
+            "quality_score",
+            "dangerous_path_count",
+            "unsupported_semantic_count",
+            "active_marker_missing",
+            "sensitive_exclusion_missing",
+            "fixture_missing",
+        ],
     )
     assert_contains_all(
         report["external_import_sandbox"]["promotion_blockers"],
@@ -199,7 +213,7 @@ def test_rule_pack_catalog_exposes_versioned_external_import_sandbox(
     )
     assert_contains_all(
         report["external_import_sandbox"]["review_queue_contract"]["required_fields"],
-        ["import_batch_id", "source_hash", "external_rule_id", "translated_rule_id", "promotion_blockers"],
+        ["import_batch_id", "source_hash", "external_rule_id", "translated_rule_id", "quality_gate", "promotion_blockers"],
     )
 
 

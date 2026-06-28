@@ -392,6 +392,9 @@ confirmations，但不会启用执行。
 semantics、sensitive exclusions、危险路径标记和 `review_required=true`。Import
 sandbox 还会输出 review queue 和 provenance index，确保 translated winapp2 /
 CleanerML 规则在未来 owner review 和 promotion gate 批准前始终保持 report-only。
+Translated candidate 还会输出 quality gate，包含 risk、recoverability、
+dangerous path count、unsupported semantic count、active marker gap、sensitive
+exclusion gap 和 fixture coverage gap。
 
 `rule-pack-catalog` 会把 builtin cleanup rules 暴露成 versioned read-only
 packs，覆盖 developer cache、package cache、browser cache、browser profile

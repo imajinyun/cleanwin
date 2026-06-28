@@ -696,7 +696,7 @@ def _sample_scan_governance() -> dict[str, Any]:
                 "managed_venv": ".venv",
                 "required_test_entrypoints": ["make pytest", "make pytest-governance-smoke"],
                 "cleanup_targets": [".pytest_cache", ".coverage", "coverage.xml", "htmlcov", "__pycache__", "build", "dist", "cleanwin.egg-info", ".mypy_cache", ".ruff_cache"],
-                "protected_targets": [".venv", ".aiflow", ".harness", ".git"],
+                "protected_targets": [".venv", ".aiflow", ".harness", ".git", "aiflow.yaml"],
             },
             "native_collector": {
                 "script_path": "scripts/collect-cleanwin-artifacts.ps1",

@@ -60,7 +60,7 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
             "review_required_count": 3,
             "dangerous_path_count": 2,
             "execution_enabled_count": 0,
-            "unsupported_semantic_count": 9,
+            "unsupported_semantic_count": 12,
         },
     )
     by_pattern = {candidate["original_pattern"]: candidate for candidate in payload["candidates"]}
@@ -72,17 +72,35 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
         {
             "section_metadata.lang_sec_ref": "3029",
             "section_metadata.detect_count": 1,
+            "section_metadata.detect_file_count": 1,
             "section_metadata.detect_os_count": 1,
             "section_metadata.special_detect_count": 1,
             "section_metadata.exclude_key_count": 1,
             "warning": "Close Example Browser first.",
+            "quality_gate.risk": "medium",
+            "quality_gate.recoverability": "medium",
+            "quality_gate.active_marker_missing": True,
+            "quality_gate.fixture_missing": True,
+            "quality_gate.execution_enabled": False,
+            "quality_gate.promotion_allowed": False,
         },
     )
     assert_contains_all(cache_candidate["detection"]["detect"], [r"%LocalAppData%\ExampleBrowser\User Data\Default"])
+    assert_contains_all(cache_candidate["detection"]["detect_file"], [r"%LocalAppData%\ExampleBrowser\User Data\Default"])
+    assert_contains_all(
+        [item["kind"] for item in cache_candidate["detection"]["structured"]],
+        ["detect-file", "detect-os", "special-detect"],
+    )
     assert_contains_all(cache_candidate["unsupported_semantics"], ["DetectOS", "SpecialDetect", "Warning"])
+    assert_contains_all(cache_candidate["unsupported_semantics"], ["DetectFile"])
+    assert_contains_all(cache_candidate["quality_gate"]["promotion_blockers"], ["external-untrusted-provenance", "fixture-coverage-required"])
     assert_contains_all(
         [exclude["pattern"] for exclude in cache_candidate["exclusions"]],
         [r"FILE|%LocalAppData%\ExampleBrowser\User Data\Default\Cache\Keep"],
+    )
+    assert_contains_all(
+        [exclude["kind"] for exclude in cache_candidate["section_metadata"]["parsed_exclusions"]],
+        ["FILE"],
     )
     assert_contains_all(
         by_pattern[r"%UserProfile%\Documents\*.*"]["risk_flags"],
@@ -127,8 +145,16 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
             "summary.candidate_count": 3,
             "summary.dangerous_path_count": 2,
             "summary.unsupported_semantic_count": 3,
+            "summary.active_marker_missing_count": 3,
+            "summary.fixture_missing_count": 3,
             "summary.owner_missing_count": 0,
             "summary.rationale_missing_count": 0,
+            "quality_gate.execution_enabled": False,
+            "quality_gate.promotion_allowed": False,
+            "quality_gate.dangerous_path_count": 2,
+            "quality_gate.unsupported_semantic_count": 3,
+            "quality_gate.active_marker_missing_count": 3,
+            "quality_gate.fixture_missing_count": 3,
         },
     )
     assert_contains_all(
@@ -242,6 +268,9 @@ FileKey2=%UserProfile%\\Documents|*.*|RECURSE
             "schema": "cleanwin.external-rule-review-queue-item.v1",
             "review_status": "queued",
             "reviewer": "cleanwin-maintainer-required",
+            "quality_gate.execution_enabled": False,
+            "quality_gate.promotion_allowed": False,
+            "quality_gate.fixture_missing": True,
             "promotion_allowed": False,
         },
     )

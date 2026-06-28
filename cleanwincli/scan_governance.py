@@ -200,7 +200,7 @@ def scan_governance_report() -> dict[str, Any]:
                 ".mypy_cache",
                 ".ruff_cache",
             ],
-            "protected_targets": [".venv", ".aiflow", ".harness", ".git"],
+            "protected_targets": [".venv", ".aiflow", ".harness", ".git", "aiflow.yaml"],
         },
         "native_collector": {
             "script_path": "scripts/collect-cleanwin-artifacts.ps1",

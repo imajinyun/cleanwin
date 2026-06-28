@@ -1,33 +1,42 @@
 name: cleanwin
 root: .
 language: python
+store_path: .aiflow/store.json
 
 workspace:
   include_globs:
     - "*.py"
     - "pyproject.toml"
+    - "aiflow.yaml"
     - "Makefile"
     - "Dockerfile.test"
-    - "aiflow.yaml"
-    - ".github/workflows/*.yml"
-    - ".github/workflows/*.yaml"
+    - "AGENTS.md"
+    - "README.md"
+    - "LICENSE"
     - ".github/*"
     - ".github/workflows/*"
+    - "scripts/*"
     - "cleanwincli/*"
     - "cleanwincli/rules/*"
     - "tests/*"
     - "tests/data/*"
-    - "docs/*"
     - "docs/doc/*"
-    - "docs/governance/*"
     - "docs/superpowers/plans/*"
   exclude_globs:
     - ".git"
     - ".git/*"
+    - ".aiflow"
+    - ".aiflow/*"
     - ".harness"
     - ".harness/*"
     - ".venv"
     - ".venv/*"
+    - ".mypy_cache"
+    - ".mypy_cache/*"
+    - ".ruff_cache"
+    - ".ruff_cache/*"
+    - ".pytest_cache"
+    - ".pytest_cache/*"
     - "build"
     - "build/*"
     - "dist"
@@ -41,30 +50,61 @@ commands:
   allowlist:
     - make dev-install
     - make lint
-    - make type
-    - make test
     - make pytest
+    - make type
     - make compile
+    - make docs-smoke
+    - make ai-smoke
+    - make mcp-smoke
+    - make version-smoke
+    - make pytest-governance-smoke
+    - make ci-smoke
     - make quality
     - make docker-quality
+    - git diff
+    - git status
   test:
-    - make test
     - make pytest
+  vet:
+    - make lint
+    - make type
+    - make compile
   release:
+    - make ci-smoke
     - make quality
 
 acceptance:
   criteria:
-    - pytest migration keeps the test suite behaviorally equivalent
-    - venv-first unit, pytest, lint, type, compile, AI, MCP, and packaging gates pass
-    - docker-quality remains an optional sandbox validation path when Docker Hub access is available
+    - cleanwin remains dry-run-first and report-only by default
+    - Python tooling runs through the repository .venv via Makefile targets
+    - pytest, Ruff, mypy, compile, AI/MCP, docs, and version smoke gates pass
+    - external rule and native collector governance remain execution-disabled unless explicitly promoted later
+    - aiflow.yaml stays in the repository root while .aiflow stays local-only
   required_commands:
-    - make quality
+    - make lint
+    - make pytest
+    - make type
+    - make compile
   require_review: false
   require_clean_diff: false
   require_fix_diff: false
 
 permissions:
   require_plan_approval: false
+  require_command_approval: true
   allow_commit: false
   allow_push: false
+  max_fix_attempts: 0
+
+mcp:
+  cleanwin-mcp:
+    command: .venv/bin/python
+    args:
+      - -m
+      - cleanwincli.mcp_server
+
+security:
+  redact_secrets: true
+  max_patch_bytes: 262144
+  network:
+    mode: audit

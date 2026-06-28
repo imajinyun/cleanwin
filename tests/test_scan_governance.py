@@ -88,7 +88,7 @@ def test_script_boundary_contract_constrains_cleanup_and_collector_writes(
         },
     )
     assert_contains_all(contract["makefile"]["cleanup_targets"], [".pytest_cache", "__pycache__", "build", "dist"])
-    assert_contains_all(contract["makefile"]["protected_targets"], [".venv", ".aiflow", ".harness", ".git"])
+    assert_contains_all(contract["makefile"]["protected_targets"], [".venv", ".aiflow", ".harness", ".git", "aiflow.yaml"])
     assert_contains_all(
         contract["native_collector"]["required_root_checks"],
         [
