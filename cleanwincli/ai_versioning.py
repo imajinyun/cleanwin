@@ -20,6 +20,11 @@ from cleanwincli.external_rules import external_rule_translation_sample
 from cleanwincli.promotion_gates import validate_promotion_gate_action
 from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dashboard_report
 from cleanwincli.system_health import system_health_evidence_report
+from cleanwincli.windows_artifact_validation import (
+    artifact_layout_report,
+    artifact_validation_sample,
+    sample_collector_manifest,
+)
 from cleanwincli.windows_inventory import appx_snapshot_artifact_contract
 from cleanwincli.windows_native_artifacts import (
     windows_native_artifact_parse_sample,
@@ -124,6 +129,10 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.dism-component-store-analysis.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.dism-health-evidence.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.pending-reboot-registry-evidence.v1", 1, "cleanwincli.system_health", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
+    ("cleanwin.windows-native-artifact-layout.v1", 1, "cleanwincli.windows_artifact_validation", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-native-collector-manifest.v1", 1, "cleanwincli.windows_artifact_validation", "stable", "artifact", "cleanwin", ("cli", "ai-host", "ci")),
+    ("cleanwin.windows-native-artifact-validation.v1", 1, "cleanwincli.windows_artifact_validation", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.windows-native-artifact-validation-issue.v1", 1, "cleanwincli.windows_artifact_validation", "stable", "contract", "cleanwin", ("cli", "ai-host", "ci")),
     ("cleanwin.windows-native-artifacts.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-native-artifact-contract.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.windows-native-collector-wrapper.v1", 1, "cleanwincli.windows_native_artifacts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1747,6 +1756,21 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_system_health_evidence_report()["evidence"][1]
     if schema_name == "cleanwin.pending-reboot-registry-evidence.v1":
         return _sample_system_health_evidence_report()["evidence"][3]
+    if schema_name == "cleanwin.windows-native-artifact-layout.v1":
+        return artifact_layout_report()
+    if schema_name == "cleanwin.windows-native-collector-manifest.v1":
+        return sample_collector_manifest()
+    if schema_name == "cleanwin.windows-native-artifact-validation.v1":
+        return artifact_validation_sample()
+    if schema_name == "cleanwin.windows-native-artifact-validation-issue.v1":
+        return {
+            "schema": "cleanwin.windows-native-artifact-validation-issue.v1",
+            "severity": "error",
+            "code": "HASH_MISMATCH",
+            "path": "records[0].sha256",
+            "record_id": "powershell-appx-packages",
+            "message": "sha256 mismatch for appx-packages.json",
+        }
     if schema_name == "cleanwin.windows-native-artifacts.v1":
         return windows_native_artifacts_report()
     if schema_name == "cleanwin.windows-native-artifact-contract.v1":

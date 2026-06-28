@@ -53,6 +53,7 @@ from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dash
 from cleanwincli.scan_governance import scan_governance_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
+from cleanwincli.windows_artifact_validation import artifact_layout_report, artifact_validation_report
 from cleanwincli.windows_inventory import windows_inventory_report
 from cleanwincli.windows_native_artifacts import windows_native_artifacts_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
@@ -652,6 +653,10 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return startup_service_inventory_report()
     if provider == "system-health-report":
         return system_health_report()
+    if provider == "windows-artifact-layout":
+        return artifact_layout_report()
+    if provider == "windows-artifact-validate":
+        return artifact_validation_report()
     if provider == "windows-native-artifacts":
         return windows_native_artifacts_report()
     if provider == "windows-inventory":
@@ -806,6 +811,14 @@ def startup_service_inventory_command() -> dict[str, Any]:
 
 def system_health_report_command() -> dict[str, Any]:
     return system_health_report()
+
+
+def windows_artifact_layout_command() -> dict[str, Any]:
+    return artifact_layout_report()
+
+
+def windows_artifact_validate_command(manifest_path: Path | None = None) -> dict[str, Any]:
+    return artifact_validation_report(manifest_path)
 
 
 def windows_native_artifacts_command() -> dict[str, Any]:

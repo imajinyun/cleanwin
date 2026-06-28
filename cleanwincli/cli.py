@@ -46,6 +46,8 @@ from cleanwincli.core import (
     startup_service_inventory_command,
     system_health_report_command,
     validate_plan_payload,
+    windows_artifact_layout_command,
+    windows_artifact_validate_command,
     windows_evidence_bundle_command,
     windows_inventory_command,
     windows_native_artifacts_command,
@@ -142,6 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
             "rollback-drill-report",
             "startup-service-inventory",
             "system-health-report",
+            "windows-artifact-layout",
+            "windows-artifact-validate",
             "windows-native-artifacts",
             "windows-inventory",
             "windows-smoke-matrix",
@@ -179,6 +183,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("rollback-drill-report", help="show fixture-only rollback drill coverage")
     subparsers.add_parser("startup-service-inventory", help="show read-only startup, service, and task inventory")
     subparsers.add_parser("system-health-report", help="show read-only Windows system health recommendations")
+    subparsers.add_parser("windows-artifact-layout", help="show read-only Windows native artifact layout contract")
+    artifact_validate_parser = subparsers.add_parser("windows-artifact-validate", help="validate a Windows native collector manifest and artifact hashes")
+    artifact_validate_parser.add_argument("--manifest", help="path to collector manifest.json; omitted emits the validator sample contract")
     subparsers.add_parser("windows-native-artifacts", help="show read-only Windows native artifact collection contracts")
     subparsers.add_parser("windows-inventory", help="show read-only Windows inventory baseline")
     subparsers.add_parser("windows-smoke-matrix", help="show Windows smoke evidence matrix")
@@ -347,6 +354,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "system-health-report":
             emit(system_health_report_command(), as_json=args.json)
             return 0
+        if args.command == "windows-artifact-layout":
+            emit(windows_artifact_layout_command(), as_json=args.json)
+            return 0
+        if args.command == "windows-artifact-validate":
+            payload = windows_artifact_validate_command(Path(args.manifest) if args.manifest else None)
+            emit(payload, as_json=args.json)
+            return 0 if payload.get("valid", False) else 2
         if args.command == "windows-native-artifacts":
             emit(windows_native_artifacts_command(), as_json=args.json)
             return 0

@@ -258,6 +258,8 @@ python3 cleanwin.py --json service-task-disable-plan
 python3 cleanwin.py --json rollback-drill-report
 python3 cleanwin.py --json startup-service-inventory
 python3 cleanwin.py --json windows-native-artifacts
+python3 cleanwin.py --json windows-artifact-layout
+python3 cleanwin.py --json windows-artifact-validate --manifest ./artifacts/manifest.json
 python3 cleanwin.py --json external-rule-translate --input ./winapp2.ini --format winapp2
 ```
 
@@ -354,6 +356,18 @@ an operator-provided artifact root and emits a
 availability, command display text, and collector metadata. It does not run
 cleanup, repair, remove, import, disable, uninstall, or registry mutation
 commands.
+
+`windows-artifact-layout` defines the real Windows artifact directory and
+manifest contract for the native collector. It records allowed artifact
+extensions, expected top-level files and directories, required manifest/record
+fields, SHA-256 hash requirements, context fields such as Windows version and
+managed/unmanaged status, and forbidden command fragments.
+`windows-artifact-validate` reads an existing `manifest.json` and local artifact
+files, then reports missing fields, unsafe relative paths, unsupported
+extensions, forbidden command fragments, summary mismatches, missing files, and
+SHA-256 mismatches. The validator does not run the collector or execute
+PowerShell, DISM, registry, service, scheduled task, package manager, cleanup,
+repair, remove, import, disable, or uninstall commands.
 
 `promotion-gates` defines report-to-execution contracts for high-risk surfaces.
 Windows inventory findings for AppX/provisioned packages, Windows Features,
