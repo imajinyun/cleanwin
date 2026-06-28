@@ -526,7 +526,8 @@ CI 入口：
 - `.github/workflows/ci.yml` 通过 Makefile target 在 Python 3.10 和 3.12 上运行 Linux 质量门禁，因此 pytest 入口会在结束后清理测试残留。
 - `.github/workflows/ci.yml` 还会运行 package install smoke 和可选 Docker sandbox gate。
 - `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
-- `.github/workflows/windows-smoke.yml` 会上传 `cleanwin-windows-json-evidence` artifact bundle，包含 `windows-inventory`、`debloat-privacy-report`、`startup-service-inventory`、`system-health-report`、`promotion-gates`、promotion validation、`recovery-readiness`、`windows-smoke-matrix`，以及 pytest 和 compile result summary 的 JSON 文件。
+- `.github/workflows/windows-smoke.yml` 会上传 `cleanwin-windows-json-evidence` artifact bundle，包含 `windows-inventory`、`debloat-privacy-report`、`startup-service-inventory`、`system-health-report`、`promotion-gates`、promotion validation、`recovery-readiness`、`windows-smoke-matrix`、`windows-native-artifacts`、`windows-artifact-layout`、`windows-artifact-validation`、native collector summary，以及 pytest、Ruff、mypy 和 compile result summary 的 JSON 文件。
+- `.github/workflows/windows-smoke.yml` 还会上传 `cleanwin-windows-native-evidence`，包含只读 collector 在 `artifacts/windows-native` 生成的 native `.json`、`.xml`、`.reg`、`.txt`、`.csv`、`.log` 和 `manifest.json` artifacts。
 - `.github/workflows/windows-smoke.yml` 包含 `always()` cleanup step，用于清理 build outputs、tool caches、pytest caches、coverage 文件、`htmlcov` 和 `__pycache__`。
 - `windows-smoke-matrix` 跟踪 Windows 10/11 上 read-only debloat/privacy、startup/service/task 和 system-health diagnostics 的必备证据，作为后续 execution model 扩展前的门禁。
 - `system-health-report` 保持 diagnostic-only，只使用 DISM `ScanHealth`/`CheckHealth`、SFC scan、CHKDSK scan、Settings troubleshooters 和 pending reboot registry query 等扫描/复核命令，不包含 repair flags。
