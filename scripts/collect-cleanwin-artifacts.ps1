@@ -47,9 +47,29 @@ function Resolve-ArtifactRoot {
 
 $Root = Resolve-ArtifactRoot -Path $ArtifactRoot
 
+function Resolve-ArtifactPath {
+    param([string]$RelativePath)
+
+    if ([string]::IsNullOrWhiteSpace($RelativePath)) {
+        throw "Artifact relative path must not be empty"
+    }
+    if ([System.IO.Path]::IsPathRooted($RelativePath)) {
+        throw "Artifact relative path must not be rooted: $RelativePath"
+    }
+
+    $RootFullPath = [System.IO.Path]::GetFullPath($Root.FullName)
+    $FullPath = [System.IO.Path]::GetFullPath((Join-Path $RootFullPath $RelativePath))
+    $RootPrefix = $RootFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $FullPath.StartsWith($RootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Artifact relative path must stay under ArtifactRoot: $RelativePath"
+    }
+
+    return $FullPath
+}
+
 function New-ArtifactDirectory {
     param([string]$RelativePath)
-    return New-Item -ItemType Directory -Force -Path (Join-Path $Root.FullName $RelativePath)
+    return New-Item -ItemType Directory -Force -Path (Resolve-ArtifactPath -RelativePath $RelativePath)
 }
 
 function Add-ArtifactManifestEntry {
@@ -63,7 +83,7 @@ function Add-ArtifactManifestEntry {
         [string]$Command
     )
 
-    $FullPath = Join-Path $Root.FullName $RelativePath
+    $FullPath = Resolve-ArtifactPath -RelativePath $RelativePath
     $Hash = $null
     if (Test-Path -LiteralPath $FullPath -PathType Leaf) {
         $Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $FullPath).Hash
@@ -90,7 +110,7 @@ function Write-JsonArtifact {
         [string]$Command
     )
 
-    $FullPath = Join-Path $Root.FullName $RelativePath
+    $FullPath = Resolve-ArtifactPath -RelativePath $RelativePath
     $Parent = Split-Path -Parent $FullPath
     if ($Parent) {
         New-Item -ItemType Directory -Force -Path $Parent | Out-Null
@@ -109,7 +129,7 @@ function Write-TextArtifact {
         [string]$Command
     )
 
-    $FullPath = Join-Path $Root.FullName $RelativePath
+    $FullPath = Resolve-ArtifactPath -RelativePath $RelativePath
     $Parent = Split-Path -Parent $FullPath
     if ($Parent) {
         New-Item -ItemType Directory -Force -Path $Parent | Out-Null
@@ -164,7 +184,7 @@ function Collect-RegistryExports {
         @{ Id = "registry-explorer-advanced"; Key = "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"; Path = "registry\explorer-advanced.reg" }
     )
     foreach ($Export in $Exports) {
-        $OutFile = Join-Path $Root.FullName $Export.Path
+        $OutFile = Resolve-ArtifactPath -RelativePath $Export.Path
         $Command = "reg.exe export $($Export.Key) $OutFile /y"
         try {
             $Output = & reg.exe export $Export.Key $OutFile /y 2>&1
@@ -233,7 +253,7 @@ function Collect-PackageManagers {
     New-ArtifactDirectory -RelativePath "package-managers" | Out-Null
     if (Command-Exists "winget.exe") {
         Write-TextArtifact -Id "winget-list" -RelativePath "package-managers\winget-list.txt" -Schema "cleanwin.winget-list-artifact.v1" -Collector "winget-list" -Lines (& winget.exe list 2>&1) -Command "winget.exe list"
-        $WingetExportPath = Join-Path $Root.FullName "package-managers\winget-export.json"
+        $WingetExportPath = Resolve-ArtifactPath -RelativePath "package-managers\winget-export.json"
         $WingetExportOutput = & winget.exe export --output $WingetExportPath --accept-source-agreements 2>&1
         if (Test-Path -LiteralPath $WingetExportPath -PathType Leaf) {
             Add-ArtifactManifestEntry -Id "winget-export" -RelativePath "package-managers\winget-export.json" -Schema "cleanwin.winget-export-artifact.v1" -Collector "winget-export" -Available $true -Reason "captured" -Command "winget.exe export --output <artifact.json>"
@@ -268,7 +288,7 @@ function Collect-DismHealth {
 }
 
 function Write-Manifest {
-    $ManifestPath = Join-Path $Root.FullName "manifest.json"
+    $ManifestPath = Resolve-ArtifactPath -RelativePath "manifest.json"
     $Payload = [ordered]@{
         schema = "cleanwin.windows-native-collector-manifest.v1"
         collector_version = $CollectorVersion

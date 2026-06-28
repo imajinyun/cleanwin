@@ -124,15 +124,22 @@ def test_windows_native_collector_wrapper_script_is_read_only(
             "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore",
             "cleanwin.windows-native-collector-manifest.v1",
             "function Resolve-ArtifactRoot",
+            "function Resolve-ArtifactPath",
             "ArtifactRoot must not be empty",
             "ArtifactRoot must include a parent directory",
             "ArtifactRoot parent directory must exist",
             "ArtifactRoot must not be a filesystem root",
+            "Artifact relative path must not be rooted",
+            "Artifact relative path must stay under ArtifactRoot",
+            "Resolve-ArtifactPath -RelativePath $RelativePath",
+            "$OutFile = Resolve-ArtifactPath -RelativePath $Export.Path",
+            '$WingetExportPath = Resolve-ArtifactPath -RelativePath "package-managers\\winget-export.json"',
         ],
     )
     assert_contains_none(
         text,
         [
+            "Join-Path $Root.FullName",
             "Remove-AppxPackage",
             "Remove-AppxProvisionedPackage",
             "Set-ItemProperty",

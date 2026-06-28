@@ -366,6 +366,10 @@ an operator-provided artifact root and emits a
 availability, command display text, and collector metadata. It does not run
 cleanup, repair, remove, import, disable, uninstall, or registry mutation
 commands.
+`scan-governance` also statically validates the wrapper boundary: artifact paths
+must go through `Resolve-ArtifactPath`, native commands must match the reviewed
+read-only allowlist, and direct write APIs are only allowed inside artifact
+helper functions.
 
 `windows-artifact-layout` defines the real Windows artifact directory and
 manifest contract for the native collector. It records allowed artifact

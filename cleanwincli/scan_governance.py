@@ -7,6 +7,41 @@ from typing import Any
 
 SCAN_GOVERNANCE_SCHEMA = "cleanwin.scan-governance.v1"
 SCRIPT_BOUNDARY_VALIDATION_SCHEMA = "cleanwin.script-boundary-validation.v1"
+_ALLOWED_ROOT_FULLNAME_LINES = (
+    "$RootFullPath = [System.IO.Path]::GetFullPath($Root.FullName)",
+    "artifact_root = $Root.FullName",
+)
+_NATIVE_COMMAND_TOKENS = (
+    "Get-AppxPackage",
+    "Get-AppxProvisionedPackage",
+    "reg.exe",
+    "schtasks.exe",
+    "Export-ScheduledTask",
+    "Get-CimInstance",
+    "sc.exe",
+    "winget.exe",
+    "scoop.cmd",
+    "choco.exe",
+    "dism.exe",
+)
+_WRITE_API_TOKENS = (
+    "New-Item",
+    "Set-Content",
+    "Out-File",
+    "Export-Csv",
+    "Copy-Item",
+    "Move-Item",
+    "Start-Process",
+    "Invoke-Expression",
+)
+_ALLOWED_WRITE_API_LINES = (
+    "return New-Item -ItemType Directory -Force -Path $FullPath",
+    "return New-Item -ItemType Directory -Force -Path (Resolve-ArtifactPath -RelativePath $RelativePath)",
+    "New-Item -ItemType Directory -Force -Path $Parent | Out-Null",
+    "$Value | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $FullPath -Encoding UTF8",
+    "$Lines | Set-Content -LiteralPath $FullPath -Encoding UTF8",
+    "$Payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ManifestPath -Encoding UTF8",
+)
 
 
 def _violation(path: str, code: str, message: str) -> dict[str, str]:
@@ -22,6 +57,8 @@ def validate_script_boundaries(
     violations: list[dict[str, str]] = []
     makefile_contract = contract.get("makefile", {})
     collector_contract = contract.get("native_collector", {})
+    allowed_command_fragments = collector_contract.get("allowed_command_fragments", [])
+    allowed_write_api_lines = collector_contract.get("allowed_write_api_lines", _ALLOWED_WRITE_API_LINES)
 
     for command in makefile_contract.get("required_test_entrypoints", []):
         target = command.replace("make ", "")
@@ -35,16 +72,36 @@ def validate_script_boundaries(
 
     for required_text in (
         "function Resolve-ArtifactRoot",
+        "function Resolve-ArtifactPath",
         "ArtifactRoot must not be empty",
         "ArtifactRoot must include a parent directory",
         "ArtifactRoot parent directory must exist",
         "ArtifactRoot must not be a filesystem root",
+        "Artifact relative path must not be rooted",
+        "Artifact relative path must stay under ArtifactRoot",
     ):
         if required_text not in native_collector_text:
             violations.append(_violation("native_collector.required_root_checks", "MISSING_ARTIFACT_ROOT_GUARD", required_text))
     for fragment in collector_contract.get("forbidden_command_fragments", []):
         if fragment in native_collector_text:
             violations.append(_violation("native_collector.forbidden_command_fragments", "FORBIDDEN_COMMAND_FRAGMENT", fragment))
+    for line in native_collector_text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "Command-Exists" in stripped:
+            continue
+        if any(token in stripped for token in _NATIVE_COMMAND_TOKENS) and not any(fragment in stripped for fragment in allowed_command_fragments):
+            violations.append(_violation("native_collector.allowed_command_fragments", "UNREVIEWED_NATIVE_COLLECTOR_COMMAND", stripped))
+        if any(token in stripped for token in _WRITE_API_TOKENS) and stripped not in allowed_write_api_lines:
+            violations.append(_violation("native_collector.allowed_write_apis", "DIRECT_ARTIFACT_WRITE_API", stripped))
+    if "Resolve-ArtifactPath -RelativePath $RelativePath" not in native_collector_text:
+        violations.append(_violation("native_collector.allowed_write_root", "MISSING_ARTIFACT_PATH_RESOLUTION", "collector artifact paths must use Resolve-ArtifactPath"))
+    direct_root_references = [
+        line.strip()
+        for line in native_collector_text.splitlines()
+        if "$Root.FullName" in line and line.strip() not in _ALLOWED_ROOT_FULLNAME_LINES
+    ]
+    for line in direct_root_references:
+        violations.append(_violation("native_collector.allowed_write_root", "DIRECT_ARTIFACT_ROOT_PATH_JOIN", line))
     if "Set-Content -LiteralPath $FullPath" not in native_collector_text:
         violations.append(_violation("native_collector.allowed_write_root", "MISSING_LITERAL_ARTIFACT_WRITE", "collector writes must use resolved ArtifactRoot paths"))
 
@@ -152,10 +209,32 @@ def scan_governance_report() -> dict[str, Any]:
                 "ArtifactRoot must not be empty",
                 "ArtifactRoot must not be a filesystem root",
                 "ArtifactRoot parent must exist",
+                "Artifact relative path must not be rooted",
+                "Artifact relative path must stay under ArtifactRoot",
                 "all artifacts are written below ArtifactRoot",
+                "external command output paths must be resolved through Resolve-ArtifactPath",
             ],
             "allowed_write_apis": ["New-ArtifactDirectory", "Write-JsonArtifact", "Write-TextArtifact", "Write-Manifest"],
+            "allowed_write_api_lines": list(_ALLOWED_WRITE_API_LINES),
+            "allowed_command_fragments": [
+                "Get-AppxPackage -AllUsers",
+                "Get-AppxProvisionedPackage -Online",
+                "reg.exe export",
+                "schtasks.exe /Query",
+                "Export-ScheduledTask",
+                "Get-CimInstance Win32_Service",
+                "sc.exe qc",
+                "winget.exe list",
+                "winget.exe export",
+                "scoop.cmd list",
+                "choco.exe list --local-only",
+                "dism.exe /Online /Get-Features",
+                "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore",
+                "dism.exe /Online /Cleanup-Image /ScanHealth",
+                "dism.exe /Online /Cleanup-Image /CheckHealth",
+            ],
             "forbidden_command_fragments": [
+                "Remove-Item",
                 "Remove-AppxPackage",
                 "Remove-AppxProvisionedPackage",
                 "Set-ItemProperty",

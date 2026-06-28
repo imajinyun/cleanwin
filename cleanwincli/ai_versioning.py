@@ -701,7 +701,14 @@ def _sample_scan_governance() -> dict[str, Any]:
             "native_collector": {
                 "script_path": "scripts/collect-cleanwin-artifacts.ps1",
                 "allowed_write_root": "operator-provided ArtifactRoot",
-                "required_root_checks": ["ArtifactRoot must not be empty", "ArtifactRoot must not be a filesystem root"],
+                "required_root_checks": [
+                    "ArtifactRoot must not be empty",
+                    "ArtifactRoot must not be a filesystem root",
+                    "Artifact relative path must not be rooted",
+                    "Artifact relative path must stay under ArtifactRoot",
+                ],
+                "allowed_command_fragments": ["Get-AppxPackage -AllUsers", "reg.exe export", "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore"],
+                "allowed_write_api_lines": ["$Value | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $FullPath -Encoding UTF8"],
                 "forbidden_command_fragments": ["reg.exe import", "RestoreHealth"],
             },
         },

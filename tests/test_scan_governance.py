@@ -95,10 +95,30 @@ def test_script_boundary_contract_constrains_cleanup_and_collector_writes(
             "ArtifactRoot must not be empty",
             "ArtifactRoot must not be a filesystem root",
             "ArtifactRoot parent must exist",
+            "Artifact relative path must not be rooted",
+            "Artifact relative path must stay under ArtifactRoot",
             "all artifacts are written below ArtifactRoot",
+            "external command output paths must be resolved through Resolve-ArtifactPath",
         ],
     )
     assert_contains_all(contract["native_collector"]["forbidden_command_fragments"], ["reg.exe import", "RestoreHealth"])
+    assert_contains_all(
+        contract["native_collector"]["allowed_command_fragments"],
+        [
+            "Get-AppxPackage -AllUsers",
+            "reg.exe export",
+            "schtasks.exe /Query",
+            "winget.exe export",
+            "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore",
+        ],
+    )
+    assert_contains_all(
+        contract["native_collector"]["allowed_write_api_lines"],
+        [
+            "$Value | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $FullPath -Encoding UTF8",
+            "$Payload | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ManifestPath -Encoding UTF8",
+        ],
+    )
 
 
 def test_script_boundary_validation_reports_current_repo_state(
@@ -121,7 +141,15 @@ def test_script_boundary_validation_flags_drift(
     validation = assert_payload_schema(
         validate_script_boundaries(
             makefile_text="pytest:\n\t$(DEV_PYTHON) -m pytest -q\n\tpython -c \"import shutil; shutil.rmtree('.venv')\"",
-            native_collector_text="function Resolve-ArtifactRoot { throw 'ArtifactRoot must not be empty' }\nreg.exe import backup.reg",
+            native_collector_text="\n".join(
+                [
+                    "function Resolve-ArtifactRoot { throw 'ArtifactRoot must not be empty' }",
+                    "$OutFile = Join-Path $Root.FullName $Export.Path",
+                    "reg.exe import backup.reg",
+                    "Remove-Item -LiteralPath $FullPath -Force",
+                    "Set-Content -LiteralPath C:\\temp\\artifact.json -Value $Payload",
+                ]
+            ),
             contract=contract,
         ),
         "cleanwin.script-boundary-validation.v1",
@@ -135,7 +163,11 @@ def test_script_boundary_validation_flags_drift(
             "PROTECTED_TARGET_IN_CLEANUP",
             "MISSING_ARTIFACT_ROOT_GUARD",
             "FORBIDDEN_COMMAND_FRAGMENT",
+            "MISSING_ARTIFACT_PATH_RESOLUTION",
+            "DIRECT_ARTIFACT_ROOT_PATH_JOIN",
             "MISSING_LITERAL_ARTIFACT_WRITE",
+            "UNREVIEWED_NATIVE_COLLECTOR_COMMAND",
+            "DIRECT_ARTIFACT_WRITE_API",
         ],
     )
 
