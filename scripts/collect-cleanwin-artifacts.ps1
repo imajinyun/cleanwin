@@ -19,8 +19,33 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $CollectorVersion = "cleanwin-windows-native-collector-wrapper.v1"
-$Root = New-Item -ItemType Directory -Force -Path $ArtifactRoot
 $Manifest = [System.Collections.Generic.List[object]]::new()
+
+function Resolve-ArtifactRoot {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw "ArtifactRoot must not be empty"
+    }
+
+    $Parent = Split-Path -Parent $Path
+    if ([string]::IsNullOrWhiteSpace($Parent)) {
+        throw "ArtifactRoot must include a parent directory"
+    }
+    if (-not (Test-Path -LiteralPath $Parent -PathType Container)) {
+        throw "ArtifactRoot parent directory must exist: $Parent"
+    }
+
+    $FullPath = [System.IO.Path]::GetFullPath($Path)
+    $RootPath = [System.IO.Path]::GetPathRoot($FullPath)
+    if ($FullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) -eq $RootPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)) {
+        throw "ArtifactRoot must not be a filesystem root"
+    }
+
+    return New-Item -ItemType Directory -Force -Path $FullPath
+}
+
+$Root = Resolve-ArtifactRoot -Path $ArtifactRoot
 
 function New-ArtifactDirectory {
     param([string]$RelativePath)

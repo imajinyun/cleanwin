@@ -123,6 +123,11 @@ def test_windows_native_collector_wrapper_script_is_read_only(
             "choco.exe list --local-only",
             "dism.exe /Online /Cleanup-Image /AnalyzeComponentStore",
             "cleanwin.windows-native-collector-manifest.v1",
+            "function Resolve-ArtifactRoot",
+            "ArtifactRoot must not be empty",
+            "ArtifactRoot must include a parent directory",
+            "ArtifactRoot parent directory must exist",
+            "ArtifactRoot must not be a filesystem root",
         ],
     )
     assert_contains_none(

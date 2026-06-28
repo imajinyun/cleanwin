@@ -79,6 +79,8 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.file-report.v1", 1, "cleanwincli.file_reports", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.scan-governance.v1", 1, "cleanwincli.scan_governance", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-review.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.script-boundary-contract.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.script-boundary-validation.v1", 1, "cleanwincli.scan_governance", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-translation.v1", 1, "cleanwincli.external_rules", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-candidate.v1", 1, "cleanwincli.external_rules", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.external-rule-import-sandbox.v1", 1, "cleanwincli.external_rules", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -686,8 +688,31 @@ def _sample_scan_governance() -> dict[str, Any]:
             "blocked_patterns": ["raw shell command strings", "browser profile root deletion", "user document directory deletion"],
             "promotion_requirements": ["schema validation", "fixture coverage", "review-plan evidence", "dry-run evidence", "promotion-gate approval"],
         },
+        "script_boundary_contract": {
+            "schema": "cleanwin.script-boundary-contract.v1",
+            "default_state": "read-only-or-local-artifact-only",
+            "execution_enabled": False,
+            "makefile": {
+                "managed_venv": ".venv",
+                "required_test_entrypoints": ["make pytest", "make pytest-governance-smoke"],
+                "cleanup_targets": [".pytest_cache", ".coverage", "coverage.xml", "htmlcov", "__pycache__", "build", "dist", "cleanwin.egg-info", ".mypy_cache", ".ruff_cache"],
+                "protected_targets": [".venv", ".aiflow", ".harness", ".git"],
+            },
+            "native_collector": {
+                "script_path": "scripts/collect-cleanwin-artifacts.ps1",
+                "allowed_write_root": "operator-provided ArtifactRoot",
+                "required_root_checks": ["ArtifactRoot must not be empty", "ArtifactRoot must not be a filesystem root"],
+                "forbidden_command_fragments": ["reg.exe import", "RestoreHealth"],
+            },
+        },
+        "script_boundary_validation": {
+            "schema": "cleanwin.script-boundary-validation.v1",
+            "valid": True,
+            "violation_count": 0,
+            "violations": [],
+        },
         "summary": {"budget_count": 1, "external_rule_execution_enabled": False, "blocked_pattern_count": 3},
-        "release_gate": {"requires_budget_tests": True, "requires_external_rule_review_tests": True, "requires_quality": True, "required_commands": ["make quality"], "blocks_execution_expansion": True},
+        "release_gate": {"requires_budget_tests": True, "requires_external_rule_review_tests": True, "requires_script_boundary_tests": True, "requires_quality": True, "required_commands": ["make quality"], "blocks_execution_expansion": True},
         "non_goals": ["This report does not import external cleaner rules automatically."],
     }
 
@@ -1631,6 +1656,10 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
         return _sample_scan_governance()
     if schema_name == "cleanwin.external-rule-review.v1":
         return _sample_scan_governance()["external_rule_contract"]
+    if schema_name == "cleanwin.script-boundary-contract.v1":
+        return _sample_scan_governance()["script_boundary_contract"]
+    if schema_name == "cleanwin.script-boundary-validation.v1":
+        return _sample_scan_governance()["script_boundary_validation"]
     if schema_name == "cleanwin.external-rule-translation.v1":
         return external_rule_translation_sample()
     if schema_name == "cleanwin.external-rule-candidate.v1":

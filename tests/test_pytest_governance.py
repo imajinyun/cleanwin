@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, NamedTuple
 
 AssertContainsAll = Callable[[Collection[Any], Sequence[Any]], None]
+AssertContainsNone = Callable[[Collection[Any], Sequence[Any]], None]
 AssertTextContainsAll = Callable[[str, Sequence[str]], None]
 AssertExactSequence = Callable[[Sequence[Any], Sequence[Any]], Sequence[Any]]
 AssertAtLeast = Callable[[int, int], int]
@@ -279,6 +280,7 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
     repo_root: Path,
     assert_none_match: AssertNoneMatch,
     assert_text_contains_all: AssertTextContainsAll,
+    assert_contains_none: AssertContainsNone,
 ) -> None:
     makefile = (repo_root / "Makefile").read_text(encoding="utf-8")
 
@@ -304,6 +306,15 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
         ],
     )
     command_lines = [line for line in makefile.splitlines() if line.startswith("\t")]
+    clean_lines = [
+        line
+        for line in command_lines
+        if "test-clean" in line or "shutil.rmtree" in line or "rglob('__pycache__')" in line
+    ]
+    assert_contains_none(
+        "\n".join(clean_lines),
+        ["'.venv'", '".venv"', "'.aiflow'", "'.harness'", "'.git'"],
+    )
     assert_none_match(
         command_lines,
         lambda line: line.strip().startswith(
