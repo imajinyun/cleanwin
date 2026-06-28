@@ -5,25 +5,27 @@ from __future__ import annotations
 from typing import Any
 
 
-def render_progress_bar(*, complete: bool, width: int = 56) -> str:
+def render_progress_bar(*, complete: bool, width: int = 48) -> str:
+    percent = 100 if complete else 0
     filled = width if complete else 0
-    return "." * filled + f" [{'100' if complete else '0'}%]"
+    empty = width - filled
+    return f"[{'=' * filled}{'.' * empty}] {percent:>3}%"
 
 
 def render_human_payload(payload: dict[str, Any]) -> str:
     schema = str(payload.get("schema") or "cleanwin.report")
     status = _payload_status(payload)
     lines = [
-        f"CleanWin ran {schema}",
-        f"| {render_progress_bar(complete=status != 'failed')}",
-        f"`- status: {status}",
+        f"CleanWin :: {schema}",
+        f"| status   {status}",
+        f"| progress {render_progress_bar(complete=status != 'failed')}",
     ]
     summary = _summary_line(payload)
     if summary:
-        lines.append(f"   summary: {summary}")
+        lines.append(f"| summary  {summary}")
     if payload.get("error"):
-        lines.append(f"   error: {payload['error']}")
-    lines.append("   json: rerun with --json for machine-readable output")
+        lines.append(f"| error    {payload['error']}")
+    lines.append("`- json     rerun with --json for machine-readable output")
     return "\n".join(lines)
 
 

@@ -67,10 +67,11 @@ def test_non_json_cli_output_uses_progress_summary(
     assert_text_contains_all(
         result.stdout,
         [
-            "CleanWin ran",
-            "[100%]",
-            "status: ok",
-            "json: rerun with --json",
+            "CleanWin ::",
+            "| status   ok",
+            "| progress [",
+            "] 100%",
+            "`- json     rerun with --json",
         ],
     )
 
