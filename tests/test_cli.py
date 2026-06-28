@@ -3234,6 +3234,52 @@ def test_browser_cache_discovers_brave_profile_caches(
     assert_field_values(by_rule["browser-cache.brave.code-cache"], {"path": str(brave_code_cache)})
     assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(cookies)])
 
+def test_browser_cache_discovers_extended_cache_layers_without_profile_databases(
+    tmp_path: Path,
+    cleanwin_json: CleanWinJSON,
+    write_text_file: WriteTextFile,
+    make_windows_cache_env: MakeWindowsCacheEnv,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_none: AssertContainsNone,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    root = tmp_path
+    local = root / "LocalAppData"
+    chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
+    gpu_cache = write_text_file(chrome_default / "GPUCache" / "gpu.bin", "gpu").parent
+    shader_cache = write_text_file(chrome_default / "ShaderCache" / "shader.bin", "shader").parent
+    service_worker_cache = write_text_file(chrome_default / "Service Worker" / "CacheStorage" / "entry", "sw").parent
+    crashpad_reports = write_text_file(chrome_default / "Crashpad" / "reports" / "crash.dmp", "crash").parent
+    firefox_profile = local / "Mozilla" / "Firefox" / "Profiles" / "abcd1234.default-release"
+    firefox_startup = write_text_file(firefox_profile / "startupCache" / "startup.bin", "startup").parent
+    firefox_shader = write_text_file(firefox_profile / "shader-cache" / "shader.bin", "shader").parent
+    login_data = chrome_default / "Login Data"
+    places = firefox_profile / "places.sqlite"
+    write_text_file(login_data, "do-not-touch")
+    write_text_file(places, "do-not-touch")
+
+    payload = cleanwin_json(
+        "inspect",
+        "--categories",
+        "browser-cache",
+        "--older-than-days",
+        "0",
+        env=make_windows_cache_env(root),
+    )
+    by_rule = {candidate["rule_id"]: candidate for candidate in payload["candidates"]}
+
+    assert_summary_counts(payload, {"candidate_count": 6})
+    assert_field_values(by_rule["browser-cache.chrome.gpu-cache"], {"path": str(gpu_cache), "cache_layer": "gpu-cache"})
+    assert_field_values(by_rule["browser-cache.chrome.shader-cache"], {"path": str(shader_cache), "cache_layer": "shader-cache"})
+    assert_field_values(
+        by_rule["browser-cache.chrome.service-worker-cache"],
+        {"path": str(service_worker_cache), "cache_layer": "service-worker-cache"},
+    )
+    assert_field_values(by_rule["browser-cache.chrome.crashpad-reports"], {"path": str(crashpad_reports), "cache_layer": "crash-reports"})
+    assert_field_values(by_rule["browser-cache.firefox.startup-cache"], {"path": str(firefox_startup), "cache_layer": "startup-cache"})
+    assert_field_values(by_rule["browser-cache.firefox.shader-cache"], {"path": str(firefox_shader), "cache_layer": "shader-cache"})
+    assert_contains_none({candidate["path"] for candidate in payload["candidates"]}, [str(login_data), str(places)])
+
 def test_review_plan_for_browser_cache_reports_sensitive_exclusions(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,

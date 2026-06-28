@@ -432,10 +432,19 @@ def browser_profile_cache_roots(env: dict[str, str]) -> list[tuple[dict[str, str
             profiles = sorted(user_data_root.iterdir(), key=lambda item: item.name.lower())
         except OSError:
             continue
+        chromium_layers = (
+            ("Cache", "cache"),
+            ("Code Cache", "code-cache"),
+            ("GPUCache", "gpu-cache"),
+            ("ShaderCache", "shader-cache"),
+            ("GrShaderCache", "shader-cache"),
+            ("Service Worker/CacheStorage", "service-worker-cache"),
+            ("Crashpad/reports", "crashpad-reports"),
+        )
         for profile in profiles:
             if not profile.is_dir() or profile.is_symlink():
                 continue
-            for leaf, suffix in (("Cache", "cache"), ("Code Cache", "code-cache")):
+            for leaf, suffix in chromium_layers:
                 cache_path = profile / leaf
                 if cache_path.exists() and cache_path.is_dir() and not cache_path.is_symlink():
                     roots.append((BROWSER_PROFILE_CACHE_RULES[f"{browser_key}-{suffix}"], cache_path))
@@ -452,9 +461,16 @@ def browser_profile_cache_roots(env: dict[str, str]) -> list[tuple[dict[str, str
         except OSError:
             continue
         for profile in profiles:
-            cache_path = profile / "cache2"
-            if cache_path.exists() and cache_path.is_dir() and not cache_path.is_symlink():
-                roots.append((BROWSER_PROFILE_CACHE_RULES["firefox-cache2"], cache_path))
+            firefox_layers = (
+                ("cache2", "firefox-cache2"),
+                ("startupCache", "firefox-startup-cache"),
+                ("shader-cache", "firefox-shader-cache"),
+                ("crashes", "firefox-crashes"),
+            )
+            for leaf, rule_key in firefox_layers:
+                cache_path = profile / leaf
+                if cache_path.exists() and cache_path.is_dir() and not cache_path.is_symlink():
+                    roots.append((BROWSER_PROFILE_CACHE_RULES[rule_key], cache_path))
     seen: set[str] = set()
     deduped: list[tuple[dict[str, str], Path]] = []
     for rule, path in roots:

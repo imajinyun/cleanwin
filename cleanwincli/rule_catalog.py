@@ -129,10 +129,16 @@ def _cache_layer_for_rule(rule: dict[str, Any], *, section: str) -> str:
         return "gpu-cache"
     if "shader" in haystack:
         return "shader-cache"
+    if "service-worker" in haystack or "service worker" in haystack or "cachestorage" in haystack:
+        return "service-worker-cache"
     if "crashdump" in haystack or "crashdumps" in haystack:
         return "crash-dumps"
     if "crash" in haystack:
         return "crash-reports"
+    if "index" in haystack:
+        return "index-cache"
+    if "installer-cache" in haystack or "visual-studio" in haystack or "package cache" in haystack:
+        return "package-install-cache" if section == "package_cache_rules" else "runtime-cache"
     if "log" in haystack:
         return "logs"
     if "download" in haystack:
