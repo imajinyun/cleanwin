@@ -95,7 +95,7 @@ def test_extended_privacy_policy_surface_is_reported(
     assert_field_values(viewer, {"state": "privacy-hardened"})
     assert_payload_schema(recall["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(tailored)
-    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 2})
+    assert_summary_counts(report, {"registry_policy_count": 180, "privacy_hardened_count": 2})
 
 
 def test_privatezilla_style_privacy_baseline_is_reported(
@@ -138,10 +138,10 @@ def test_privatezilla_style_privacy_baseline_is_reported(
     assert_field_values(by_id["privacy.edge-shopping-assistant.disabled"], {"state": "review-recommended"})
     assert_payload_schema(by_id["privacy.webcam-access.disabled"]["change_evidence"], "cleanwin.registry-privacy-evidence.v1")
     assert_safe_to_execute_disabled(by_id["privacy.smartscreen.enabled"])
-    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 5})
+    assert_summary_counts(report, {"registry_policy_count": 180, "privacy_hardened_count": 5})
 
 
-def test_privacy_sexy_style_policy_surface_expands_to_125_checks(
+def test_privacy_sexy_style_policy_surface_expands_to_180_checks(
     assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
     assert_summary_counts: AssertSummaryCounts,
     assert_contains_all: AssertContainsAll,
@@ -165,7 +165,7 @@ def test_privacy_sexy_style_policy_surface_expands_to_125_checks(
     )
     by_id = {finding["id"]: finding for finding in report["findings"]}
 
-    assert_summary_counts(report, {"registry_policy_count": 125, "privacy_hardened_count": 5})
+    assert_summary_counts(report, {"registry_policy_count": 180, "privacy_hardened_count": 5})
     assert_contains_all(
         set(by_id),
         [
@@ -246,6 +246,69 @@ def test_expanded_privacy_baseline_covers_sync_defender_edge_and_permissions(
     assert_field_values(by_id["privacy.office-telemetry-agent.disabled"], {"state": "privacy-hardened"})
     assert_field_values(by_id["privacy.onedrive-personal-sync.disabled"], {"state": "privacy-hardened"})
     assert_safe_to_execute_disabled(by_id["privacy.edge-component-updates.enabled"])
+
+
+def test_privacy_baseline_expands_to_180_checks_for_ai_edge_defender_and_sensors(
+    assert_safe_to_execute_disabled: AssertSafeToExecuteDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    report = debloat_privacy_report(
+        raw_registry_values={
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection\DisableOneSettingsDownloads": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo\DisabledByGroupPolicy": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableCloudOptimizedContent": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search\ConnectedSearchUseWeb": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\Windows Search\AllowIndexingEncryptedStoresOrItems": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot\TurnOffWindowsCopilot": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI\DisableAIDataAnalysis": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Dsh\IsPrelaunchEnabled": 0,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\ConfigureDoNotTrack": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Edge\PaymentMethodQueryEnabled": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection\DisableRealtimeMonitoring": 1,
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\Network Protection\EnableNetworkProtection": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\graphicsCaptureProgrammatic\Value": "Allow",
+            r"HKLM\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors\DisableSensors": 1,
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ShowSyncProviderNotifications": 0,
+        },
+        raw_appx_packages=[],
+        env={},
+    )
+    by_id = {finding["id"]: finding for finding in report["findings"]}
+
+    assert_summary_counts(report, {"registry_policy_count": 180, "privacy_hardened_count": 9})
+    assert_contains_all(
+        set(by_id),
+        [
+            "privacy.diagnostics-one-settings-downloads.disabled",
+            "privacy.ad-id-group-policy.disabled",
+            "privacy.cloud-content-cloud-optimized.disabled",
+            "privacy.search-connected-web.disabled",
+            "privacy.search-index-encrypted-files.disabled",
+            "privacy.copilot-machine.disabled",
+            "privacy.recall-machine.disabled",
+            "privacy.widgets-prelaunch.disabled",
+            "privacy.edge-do-not-track.enabled",
+            "privacy.edge-payment-method-query.disabled",
+            "privacy.defender-realtime-monitoring.enabled",
+            "privacy.defender-network-protection.enabled",
+            "privacy.app-permission-graphics-capture.disabled",
+            "privacy.sensors.disabled",
+            "privacy.sync-provider-notifications.disabled",
+        ],
+    )
+    assert_field_values(by_id["privacy.diagnostics-one-settings-downloads.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.cloud-content-cloud-optimized.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.search-index-encrypted-files.disabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.copilot-machine.disabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.recall-machine.disabled"], {"state": "privacy-hardened", "risk": "high"})
+    assert_field_values(by_id["privacy.edge-do-not-track.enabled"], {"state": "privacy-hardened"})
+    assert_field_values(by_id["privacy.edge-payment-method-query.disabled"], {"state": "review-recommended"})
+    assert_field_values(by_id["privacy.defender-realtime-monitoring.enabled"], {"state": "review-recommended", "risk": "high"})
+    assert_field_values(by_id["privacy.defender-network-protection.enabled"], {"state": "privacy-hardened", "risk": "high"})
+    assert_field_values(by_id["privacy.app-permission-graphics-capture.disabled"], {"state": "review-recommended", "risk": "high"})
+    assert_safe_to_execute_disabled(by_id["privacy.defender-realtime-monitoring.enabled"])
 
 
 def test_appx_and_oem_findings_are_review_only(

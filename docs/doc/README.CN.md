@@ -283,15 +283,17 @@ identity fields、required snapshot fields、classification inputs、rollback
 reference fields 和 golden fixture 要求。这些 contract 仍然只读，不执行
 PowerShell，也不移除 package。
 
-`debloat-privacy-report` 仍然是只读报告，覆盖 125 项 Windows 隐私 policy 基线，
+`debloat-privacy-report` 仍然是只读报告，覆盖 180 项 Windows 隐私 policy 基线，
 包括 telemetry、Advertising ID、consumer features、Copilot、Recall/WindowsAI、
 tailored experiences、activity history、feedback prompts、Diagnostic Data
 Viewer、Cortana/Search、Search web/Bing/location history、Spotlight/lock-screen
 content、ContentDeliveryManager suggestions、Windows experimentation/preview
 builds、cloud clipboard/shared experiences、location/Find My Device、speech/input
 personalization、app permissions、SmartScreen、Widgets、Edge
-SmartScreen/search/autofill/metrics/prediction policies。它还会对内置 AppX 包
-进行人工 review 分类，但不会卸载应用或修改 policy。
+SmartScreen/search/autofill/metrics/prediction、Defender/security-sensitive
+protections、sensor/location controls、Store 和 Office connected-experience
+policies。它还会对内置 AppX 包进行人工 review 分类，但不会卸载应用或修改
+policy。
 
 `registry-privacy-plan` 会把 review-recommended 的 registry privacy findings
 转换成 simulation-only change/revert plan。每个 planned change 都包含 registry

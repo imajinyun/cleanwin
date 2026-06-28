@@ -284,16 +284,17 @@ required snapshot fields, classification inputs, rollback reference fields, and
 golden-fixture requirements. These contracts are report-only and do not run
 PowerShell or remove packages.
 
-`debloat-privacy-report` is report-only and now covers a 125-check Windows
+`debloat-privacy-report` is report-only and now covers a 180-check Windows
 privacy policy baseline including telemetry, Advertising ID, consumer features,
 Copilot, Recall/WindowsAI, tailored experiences, activity history, feedback
 prompts, Diagnostic Data Viewer, Cortana/Search, Search web/Bing/location
 history, Spotlight and lock-screen content, ContentDeliveryManager suggestions,
 Windows experimentation/preview builds, cloud clipboard and shared experiences,
 location and Find My Device, speech and input personalization, app permissions,
-SmartScreen, Widgets, and Edge SmartScreen/search/autofill/metrics/prediction
-policies. It also classifies bundled AppX packages for manual review without
-uninstalling or changing policy.
+SmartScreen, Widgets, Edge SmartScreen/search/autofill/metrics/prediction,
+Defender/security-sensitive protections, sensor/location controls, Store and
+Office connected-experience policies. It also classifies bundled AppX packages
+for manual review without uninstalling or changing policy.
 
 `registry-privacy-plan` turns review-recommended registry privacy findings into
 a simulation-only change/revert plan. Each planned change carries registry
