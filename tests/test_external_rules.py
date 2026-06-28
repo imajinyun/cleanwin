@@ -36,8 +36,12 @@ def test_winapp2_translation_is_report_only_and_marks_dangerous_paths(
 [Example Browser Cache *]
 LangSecRef=3029
 DetectFile=%LocalAppData%\\ExampleBrowser\\User Data\\Default
+DetectOS=10.0|
+SpecialDetect=DetectWinApp
+Warning=Close Example Browser first.
 FileKey1=%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache|*.*|RECURSE
 FileKey2=%UserProfile%\\Documents|*.*|RECURSE
+ExcludeKey1=FILE|%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache\\Keep
 RegKey1=HKCU\\Software\\Example\\Telemetry
 """.strip(),
         source_format="winapp2",
@@ -50,12 +54,35 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
     assert_execution_disabled(payload)
     assert_field_values(
         payload["summary"],
-        {"candidate_count": 3, "review_required_count": 3, "dangerous_path_count": 2, "execution_enabled_count": 0},
+        {
+            "candidate_count": 3,
+            "review_required_count": 3,
+            "dangerous_path_count": 2,
+            "execution_enabled_count": 0,
+            "unsupported_semantic_count": 9,
+        },
     )
     by_pattern = {candidate["original_pattern"]: candidate for candidate in payload["candidates"]}
     cache_candidate = by_pattern[r"%LocalAppData%\ExampleBrowser\User Data\Default\Cache\*.*"]
     assert_field_values(cache_candidate, {"schema": EXTERNAL_RULE_CANDIDATE_SCHEMA, "review_required": True})
     assert_field_values(cache_candidate["translated_cleanwin_rule"], {"execution_enabled": False, "safe_to_execute": False})
+    assert_field_values(
+        cache_candidate,
+        {
+            "section_metadata.lang_sec_ref": "3029",
+            "section_metadata.detect_count": 1,
+            "section_metadata.detect_os_count": 1,
+            "section_metadata.special_detect_count": 1,
+            "section_metadata.exclude_key_count": 1,
+            "warning": "Close Example Browser first.",
+        },
+    )
+    assert_contains_all(cache_candidate["detection"]["detect"], [r"%LocalAppData%\ExampleBrowser\User Data\Default"])
+    assert_contains_all(cache_candidate["unsupported_semantics"], ["DetectOS", "SpecialDetect", "Warning"])
+    assert_contains_all(
+        [exclude["pattern"] for exclude in cache_candidate["exclusions"]],
+        [r"FILE|%LocalAppData%\ExampleBrowser\User Data\Default\Cache\Keep"],
+    )
     assert_contains_all(
         by_pattern[r"%UserProfile%\Documents\*.*"]["risk_flags"],
         ["user-document-directory", "wildcard-outside-governed-root"],
@@ -73,6 +100,7 @@ def test_external_rule_translation_includes_import_sandbox_contract(
 [Example Browser Cache *]
 FileKey1=%LocalAppData%\\ExampleBrowser\\User Data\\Default\\Cache|*.*|RECURSE
 FileKey2=%UserProfile%\\Documents|*.*|RECURSE
+SpecialDetect=DetectWinApp
 RegKey1=HKCU\\Software\\Example\\Telemetry
 """.strip(),
         source_format="winapp2",
@@ -97,6 +125,7 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
             "validation.default_execution_enabled": False,
             "summary.candidate_count": 3,
             "summary.dangerous_path_count": 2,
+            "summary.unsupported_semantic_count": 3,
             "summary.owner_missing_count": 0,
             "summary.rationale_missing_count": 0,
         },
@@ -108,6 +137,7 @@ RegKey1=HKCU\\Software\\Example\\Telemetry
             "owner-review-required",
             "fixture-coverage-required",
             "dangerous-path-review-required",
+            "unsupported-semantics-review-required",
         ],
     )
     assert_contains_all(
@@ -125,8 +155,12 @@ def test_cleanerml_translation_keeps_external_rules_untrusted(
     payload = translate_external_rules_text(
         """
 <cleaners>
-  <cleaner id="example" label="Example Cleaner">
+  <cleaner id="example" label="Example Cleaner" category="Applications">
+    <option id="cache" label="Cache"/>
+    <detect path="%LocalAppData%\\Example"/>
+    <exclude path="%LocalAppData%\\Example\\Cache\\Keep"/>
     <action command="delete" path="%LocalAppData%\\Example\\Cache\\*"/>
+    <action command="wipe" regex="%LocalAppData%\\Example\\Logs\\.*"/>
     <action command="delete" path="%UserProfile%\\Downloads\\*"/>
   </cleaner>
 </cleaners>
@@ -140,9 +174,19 @@ def test_cleanerml_translation_keeps_external_rules_untrusted(
     assert_readonly_report(payload, EXTERNAL_RULE_TRANSLATION_SCHEMA)
     assert_execution_disabled(payload)
     assert_field_values(payload["source"], {"format": "cleanerml", "upstream_project": "BleachBit/CleanerML"})
-    assert_field_values(payload["summary"], {"candidate_count": 2, "execution_enabled_count": 0})
+    assert_field_values(payload["summary"], {"candidate_count": 3, "execution_enabled_count": 0, "unsupported_semantic_count": 2})
     assert {candidate["provenance"] for candidate in payload["candidates"]} == {"external-untrusted"}
-    assert_contains_all(payload["candidates"][1]["risk_flags"], ["user-document-directory"])
+    assert_field_values(
+        payload["candidates"][0],
+        {
+            "section_metadata.category": "Applications",
+            "section_metadata.option_count": 1,
+            "section_metadata.detect_count": 1,
+            "section_metadata.exclude_count": 1,
+        },
+    )
+    assert_contains_all(payload["candidates"][1]["unsupported_semantics"], ["action-command:wipe", "action-regex"])
+    assert_contains_all(payload["candidates"][2]["risk_flags"], ["user-document-directory"])
 
 
 def test_external_rule_translate_cli_reads_local_catalog(

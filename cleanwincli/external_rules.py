@@ -61,6 +61,11 @@ class _RawExternalRule:
     owner: str
     category_hint: str
     action: str
+    section_metadata: dict[str, Any]
+    detection: dict[str, Any]
+    exclusions: list[dict[str, str]]
+    unsupported_semantics: list[str]
+    warning: str = ""
 
 
 class _CasePreservingConfigParser(configparser.ConfigParser):
@@ -163,6 +168,11 @@ def _candidate_from_raw(raw: _RawExternalRule, source: ExternalRuleSource) -> di
         "title": raw.title,
         "original_pattern": raw.original_pattern,
         "action": raw.action,
+        "section_metadata": raw.section_metadata,
+        "detection": raw.detection,
+        "exclusions": raw.exclusions,
+        "unsupported_semantics": raw.unsupported_semantics,
+        "warning": raw.warning,
         "translated_cleanwin_rule": translated_rule,
         "review_required": True,
         "execution_enabled": False,
@@ -216,6 +226,7 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
     owner_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("owner") or ""))
     rationale_missing_count = sum(1 for candidate in candidates if not str(candidate.get("translated_cleanwin_rule", {}).get("rationale") or ""))
     dangerous_path_scan = _dangerous_path_scan(candidates)
+    unsupported_semantic_count = sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates)
     promotion_blockers = [
         "external-untrusted-provenance",
         "owner-review-required",
@@ -225,6 +236,8 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
     ]
     if dangerous_path_scan["dangerous_path_count"]:
         promotion_blockers.append("dangerous-path-review-required")
+    if unsupported_semantic_count:
+        promotion_blockers.append("unsupported-semantics-review-required")
     return {
         "schema": EXTERNAL_RULE_IMPORT_SANDBOX_SCHEMA,
         "destructive": False,
@@ -248,6 +261,7 @@ def _import_sandbox(candidates: list[dict[str, Any]], source: ExternalRuleSource
         "summary": {
             "candidate_count": len(candidates),
             "dangerous_path_count": dangerous_path_scan["dangerous_path_count"],
+            "unsupported_semantic_count": unsupported_semantic_count,
             "owner_missing_count": owner_missing_count,
             "rationale_missing_count": rationale_missing_count,
             "execution_enabled_count": sum(1 for candidate in candidates if candidate.get("execution_enabled")),
@@ -264,11 +278,41 @@ def _parse_winapp2(text: str) -> list[_RawExternalRule]:
     for section in parser.sections():
         title = section.strip()
         owner = title.rstrip("*").strip() or "external-winapp2"
+        section_items = dict(parser.items(section))
+        detection = {
+            "detect": [value for key, value in section_items.items() if key.lower().startswith("detect") and not key.lower().startswith("detectos")],
+            "detect_os": [value for key, value in section_items.items() if key.lower().startswith("detectos")],
+            "special_detect": [value for key, value in section_items.items() if key.lower().startswith("specialdetect")],
+        }
+        exclusions = [
+            {"key": key, "pattern": _normalise_path(value)}
+            for key, value in section_items.items()
+            if key.lower().startswith("excludekey")
+        ]
+        unsupported_section_semantics = [
+            key
+            for key in section_items
+            if key.lower().startswith(("specialdetect", "warning", "detectos"))
+        ]
+        warning = next((value for key, value in section_items.items() if key.lower().startswith("warning")), "")
+        section_metadata = {
+            "section": section,
+            "lang_sec_ref": section_items.get("LangSecRef", ""),
+            "detect_count": len(detection["detect"]),
+            "detect_os_count": len(detection["detect_os"]),
+            "special_detect_count": len(detection["special_detect"]),
+            "exclude_key_count": len(exclusions),
+            "warning_present": bool(warning),
+        }
         for key, value in parser.items(section):
-            if not key.lower().startswith(("filekey", "regkey")):
+            key_lower = key.lower()
+            if not key_lower.startswith(("filekey", "regkey")):
                 continue
             parts = [part.strip() for part in value.split("|")]
-            pattern = "\\".join(part for part in parts[:2] if part) if key.lower().startswith("filekey") else value
+            pattern = "\\".join(part for part in parts[:2] if part) if key_lower.startswith("filekey") else value
+            action_flags = parts[2:] if key_lower.startswith("filekey") else []
+            unsupported_semantics = list(unsupported_section_semantics)
+            unsupported_semantics.extend(flag for flag in action_flags if flag.upper() not in {"RECURSE", "REMOVESELF"})
             rules.append(
                 _RawExternalRule(
                     rule_id=f"{section}.{key}",
@@ -276,10 +320,33 @@ def _parse_winapp2(text: str) -> list[_RawExternalRule]:
                     original_pattern=pattern,
                     owner=owner,
                     category_hint=f"{section} {key}",
-                    action="filekey" if key.lower().startswith("filekey") else "regkey",
+                    action="filekey" if key_lower.startswith("filekey") else "regkey",
+                    section_metadata={**section_metadata, "entry_key": key, "filekey_flags": action_flags},
+                    detection=detection,
+                    exclusions=exclusions,
+                    unsupported_semantics=sorted(set(unsupported_semantics)),
+                    warning=warning,
                 )
             )
     return rules
+
+
+def _cleanerml_child_texts(element: ET.Element, child_name: str) -> list[str]:
+    values = []
+    for child in element:
+        if child.tag.lower().split("}")[-1] == child_name and child.text and child.text.strip():
+            values.append(child.text.strip())
+    return values
+
+
+def _cleanerml_child_attrs(element: ET.Element, child_name: str) -> list[dict[str, str]]:
+    values: list[dict[str, str]] = []
+    for child in element.iter():
+        if child is element:
+            continue
+        if child.tag.lower().split("}")[-1] == child_name:
+            values.append({str(key): str(value) for key, value in child.attrib.items()})
+    return values
 
 
 def _parse_cleanerml(text: str) -> list[_RawExternalRule]:
@@ -293,10 +360,35 @@ def _parse_cleanerml(text: str) -> list[_RawExternalRule]:
             continue
         cleaner_id = cleaner.attrib.get("id") or cleaner.attrib.get("name") or "cleanerml-cleaner"
         label = cleaner.attrib.get("label") or cleaner_id
+        category = cleaner.attrib.get("category") or cleaner.attrib.get("type") or ""
         for child in cleaner:
             if child.tag.lower().split("}")[-1] == "label" and child.text and child.text.strip():
                 label = child.text.strip()
                 break
+        options = [
+            {str(key): str(value) for key, value in option.attrib.items()}
+            for option in cleaner.iter()
+            if option.tag.lower().split("}")[-1] == "option"
+        ]
+        detect_attrs = _cleanerml_child_attrs(cleaner, "detect")
+        detect_texts = _cleanerml_child_texts(cleaner, "detect")
+        detection: dict[str, Any] = {
+            "detect": detect_attrs,
+            "detect_text": detect_texts,
+        }
+        exclusions = [
+            {"key": exclude.attrib.get("id") or exclude.attrib.get("type") or "exclude", "pattern": _normalise_path(exclude.attrib.get("path") or exclude.attrib.get("regex") or exclude.text or "")}
+            for exclude in cleaner.iter()
+            if exclude.tag.lower().split("}")[-1] == "exclude"
+        ]
+        section_metadata = {
+            "cleaner_id": cleaner_id,
+            "category": category,
+            "option_count": len(options),
+            "detect_count": len(detect_attrs) + len(detect_texts),
+            "exclude_count": len(exclusions),
+            "options": options,
+        }
         for action in cleaner.iter():
             if action.tag.lower().split("}")[-1] != "action":
                 continue
@@ -304,14 +396,25 @@ def _parse_cleanerml(text: str) -> list[_RawExternalRule]:
             if not pattern:
                 continue
             action_id = action.attrib.get("command") or action.attrib.get("id") or "action"
+            unsupported_semantics = []
+            if action.attrib.get("regex"):
+                unsupported_semantics.append("action-regex")
+            if action.attrib.get("search"):
+                unsupported_semantics.append("action-search")
+            if action_id.lower() not in {"delete", "deletefiles", "deletepath"}:
+                unsupported_semantics.append(f"action-command:{action_id}")
             rules.append(
                 _RawExternalRule(
                     rule_id=f"{cleaner_id}.{action_id}.{len(rules) + 1}",
                     title=label,
                     original_pattern=pattern,
                     owner=label,
-                    category_hint=f"{cleaner_id} {action_id}",
+                    category_hint=f"{cleaner_id} {category} {action_id}",
                     action=action_id,
+                    section_metadata={**section_metadata, "action_attributes": {str(key): str(value) for key, value in action.attrib.items()}},
+                    detection=detection,
+                    exclusions=exclusions,
+                    unsupported_semantics=sorted(set(unsupported_semantics)),
                 )
             )
     return rules
@@ -357,6 +460,7 @@ def translate_external_rules_text(
             "candidate_count": len(candidates),
             "review_required_count": sum(1 for candidate in candidates if candidate["review_required"]),
             "dangerous_path_count": sum(1 for candidate in candidates if candidate["dangerous_path"]),
+            "unsupported_semantic_count": sum(len(candidate.get("unsupported_semantics", [])) for candidate in candidates),
             "execution_enabled_count": sum(1 for candidate in candidates if candidate["execution_enabled"]),
             "owner_missing_count": import_sandbox["summary"]["owner_missing_count"],
             "rationale_missing_count": import_sandbox["summary"]["rationale_missing_count"],
