@@ -61,7 +61,12 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert_payload_schema(profile["locked_profile"], LOCKED_STATE_SCHEMA)
     assert_field_values(
         profile["locked_profile"],
-        {"process_scan_performed": False, "safe_to_execute": False, "method": "filesystem-lock-indicator-scan"},
+        {
+            "process_scan_performed": False,
+            "process_scan_source": "not-performed",
+            "safe_to_execute": False,
+            "method": "filesystem-lock-indicator-scan",
+        },
     )
     assert_contains_all(
         profile["locked_profile"]["blocked_reasons"],
@@ -78,6 +83,60 @@ def test_browser_inventory_reports_profiles_cache_layers_and_locks(
     assert_field_values(layers["Code Cache"], {"type": "code-cache"})
     for layer in profile["cache_layers"]:
         assert_safe_to_execute_disabled(layer)
+
+
+def test_browser_inventory_reports_running_process_and_sqlite_lock_indicators(
+    tmp_path: Path,
+    write_text_file: WriteTextFile,
+    assert_readonly_report: AssertReadonlyReport,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    local = tmp_path / "LocalAppData"
+    chrome_default = local / "Google" / "Chrome" / "User Data" / "Default"
+    write_text_file(chrome_default / "Cache" / "entry", "cache")
+    write_text_file(chrome_default / "History-wal", "wal")
+    write_text_file(chrome_default / "Login Data-shm", "shm")
+
+    report = browser_profile_inventory_report(
+        env={
+            "LOCALAPPDATA": str(local),
+            "APPDATA": str(tmp_path / "Roaming"),
+            "CLEANWIN_TEST_RUNNING_PROCESSES": "chrome.exe;Code.exe;notepad.exe",
+        }
+    )
+
+    assert_readonly_report(report, BROWSER_PROFILE_INVENTORY_SCHEMA)
+    assert_summary_counts(
+        report,
+        {
+            "profile_count": 1,
+            "locked_profile_count": 1,
+            "process_scan_performed": True,
+            "running_process_indicator_count": 2,
+        },
+    )
+    profile = report["profiles"][0]
+    assert_field_values(
+        profile["locked_profile"],
+        {
+            "state": "locked-or-running",
+            "method": "filesystem-and-process-indicator-scan",
+            "process_scan_performed": True,
+            "process_scan_source": "provided-process-list",
+        },
+    )
+    assert_contains_all(
+        profile["locked_profile"]["blocked_reasons"],
+        [
+            "profile-database-write-ahead-log-present",
+            "browser-process-running",
+            "related-electron-or-ide-process-running",
+        ],
+    )
+    evidence_types = {item["indicator_type"] for item in profile["locked_profile"]["evidence"]}
+    assert_contains_all(evidence_types, ["profile-database-wal", "browser-process-running", "related-electron-or-ide-process-running"])
 
 
 def test_browser_inventory_excludes_sensitive_profile_data(

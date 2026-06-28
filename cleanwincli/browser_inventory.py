@@ -45,6 +45,26 @@ FIREFOX_CACHE_LAYERS = {
     "crashes": "crash-reports",
 }
 
+_BROWSER_PROCESS_NAMES = {
+    "chrome": {"chrome.exe", "chrome", "chrome_proxy.exe"},
+    "edge": {"msedge.exe", "msedge", "microsoftedge.exe"},
+    "brave": {"brave.exe", "brave"},
+    "chrome-canary": {"chrome.exe", "chrome", "chrome_proxy.exe"},
+    "firefox": {"firefox.exe", "firefox", "plugin-container.exe"},
+}
+
+_RELATED_APP_PROCESS_NAMES = {
+    "electron.exe",
+    "code.exe",
+    "cursor.exe",
+    "teams.exe",
+    "slack.exe",
+    "discord.exe",
+    "idea64.exe",
+    "pycharm64.exe",
+    "webstorm64.exe",
+}
+
 
 def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
     return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
@@ -74,11 +94,48 @@ def _dir_size(path: Path) -> int:
     return total
 
 
-def _locked_state(profile_path: Path) -> dict[str, Any]:
+def _running_process_names(env: Mapping[str, str]) -> tuple[set[str], bool]:
+    raw = env.get("CLEANWIN_RUNNING_PROCESSES") or env.get("CLEANWIN_TEST_RUNNING_PROCESSES") or ""
+    if not raw:
+        return set(), False
+    separators = [",", ";", "\n", "\r", "\t"]
+    normalized = raw
+    for separator in separators:
+        normalized = normalized.replace(separator, " ")
+    return {item.strip().lower() for item in normalized.split(" ") if item.strip()}, True
+
+
+def _process_evidence(browser: str, process_names: set[str]) -> list[dict[str, Any]]:
+    expected = _BROWSER_PROCESS_NAMES.get(browser, set())
+    matches = sorted(name for name in process_names if name in expected)
+    related = sorted(name for name in process_names if name in _RELATED_APP_PROCESS_NAMES)
+    evidence: list[dict[str, Any]] = [
+        {"process_name": name, "exists": True, "indicator_type": "browser-process-running"} for name in matches
+    ]
+    evidence.extend({"process_name": name, "exists": True, "indicator_type": "related-electron-or-ide-process-running"} for name in related)
+    return evidence
+
+
+def _locked_state(profile_path: Path, *, browser: str, process_names: set[str], process_scan_performed: bool) -> dict[str, Any]:
     indicators = {
-        "process-lock-file": ["SingletonLock", "lock", ".parentlock", "parent.lock"],
+        "process-lock-file": ["SingletonLock", "lock", ".parentlock", "parent.lock", "parentlock"],
         "socket-or-cookie-lock": ["SingletonSocket", "SingletonCookie"],
-        "profile-database-wal": ["Cookies-wal", "Cookies-shm", "places.sqlite-wal", "places.sqlite-shm"],
+        "profile-database-wal": [
+            "Cookies-wal",
+            "Cookies-shm",
+            "History-wal",
+            "History-shm",
+            "Login Data-wal",
+            "Login Data-shm",
+            "Web Data-wal",
+            "Web Data-shm",
+            "places.sqlite-wal",
+            "places.sqlite-shm",
+            "cookies.sqlite-wal",
+            "cookies.sqlite-shm",
+            "favicons.sqlite-wal",
+            "favicons.sqlite-shm",
+        ],
     }
     evidence = []
     for indicator_type, names in indicators.items():
@@ -86,6 +143,7 @@ def _locked_state(profile_path: Path) -> dict[str, Any]:
             path = profile_path / name
             if _path_exists(path):
                 evidence.append({"path": str(path), "exists": True, "indicator_type": indicator_type})
+    evidence.extend(_process_evidence(browser, process_names))
     blocked_reasons = []
     if any(item["indicator_type"] == "process-lock-file" for item in evidence):
         blocked_reasons.append("profile-lock-file-present")
@@ -93,14 +151,19 @@ def _locked_state(profile_path: Path) -> dict[str, Any]:
         blocked_reasons.append("browser-singleton-lock-present")
     if any(item["indicator_type"] == "profile-database-wal" for item in evidence):
         blocked_reasons.append("profile-database-write-ahead-log-present")
+    if any(item["indicator_type"] == "browser-process-running" for item in evidence):
+        blocked_reasons.append("browser-process-running")
+    if any(item["indicator_type"] == "related-electron-or-ide-process-running" for item in evidence):
+        blocked_reasons.append("related-electron-or-ide-process-running")
     return {
         "schema": LOCKED_STATE_SCHEMA,
         "locked": bool(evidence),
         "state": "locked-or-running" if evidence else "not-observed",
         "evidence": evidence,
         "blocked_reasons": blocked_reasons,
-        "method": "filesystem-lock-indicator-scan",
-        "process_scan_performed": False,
+        "method": "filesystem-and-process-indicator-scan" if process_scan_performed else "filesystem-lock-indicator-scan",
+        "process_scan_performed": process_scan_performed,
+        "process_scan_source": "provided-process-list" if process_scan_performed else "not-performed",
         "safe_to_execute": False,
     }
 
@@ -121,7 +184,8 @@ def _layer_lock_state(profile_lock: dict[str, Any], layer_path: Path) -> dict[st
         "evidence": [*profile_lock.get("evidence", []), *layer_indicators],
         "blocked_reasons": sorted(set(blocked_reasons)),
         "method": "profile-and-cache-layer-lock-indicator-scan",
-        "process_scan_performed": False,
+        "process_scan_performed": bool(profile_lock.get("process_scan_performed")),
+        "process_scan_source": profile_lock.get("process_scan_source", "not-performed"),
         "safe_to_execute": False,
     }
 
@@ -158,13 +222,13 @@ def _chromium_profile_names(root: Path) -> list[str]:
     return sorted(set(names), key=str.lower)
 
 
-def _chromium_profiles(browser: str, owner: str, root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _chromium_profiles(browser: str, owner: str, root: Path, *, process_names: set[str], process_scan_performed: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     profiles = []
     for profile_name in _chromium_profile_names(root):
         profile_path = root / profile_name
         if not _path_exists(profile_path):
             continue
-        profile_lock = _locked_state(profile_path)
+        profile_lock = _locked_state(profile_path, browser=browser, process_names=process_names, process_scan_performed=process_scan_performed)
         profiles.append(
             {
                 "browser": browser,
@@ -183,7 +247,7 @@ def _chromium_profiles(browser: str, owner: str, root: Path) -> tuple[list[dict[
     return profiles, source
 
 
-def _firefox_profiles(root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def _firefox_profiles(root: Path, *, process_names: set[str], process_scan_performed: bool) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     profiles = []
     profile_roots: list[Path] = []
     if _path_exists(root):
@@ -192,7 +256,7 @@ def _firefox_profiles(root: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]
         except OSError:
             profile_roots = []
     for profile_path in sorted(profile_roots, key=lambda item: item.name.lower()):
-        profile_lock = _locked_state(profile_path)
+        profile_lock = _locked_state(profile_path, browser="firefox", process_names=process_names, process_scan_performed=process_scan_performed)
         profiles.append(
             {
                 "browser": "firefox",
@@ -215,6 +279,7 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
     local_app_data = current_env.get("LOCALAPPDATA")
     roaming_app_data = current_env.get("APPDATA")
     user_profile = current_env.get("USERPROFILE") or current_env.get("HOME")
+    process_names, process_scan_performed = _running_process_names(current_env)
 
     chromium_roots: list[tuple[str, str, Path]] = []
     if local_app_data:
@@ -232,12 +297,12 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
     profiles: list[dict[str, Any]] = []
     sources: list[dict[str, Any]] = []
     for browser, owner, root in chromium_roots:
-        browser_profiles, source = _chromium_profiles(browser, owner, root)
+        browser_profiles, source = _chromium_profiles(browser, owner, root, process_names=process_names, process_scan_performed=process_scan_performed)
         profiles.extend(browser_profiles)
         sources.append(source)
 
     if roaming_app_data:
-        firefox_profiles, source = _firefox_profiles(Path(roaming_app_data) / "Mozilla" / "Firefox" / "Profiles")
+        firefox_profiles, source = _firefox_profiles(Path(roaming_app_data) / "Mozilla" / "Firefox" / "Profiles", process_names=process_names, process_scan_performed=process_scan_performed)
         profiles.extend(firefox_profiles)
         sources.append(source)
     else:
@@ -261,6 +326,10 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
             "existing_cache_layer_count": sum(1 for layer in cache_layers if layer["exists"]),
             "promotable_cache_layer_count": sum(1 for layer in cache_layers if layer["promotable"]),
             "bytes_reported": sum(int(layer["size_bytes"]) for layer in cache_layers),
+            "process_scan_performed": process_scan_performed,
+            "running_process_indicator_count": sum(
+                1 for profile in profiles for item in profile["locked_profile"]["evidence"] if str(item.get("indicator_type", "")).endswith("process-running")
+            ),
         },
         "execution_gate": {
             "system_execution_enabled": False,

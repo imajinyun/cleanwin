@@ -413,9 +413,10 @@ cache surfaces can be reviewed separately by scripts and AI agents.
 
 `browser-profile-inventory` reports browser cache layers and a structured
 `cleanwin.locked-state.v1` contract for profile and cache-layer lock indicators,
-including singleton locks, socket/cookie locks, and database WAL/SHM files. The
-report does not scan processes, unlock files, close browsers, or delete cache
-layers.
+including singleton locks, socket/cookie locks, broader SQLite WAL/SHM files,
+and optional caller-provided running-process evidence. The report does not run
+native process commands, unlock files, close browsers, kill processes, or delete
+cache layers.
 
 ---
 

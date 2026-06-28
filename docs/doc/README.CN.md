@@ -400,8 +400,9 @@ diagnostic、media、build 和 dependency cache surface。
 
 `browser-profile-inventory` 会报告浏览器 cache layer，并为 profile 与
 cache-layer lock indicators 输出结构化 `cleanwin.locked-state.v1` contract，
-覆盖 singleton locks、socket/cookie locks 和 database WAL/SHM 文件。该报告不会
-扫描进程、解锁文件、关闭浏览器或删除 cache layer。
+覆盖 singleton locks、socket/cookie locks、更完整的 SQLite WAL/SHM 文件，以及
+可由调用方注入的 running-process evidence。该报告不会运行原生命令扫描进程、不会
+解锁文件、关闭浏览器、结束进程或删除 cache layer。
 
 ---
 
