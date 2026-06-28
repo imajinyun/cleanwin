@@ -228,7 +228,9 @@ python3 cleanwin.py --json execute-plan \
 > Controlled execution is limited to low-risk regenerable cache categories:
 > `temp`, `dev-cache`, `package-cache`, and `browser-cache`. Each executable
 > candidate must remain `recycle` mode, non-admin scoped, identity-checked, and
-> include a regeneration rationale. Higher-risk surfaces such as
+> include a regeneration rationale. Execution also requires an operation log,
+> the exact confirmation phrase, and the dry-run token from the matching plan.
+> Higher-risk surfaces such as
 > `app-leftovers`, registry, startup, services, tasks, AppX, Windows components,
 > installer cache, and Recycle Bin remain report/plan/validation only.
 

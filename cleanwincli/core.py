@@ -548,9 +548,25 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         )
     execution_handoff = {
         "safe_to_execute": bool(validation["valid"] and all(candidate.delete_mode == "recycle" and not candidate.requires_admin for candidate in candidates)),
+        "execution_profile": "controlled-low-risk-cache-recycle",
+        "allowed_candidate_categories": sorted(EXECUTABLE_CACHE_CATEGORIES),
+        "allowed_delete_modes": ["recycle"],
+        "requires_recycle_mode": True,
         "requires_human_confirmation": True,
         "requires_matching_dry_run_token": True,
+        "requires_operation_log": True,
+        "requires_identity_match": True,
+        "requires_regeneration_rationale": True,
         "requires_plan_context": require_context,
+        "requires_confirmation_phrase": CONFIRMATION_PHRASE,
+        "forbidden_actions": [
+            "permanent-delete",
+            "registry-mutation",
+            "appx-removal",
+            "service-disable",
+            "scheduled-task-disable",
+            "process-kill",
+        ],
         "required_predecessor_tools": [
             "cleanwin_validate_plan",
             "cleanwin_policy_simulate",

@@ -149,13 +149,26 @@ def test_review_plan_summarizes_execution_handoff(
     review = cleanwin_json("review-plan", "--plan-file", str(plan_file), "--no-require-plan-context", env=env)
     assert_readonly_report(review, "cleanwin.review.v1")
     assert_payload_status_true(review, "validation", "valid")
-    assert_field_values(review["execution_handoff"], {"requires_human_confirmation": True})
+    assert_field_values(
+        review["execution_handoff"],
+        {
+            "execution_profile": "controlled-low-risk-cache-recycle",
+            "requires_recycle_mode": True,
+            "requires_human_confirmation": True,
+            "requires_matching_dry_run_token": True,
+            "requires_operation_log": True,
+            "requires_identity_match": True,
+            "requires_regeneration_rationale": True,
+        },
+    )
     assert_summary_counts(review, {"candidate_count": 1})
     assert_field_values(
         review,
         {"rule_summary.0.rule_id": "dev-cache.npm.cache", "official_cleanup_commands": ["npm cache clean --force"]},
     )
     assert_contains_all(review["execution_handoff"]["required_predecessor_tools"], ["cleanwin_dry_run_plan"])
+    assert_contains_all(review["execution_handoff"]["allowed_delete_modes"], ["recycle"])
+    assert_contains_all(review["execution_handoff"]["forbidden_actions"], ["permanent-delete", "registry-mutation", "process-kill"])
 
 def test_review_plan_rejects_invalid_plan_exit_code(
     tmp_path: Path,

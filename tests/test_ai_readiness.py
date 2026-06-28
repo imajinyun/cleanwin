@@ -150,6 +150,7 @@ def test_ai_runbook_documents_safe_execution_gates(
     assert_payload_schema: AssertPayloadSchema,
     assert_field_values: AssertFieldValues,
     assert_exact_sequence: AssertExactSequence,
+    assert_contains_all: AssertContainsAll,
 ) -> None:
     report = ai_runbook_report()
     assert_payload_schema(report, "cleanwin.ai-runbook.v1")
@@ -158,6 +159,18 @@ def test_ai_runbook_documents_safe_execution_gates(
     assert_field_values(report["workflow"][-1], {"destructive": True})
     required_args = report["required_execution_arguments"]
     assert_field_values(required_args, {"delete_mode": "recycle", "require_plan_context": True})
+    contract = report["low_risk_cache_execution_contract"]
+    assert_field_values(
+        contract,
+        {
+            "schema": "cleanwin.low-risk-cache-execution-contract.v1",
+            "requires_exact_filesystem_identity": True,
+            "requires_operation_log": True,
+            "requires_matching_dry_run_token": True,
+        },
+    )
+    assert_contains_all(contract["allowed_delete_modes"], ["recycle"])
+    assert_contains_all(contract["forbidden_actions"], ["permanent-delete", "registry-mutation", "appx-removal", "process-kill"])
 
 
 def test_workflow_router_routes_intents_without_enabling_execution(
