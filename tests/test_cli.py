@@ -160,8 +160,15 @@ def test_review_plan_summarizes_execution_handoff(
             "requires_operation_log": True,
             "requires_identity_match": True,
             "requires_regeneration_rationale": True,
+            "required_readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
+            "required_readiness_validation_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
         },
     )
+    assert_contains_all(
+        review["execution_handoff"]["required_evidence_refs"],
+        ["dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate"],
+    )
+    assert_field_values(review["execution_handoff"], {"readiness_command": ["cleanwin", "--json", "low-risk-cache-readiness"]})
     assert_summary_counts(review, {"candidate_count": 1})
     assert_field_values(
         review,

@@ -41,8 +41,8 @@ def test_windows_evidence_bundle_is_readonly_jsonl_chain(
     records = _jsonl_records(report)
     by_id = {record["id"]: record for record in records}
 
-    assert_summary_counts(report, {"record_count": 12, "jsonl_line_count": 12, "execution_enabled_count": 0})
-    assert_exact_count(records, 12)
+    assert_summary_counts(report, {"record_count": 13, "jsonl_line_count": 13, "execution_enabled_count": 0})
+    assert_exact_count(records, 13)
     assert_contains_all(
         by_id,
         [
@@ -56,6 +56,7 @@ def test_windows_evidence_bundle_is_readonly_jsonl_chain(
             "rules.rule-pack-catalog",
             "rules.quality-dashboard",
             "rules.external-quality-summary",
+            "gate.low-risk-cache-readiness",
             "recovery.readiness",
             "matrix.windows-smoke",
         ],
@@ -75,6 +76,17 @@ def test_windows_evidence_bundle_is_readonly_jsonl_chain(
         },
     )
     assert_contains_all(by_id["rules.external-quality-summary"]["required_for"], ["external-rule-review", "promotion-gates"])
+    assert_field_values(
+        by_id["gate.low-risk-cache-readiness"],
+        {
+            "schema": WINDOWS_EVIDENCE_BUNDLE_RECORD_SCHEMA,
+            "kind": "gate-ref",
+            "payload_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
+            "payload_summary.execution_enabled_count": 0,
+            "payload_summary.safe_to_execute": False,
+        },
+    )
+    assert_contains_all(by_id["gate.low-risk-cache-readiness"]["required_for"], ["browser-cache-promotion", "promotion-gates"])
     assert_field_values(
         report["usage"],
         {

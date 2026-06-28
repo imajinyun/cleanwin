@@ -79,6 +79,8 @@ def test_schema_registry_includes_ai_host_critical_schemas(
             "cleanwin.workflow-trace.v1",
             "cleanwin.review.v1",
             "cleanwin.doctor.v1",
+            "cleanwin.contract-exposure-matrix.v1",
+            "cleanwin.contract-exposure-validation.v1",
         ]
     )
 
@@ -187,12 +189,21 @@ def test_workflow_context_schema_samples_are_registered(
     environment = assert_readonly_schema_sample("cleanwin.environment-index.v1")
     assert_field_values(environment, {"operation_log.required_for_execution": True})
 
-    samples = assert_schema_samples(["cleanwin.workflow-decision.v1", "cleanwin.workflow-trace.v1"])
+    samples = assert_schema_samples(
+        [
+            "cleanwin.workflow-decision.v1",
+            "cleanwin.workflow-trace.v1",
+            "cleanwin.low-risk-cache-readiness-validation.v1",
+        ]
+    )
     decision = samples["cleanwin.workflow-decision.v1"]
     assert_payload_status_false(decision, "allowed")
 
     trace = samples["cleanwin.workflow-trace.v1"]
     assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
+    readiness_validation = samples["cleanwin.low-risk-cache-readiness-validation.v1"]
+    assert_payload_status_false(readiness_validation, "valid")
+    assert_execution_disabled(readiness_validation)
 
 
 def test_schema_samples_cover_package_and_browser_cache_categories(

@@ -101,6 +101,13 @@ def workflow_trace_report() -> dict[str, Any]:
             {
                 "step": 7,
                 "route": "recycle-execution",
+                "artifact_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
+                "required": True,
+                "destructive": False,
+            },
+            {
+                "step": 8,
+                "route": "recycle-execution",
                 "artifact_schema": "cleanwin.operation-log.jsonl",
                 "required": True,
                 "destructive": True,

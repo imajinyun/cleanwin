@@ -115,6 +115,7 @@ def workflow_router_report() -> dict[str, Any]:
                     "human review",
                     "policy simulation allow decision",
                     "matching dry-run confirmation token",
+                    "low-risk cache readiness validation",
                     "operation log path",
                 ],
                 "required_arguments": {

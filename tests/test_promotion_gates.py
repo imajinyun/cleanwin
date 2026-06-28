@@ -3,6 +3,12 @@ from __future__ import annotations
 from collections.abc import Callable, Collection, Sequence
 from typing import Any
 
+from cleanwincli.cache_readiness import (
+    LOW_RISK_CACHE_EXECUTION_READINESS_SCHEMA,
+    LOW_RISK_CACHE_EXECUTION_READINESS_VALIDATION_SCHEMA,
+    low_risk_cache_execution_readiness_report,
+    validate_low_risk_cache_readiness,
+)
 from cleanwincli.promotion_gates import (
     PROMOTION_GATE_VALIDATION_SCHEMA,
     PROMOTION_GATES_SCHEMA,
@@ -75,7 +81,10 @@ def test_promotion_gates_cover_high_risk_report_surfaces(
 
     browser_gate = by_id["browser-profile-to-cache-plan"]
     assert_field_values(browser_gate, {"default_state": "low-risk-cache-only", "ai_auto_call_allowed": True})
-    assert_contains_all(browser_gate["required_evidence"], ["locked_profile_state", "locked_state_ref", "sensitive_exclusions"])
+    assert_contains_all(
+        browser_gate["required_evidence"],
+        ["locked_profile_state", "locked_state_ref", "sensitive_exclusions", "dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate"],
+    )
 
     external_rule_gate = by_id["external-rule-to-reviewed-rule-pack"]
     assert_field_values(external_rule_gate, {"target_action": "external-rule-review", "default_state": "report-only"})
@@ -126,6 +135,91 @@ def test_cli_ai_provider_and_schema_registry_expose_promotion_gates(
     assert_cli_provider_schema_sample("promotion-gates", PROMOTION_GATES_SCHEMA)
 
 
+def test_low_risk_cache_readiness_is_readonly_and_registered(
+    assert_readonly_report: AssertReadonlyReport,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_summary_counts: AssertSummaryCounts,
+    assert_contains_all: AssertContainsAll,
+    assert_cli_provider_schema_sample: AssertCliProviderSchemaSample,
+) -> None:
+    report = assert_readonly_report(
+        low_risk_cache_execution_readiness_report(),
+        LOW_RISK_CACHE_EXECUTION_READINESS_SCHEMA,
+    )
+
+    assert_execution_disabled(report, "execution_enabled")
+    assert_summary_counts(report, {"required_evidence_count": 8, "control_count": 8, "execution_enabled_count": 0})
+    assert_contains_all(
+        report["required_evidence"],
+        ["dry_run_token_ref", "operation_log_ref", "locked_state_ref", "identity_check_ref", "sensitive_exclusions", "rule_quality_gate"],
+    )
+    assert_contains_all(
+        report["promotion_validator"]["violation_codes"],
+        ["MISSING_DRY_RUN_TOKEN_EVIDENCE", "MISSING_OPERATION_LOG_EVIDENCE", "MISSING_IDENTITY_CHECK_EVIDENCE", "RULE_QUALITY_BLOCKS_CACHE_PROMOTION"],
+    )
+    assert_cli_provider_schema_sample("low-risk-cache-readiness", LOW_RISK_CACHE_EXECUTION_READINESS_SCHEMA)
+
+
+def test_low_risk_cache_readiness_validator_reports_missing_refs(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_low_risk_cache_readiness(
+        source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+        proposed_action={
+            "target_action": "browser-cache-delete",
+            "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
+        },
+    )
+
+    assert_payload_schema(validation, LOW_RISK_CACHE_EXECUTION_READINESS_VALIDATION_SCHEMA)
+    assert_field_values(validation, {"valid": False, "safe_to_execute": False})
+    assert_contains_all(validation["missing_evidence"], ["dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate"])
+    assert_contains_all(
+        {error["code"] for error in validation["errors"]},
+        ["MISSING_DRY_RUN_TOKEN_EVIDENCE", "MISSING_OPERATION_LOG_EVIDENCE", "MISSING_IDENTITY_CHECK_EVIDENCE", "MISSING_RULE_QUALITY_GATE_EVIDENCE"],
+    )
+    assert_execution_disabled(validation)
+
+
+def test_low_risk_cache_readiness_validator_blocks_rule_quality_gaps(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_low_risk_cache_readiness(
+        source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+        proposed_action={
+            "target_action": "browser-cache-delete",
+            "evidence": [
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "locked_state_ref",
+                "identity_check_ref",
+                "sensitive_exclusions",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": ["fixture-coverage-required"],
+            },
+        },
+    )
+
+    assert_payload_schema(validation, LOW_RISK_CACHE_EXECUTION_READINESS_VALIDATION_SCHEMA)
+    assert_field_values(validation, {"valid": False, "missing_evidence": []})
+    assert_contains_all(validation["quality_gate_blockers"], ["fixture-coverage-required"])
+    assert_contains_all({error["code"] for error in validation["errors"]}, ["RULE_QUALITY_BLOCKS_CACHE_PROMOTION"])
+    assert_execution_disabled(validation)
+
+
 def test_promotion_gate_validator_reports_missing_evidence_without_execution(
     assert_payload_schema: AssertPayloadSchema,
     assert_execution_disabled: AssertExecutionDisabled,
@@ -164,12 +258,32 @@ def test_promotion_gate_validator_accepts_complete_report_only_contract(
         source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
         proposed_action={
             "target_action": "browser-cache-delete",
-            "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
+            "evidence": [
+                "browser",
+                "profile_name",
+                "profile_path",
+                "cache_layer",
+                "locked_profile_state",
+                "locked_state_ref",
+                "sensitive_exclusions",
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             "snapshots": [],
             "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
-            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification", "execution-promotion-readiness"],
             "human_confirmations": ["matching-dry-run-token"],
             "locked_state": {"schema": "cleanwin.locked-state.v1", "locked": False, "state": "not-observed", "blocked_reasons": []},
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": [],
+            },
         },
     )
 
@@ -184,9 +298,92 @@ def test_promotion_gate_validator_accepts_complete_report_only_contract(
             "missing_tests": [],
             "missing_human_confirmations": [],
             "missing_locked_state_evidence": [],
+            "missing_cache_readiness_evidence": [],
             "errors": [],
         },
     )
+    assert_execution_disabled(validation)
+
+
+def test_promotion_gate_validator_blocks_cache_without_readiness_refs(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_promotion_gate_action(
+        source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+        proposed_action={
+            "target_action": "browser-cache-delete",
+            "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
+            "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
+            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+            "human_confirmations": ["matching-dry-run-token"],
+            "locked_state": {"schema": "cleanwin.locked-state.v1", "locked": False, "state": "unlocked", "blocked_reasons": []},
+        },
+    )
+
+    assert_payload_schema(validation, PROMOTION_GATE_VALIDATION_SCHEMA)
+    assert_field_values(validation, {"valid": False, "gate_id": "browser-profile-to-cache-plan"})
+    assert_contains_all(
+        validation["missing_cache_readiness_evidence"],
+        ["dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate", "recycle_mode", "confirmation_phrase"],
+    )
+    assert_contains_all(
+        {error["code"] for error in validation["errors"]},
+        [
+            "MISSING_DRY_RUN_TOKEN_EVIDENCE",
+            "MISSING_OPERATION_LOG_EVIDENCE",
+            "MISSING_IDENTITY_CHECK_EVIDENCE",
+            "MISSING_RULE_QUALITY_GATE_EVIDENCE",
+            "RECYCLE_MODE_REQUIRED",
+            "MISSING_CONFIRMATION_PHRASE_EVIDENCE",
+        ],
+    )
+    assert_execution_disabled(validation)
+
+
+def test_promotion_gate_validator_blocks_cache_when_rule_quality_has_blockers(
+    assert_payload_schema: AssertPayloadSchema,
+    assert_execution_disabled: AssertExecutionDisabled,
+    assert_contains_all: AssertContainsAll,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    validation = validate_promotion_gate_action(
+        source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+        proposed_action={
+            "target_action": "browser-cache-delete",
+            "evidence": [
+                "browser",
+                "profile_name",
+                "profile_path",
+                "cache_layer",
+                "locked_profile_state",
+                "locked_state_ref",
+                "sensitive_exclusions",
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
+            "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
+            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification", "execution-promotion-readiness"],
+            "human_confirmations": ["matching-dry-run-token"],
+            "locked_state": {"schema": "cleanwin.locked-state.v1", "locked": False, "state": "unlocked", "blocked_reasons": []},
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": ["fixture-coverage-required"],
+            },
+        },
+    )
+
+    assert_payload_schema(validation, PROMOTION_GATE_VALIDATION_SCHEMA)
+    assert_field_values(validation, {"valid": False, "gate_id": "browser-profile-to-cache-plan", "missing_cache_readiness_evidence": []})
+    assert_contains_all({error["code"] for error in validation["errors"]}, ["RULE_QUALITY_BLOCKS_CACHE_PROMOTION"])
     assert_execution_disabled(validation)
 
 
@@ -200,10 +397,29 @@ def test_promotion_gate_validator_blocks_browser_cache_without_locked_state(
         source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
         proposed_action={
             "target_action": "browser-cache-delete",
-            "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "sensitive_exclusions"],
+            "evidence": [
+                "browser",
+                "profile_name",
+                "profile_path",
+                "cache_layer",
+                "locked_profile_state",
+                "sensitive_exclusions",
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
-            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification", "execution-promotion-readiness"],
             "human_confirmations": ["matching-dry-run-token"],
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": [],
+            },
         },
     )
 
@@ -225,15 +441,35 @@ def test_promotion_gate_validator_blocks_locked_browser_cache(
         source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
         proposed_action={
             "target_action": "browser-cache-delete",
-            "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
+            "evidence": [
+                "browser",
+                "profile_name",
+                "profile_path",
+                "cache_layer",
+                "locked_profile_state",
+                "locked_state_ref",
+                "sensitive_exclusions",
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             "rollback_metadata": ["profile_path", "cache_layer", "recycle_destination"],
-            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+            "tests": ["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification", "execution-promotion-readiness"],
             "human_confirmations": ["matching-dry-run-token"],
             "locked_state": {
                 "schema": "cleanwin.locked-state.v1",
                 "locked": True,
                 "state": "locked-or-running",
                 "blocked_reasons": ["browser-process-running"],
+            },
+            "quality_gate": {
+                "schema": "cleanwin.external-rule-quality-gate.v1",
+                "execution_enabled": False,
+                "promotion_allowed": False,
+                "promotion_blockers": [],
             },
         },
     )

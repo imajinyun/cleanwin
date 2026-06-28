@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from cleanwincli.cache_readiness import low_risk_cache_execution_readiness_report, validate_low_risk_cache_readiness
+from cleanwincli.contract_exposure import contract_exposure_matrix, validate_contract_exposure_matrix
 from cleanwincli.evidence_bundle import windows_evidence_bundle_report
 from cleanwincli.execution_contracts import (
     appx_removal_plan_report,
@@ -104,6 +106,10 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.rule-quality-dashboard.v1", 1, "cleanwincli.rule_catalog", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gates.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.promotion-gate-validation.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.low-risk-cache-execution-readiness.v1", 1, "cleanwincli.cache_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.low-risk-cache-readiness-validation.v1", 1, "cleanwincli.cache_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.contract-exposure-matrix.v1", 1, "cleanwincli.contract_exposure", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.contract-exposure-validation.v1", 1, "cleanwincli.contract_exposure", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.registry-privacy-evidence.v1", 1, "cleanwincli.debloat_privacy", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.disable-revert-contract.v1", 1, "cleanwincli.execution_contracts", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1600,6 +1606,10 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
             "sensitive_exclusions": [],
             "execution_handoff": {
                 "safe_to_execute": True,
+                "required_readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
+                "required_readiness_validation_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
+                "readiness_command": ["cleanwin", "--json", "low-risk-cache-readiness"],
+                "required_evidence_refs": ["dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate"],
                 "requires_human_confirmation": True,
                 "requires_matching_dry_run_token": True,
                 "requires_plan_context": True,
@@ -1739,6 +1749,20 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 "human_confirmations": [],
             },
         )
+    if schema_name == "cleanwin.low-risk-cache-execution-readiness.v1":
+        return low_risk_cache_execution_readiness_report()
+    if schema_name == "cleanwin.low-risk-cache-readiness-validation.v1":
+        return validate_low_risk_cache_readiness(
+            source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+            proposed_action={
+                "target_action": "browser-cache-delete",
+                "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
+            },
+        )
+    if schema_name == "cleanwin.contract-exposure-matrix.v1":
+        return contract_exposure_matrix()
+    if schema_name == "cleanwin.contract-exposure-validation.v1":
+        return validate_contract_exposure_matrix(contract_exposure_matrix())
     if schema_name == "cleanwin.debloat-privacy-report.v1":
         return _sample_debloat_privacy_report()
     if schema_name == "cleanwin.registry-privacy-evidence.v1":

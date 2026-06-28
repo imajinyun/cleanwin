@@ -214,6 +214,7 @@ def test_workflow_decision_blocks_destructive_route_without_artifacts(
     assert_payload_status_false(decision, "allowed")
     codes = {reason["code"] for reason in decision["blocking_reasons"]}
     assert_contains_all(codes, ["MISSING_REQUIRED_ARTIFACTS", "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES"])
+    assert_contains_all(decision["missing_artifacts"], ["low-risk cache readiness validation"])
 
 
 def test_workflow_trace_documents_required_artifact_chain(
@@ -224,7 +225,16 @@ def test_workflow_trace_documents_required_artifact_chain(
     trace = workflow_trace_report()
     assert_readonly_report(trace, WORKFLOW_TRACE_SCHEMA)
     schemas = [item["artifact_schema"] for item in trace["artifact_chain"]]
-    assert_contains_all(schemas, ["cleanwin.plan.v1", "cleanwin.review.v1", "cleanwin.ai-confirmation-summary.v1"])
+    assert_contains_all(
+        schemas,
+        [
+            "cleanwin.plan.v1",
+            "cleanwin.review.v1",
+            "cleanwin.ai-confirmation-summary.v1",
+            "cleanwin.low-risk-cache-readiness-validation.v1",
+            "cleanwin.operation-log.jsonl",
+        ],
+    )
     assert_execution_disabled(trace["execution_gate"], "ai_auto_call_allowed")
 
 

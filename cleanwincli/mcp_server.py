@@ -281,6 +281,10 @@ def resource_payload(uri: str) -> dict[str, Any]:
         return ai_tools_report("doctor")
     if uri == "cleanwin://engineering/recovery-readiness":
         return ai_tools_report("recovery-readiness")
+    if uri == "cleanwin://engineering/low-risk-cache-readiness":
+        return ai_tools_report("low-risk-cache-readiness")
+    if uri == "cleanwin://engineering/contract-exposure-matrix":
+        return ai_tools_report("contract-exposure-matrix")
     if uri == "cleanwin://inventory/installed-apps":
         return ai_tools_report("installed-app-inventory")
     if uri == "cleanwin://inventory/windows":
@@ -337,6 +341,8 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
             {"uri": "cleanwin://ai/workflow-trace", "name": "CleanWin workflow trace contract", "mimeType": "application/json"},
             {"uri": "cleanwin://engineering/doctor", "name": "CleanWin engineering doctor", "mimeType": "application/json"},
             {"uri": "cleanwin://engineering/recovery-readiness", "name": "CleanWin recovery readiness", "mimeType": "application/json"},
+            {"uri": "cleanwin://engineering/low-risk-cache-readiness", "name": "CleanWin low-risk cache readiness", "mimeType": "application/json"},
+            {"uri": "cleanwin://engineering/contract-exposure-matrix", "name": "CleanWin contract exposure matrix", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/installed-apps", "name": "CleanWin installed app inventory", "mimeType": "application/json"},
             {"uri": "cleanwin://inventory/windows", "name": "CleanWin Windows inventory baseline", "mimeType": "application/json"},
             {"uri": "cleanwin://plan/official-command-plan", "name": "CleanWin official command plan", "mimeType": "application/json"},

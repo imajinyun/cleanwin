@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from cleanwincli.cache_readiness import low_risk_cache_execution_readiness_report
 from cleanwincli.execution_contracts import (
     appx_removal_plan_report,
     registry_privacy_change_plan_report,
@@ -63,6 +64,7 @@ def windows_evidence_bundle_report() -> dict[str, Any]:
     recovery = recovery_readiness_report()
     rule_packs = rule_pack_catalog_report()
     rule_quality = rule_quality_dashboard_report()
+    cache_readiness = low_risk_cache_execution_readiness_report()
 
     records = [
         _record(
@@ -179,6 +181,20 @@ def windows_evidence_bundle_report() -> dict[str, Any]:
                 "execution_enabled": False,
                 "promotion_allowed": False,
                 "tracked_counts": rule_quality["external_import_quality"]["tracked_counts"],
+            },
+        ),
+        _record(
+            "gate.low-risk-cache-readiness",
+            kind="gate-ref",
+            ref="gate://low-risk-cache-execution-readiness/current",
+            schema=str(cache_readiness["schema"]),
+            producer="low-risk-cache-execution-readiness",
+            required_for=["browser-cache-promotion", "promotion-gates", "execution-expansion-review"],
+            payload_summary={
+                "required_evidence_count": cache_readiness["summary"]["required_evidence_count"],
+                "control_count": cache_readiness["summary"]["control_count"],
+                "execution_enabled_count": cache_readiness["summary"]["execution_enabled_count"],
+                "safe_to_execute": cache_readiness["promotion_validator"]["safe_to_execute"],
             },
         ),
         _record(

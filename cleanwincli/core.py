@@ -25,7 +25,9 @@ from cleanwincli.ai_schema import (
 from cleanwincli.ai_self_test import ai_self_test_report
 from cleanwincli.ai_versioning import negotiate_plan_schema, schema_registry
 from cleanwincli.browser_inventory import browser_profile_inventory_report
+from cleanwincli.cache_readiness import low_risk_cache_execution_readiness_report
 from cleanwincli.collectors import collect_candidates, collect_findings
+from cleanwincli.contract_exposure import contract_exposure_matrix, validate_contract_exposure_matrix
 from cleanwincli.debloat_privacy import debloat_privacy_report
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.environment_index import environment_index_report
@@ -39,7 +41,7 @@ from cleanwincli.execution_contracts import (
     rollback_drill_report,
     service_task_disable_plan_report,
 )
-from cleanwincli.external_rules import translate_external_rules_file
+from cleanwincli.external_rules import external_rule_translation_sample, translate_external_rules_file
 from cleanwincli.file_reports import file_report
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
@@ -551,6 +553,19 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         "execution_profile": "controlled-low-risk-cache-recycle",
         "allowed_candidate_categories": sorted(EXECUTABLE_CACHE_CATEGORIES),
         "allowed_delete_modes": ["recycle"],
+        "required_readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
+        "required_readiness_validation_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
+        "readiness_command": ["cleanwin", "--json", "low-risk-cache-readiness"],
+        "required_evidence_refs": [
+            "dry_run_token_ref",
+            "operation_log_ref",
+            "locked_state_ref",
+            "identity_check_ref",
+            "sensitive_exclusions",
+            "rule_quality_gate",
+            "recycle_mode",
+            "confirmation_phrase",
+        ],
         "requires_recycle_mode": True,
         "requires_human_confirmation": True,
         "requires_matching_dry_run_token": True,
@@ -635,6 +650,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return recovery_readiness_report()
     if provider == "scan-governance":
         return scan_governance_report()
+    if provider == "external-rule-translate":
+        return external_rule_translation_sample()
     if provider == "installed-app-inventory":
         return installed_app_inventory_report()
     if provider == "official-command-plan":
@@ -647,6 +664,10 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return rule_quality_dashboard_report()
     if provider == "promotion-gates":
         return promotion_gates_report()
+    if provider == "low-risk-cache-readiness":
+        return low_risk_cache_execution_readiness_report()
+    if provider == "contract-exposure-matrix":
+        return contract_exposure_matrix()
     if provider == "browser-profile-inventory":
         return browser_profile_inventory_report()
     if provider == "debloat-privacy-report":
@@ -783,6 +804,17 @@ def rule_quality_dashboard_command() -> dict[str, Any]:
 
 def promotion_gates_command() -> dict[str, Any]:
     return promotion_gates_report()
+
+
+def low_risk_cache_readiness_command() -> dict[str, Any]:
+    return low_risk_cache_execution_readiness_report()
+
+
+def contract_exposure_matrix_command(*, validate: bool = False) -> dict[str, Any]:
+    report = contract_exposure_matrix()
+    if validate:
+        return validate_contract_exposure_matrix(report)
+    return report
 
 
 def browser_profile_inventory_command() -> dict[str, Any]:

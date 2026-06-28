@@ -19,6 +19,7 @@ from cleanwincli.core import (
     browser_profile_inventory_command,
     build_plan,
     capabilities,
+    contract_exposure_matrix_command,
     debloat_privacy_report_command,
     disable_revert_contract_command,
     doctor_report,
@@ -30,6 +31,7 @@ from cleanwincli.core import (
     inspect,
     installed_app_inventory_command,
     load_plan,
+    low_risk_cache_readiness_command,
     official_command_plan_command,
     permanent_delete_denial_command,
     policy_simulate,
@@ -134,6 +136,8 @@ def build_parser() -> argparse.ArgumentParser:
             "rule-pack-catalog",
             "rule-quality-dashboard",
             "promotion-gates",
+            "low-risk-cache-readiness",
+            "contract-exposure-matrix",
             "browser-profile-inventory",
             "debloat-privacy-report",
             "disable-revert-contract",
@@ -173,6 +177,9 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("rule-pack-catalog", help="show read-only cleanup rule pack catalog and quality scores")
     subparsers.add_parser("rule-quality-dashboard", help="show read-only cleanup rule quality dashboard")
     subparsers.add_parser("promotion-gates", help="show report-to-execution promotion gates")
+    subparsers.add_parser("low-risk-cache-readiness", help="show read-only low-risk cache execution readiness gates")
+    contract_exposure_parser = subparsers.add_parser("contract-exposure-matrix", help="show read-only contract exposure consistency matrix")
+    contract_exposure_parser.add_argument("--validate", action="store_true")
     subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
     subparsers.add_parser("debloat-privacy-report", help="show read-only debloat and privacy telemetry report")
     subparsers.add_parser("disable-revert-contract", help="show non-executable disable/revert action contracts")
@@ -324,6 +331,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "promotion-gates":
             emit(promotion_gates_command(), as_json=args.json)
             return 0
+        if args.command == "low-risk-cache-readiness":
+            emit(low_risk_cache_readiness_command(), as_json=args.json)
+            return 0
+        if args.command == "contract-exposure-matrix":
+            payload = contract_exposure_matrix_command(validate=args.validate)
+            emit(payload, as_json=args.json)
+            return 0 if payload.get("valid", False) else 2
         if args.command == "browser-profile-inventory":
             emit(browser_profile_inventory_command(), as_json=args.json)
             return 0

@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from cleanwincli.cache_readiness import CACHE_READINESS_REQUIRED_TESTS, validate_low_risk_cache_readiness
+
 PROMOTION_GATES_SCHEMA = "cleanwin.promotion-gates.v1"
 PROMOTION_GATE_VALIDATION_SCHEMA = "cleanwin.promotion-gate-validation.v1"
 
@@ -254,10 +256,16 @@ def promotion_gates_report() -> dict[str, Any]:
                 "locked_profile_state",
                 "locked_state_ref",
                 "sensitive_exclusions",
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
             ],
             required_snapshots=[],
             rollback_metadata=["profile_path", "cache_layer", "recycle_destination"],
-            required_tests=["fixture-locked-profile", "fixture-sensitive-data-excluded", "cache-layer-classification"],
+            required_tests=CACHE_READINESS_REQUIRED_TESTS,
             human_confirmations=["matching-dry-run-token"],
             ai_auto_call_allowed=True,
             rationale="Only regenerated browser cache layers may be promoted; cookies, passwords, sessions, extensions, and profile databases stay excluded.",
@@ -493,9 +501,13 @@ def validate_promotion_gate_action(
         missing_quality_gate_reviews, quality_gate_blockers, quality_errors = _external_rule_quality_errors(source_report, proposed_action)
         errors.extend(quality_errors)
     missing_locked_state_evidence: list[str] = []
+    missing_cache_readiness_evidence: list[str] = []
     if gate["id"] == "browser-profile-to-cache-plan":
         missing_locked_state_evidence, locked_state_errors = _browser_cache_locked_state_errors(source_report, proposed_action)
         errors.extend(locked_state_errors)
+        cache_readiness_validation = validate_low_risk_cache_readiness(source_report=source_report, proposed_action=proposed_action)
+        missing_cache_readiness_evidence = list(cache_readiness_validation["missing_evidence"])
+        errors.extend(cache_readiness_validation["errors"])
 
     return {
         "schema": PROMOTION_GATE_VALIDATION_SCHEMA,
@@ -515,6 +527,7 @@ def validate_promotion_gate_action(
         "missing_quality_gate_reviews": missing_quality_gate_reviews,
         "quality_gate_blockers": quality_gate_blockers,
         "missing_locked_state_evidence": missing_locked_state_evidence,
+        "missing_cache_readiness_evidence": missing_cache_readiness_evidence,
         "errors": errors,
         "safe_to_execute": False,
     }

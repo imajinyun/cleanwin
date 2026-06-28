@@ -61,7 +61,7 @@ Project metadata lives in `pyproject.toml`; the console scripts are `cleanwin` a
 | 🪟 Windows-aware policy | Rejects Windows roots, profile roots, credentials, browser profile data, WSL/Docker data, and servicing stores |
 | ♻️ Recycle-first deletion | Real execution uses Windows Recycle Bin; non-Windows real recycle execution fails closed outside test mode |
 | 🧾 Plan integrity | Plans include `cleanwin.plan.v1`, source fingerprint, host context, filesystem identity, category, rule, and rationale metadata |
-| 🤖 AI-native contracts | Exports 12 structured tools, provider formats, workflow routing, environment indexing, host policy, readiness, runbook, and self-test reports |
+| 🤖 AI-native contracts | Exports structured tools, provider formats, workflow routing, environment indexing, host policy, readiness, contract exposure, runbook, and self-test reports |
 | 🏗️ MCP stdio server | Serves structured MCP tools and resources without accepting raw shell commands |
 | 🔐 Single deletion exit | Destructive cleanup goes through `cleanwincli.delete_ops.safe_delete` |
 
@@ -252,6 +252,8 @@ python3 cleanwin.py --json windows-inventory
 python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json rule-quality-dashboard
+python3 cleanwin.py --json low-risk-cache-readiness
+python3 cleanwin.py --json contract-exposure-matrix --validate
 python3 cleanwin.py --json browser-profile-inventory
 python3 cleanwin.py --json debloat-privacy-report
 python3 cleanwin.py --json registry-privacy-plan
@@ -377,9 +379,10 @@ extensions, expected top-level files and directories, required manifest/record
 fields, SHA-256 hash requirements, context fields such as Windows version and
 managed/unmanaged status, and forbidden command fragments.
 `windows-artifact-validate` reads an existing `manifest.json` and local artifact
-files, then reports missing fields, unsafe relative paths, unsupported
-extensions, forbidden command fragments, summary mismatches, missing files, and
-SHA-256 mismatches. The validator does not run the collector or execute
+files, then reports `cleanwin.windows-native-artifact-validation.v1` issues for
+missing fields, unsafe relative paths, unsupported extensions, forbidden command
+fragments, summary mismatches, missing files, and SHA-256 mismatches. The
+validator does not run the collector or execute
 PowerShell, DISM, registry, service, scheduled task, package manager, cleanup,
 repair, remove, import, disable, or uninstall commands.
 
@@ -394,7 +397,30 @@ service dependency/trigger/recovery review, service registry export, and
 scheduled task XML export. These gates are still non-executable contracts.
 The promotion gate validator can compare a source report schema and a proposed
 action contract, then return missing evidence, snapshots, rollback metadata,
-tests, and human confirmations without enabling execution.
+tests, and human confirmations as `cleanwin.promotion-gate-validation.v1`
+without enabling execution.
+
+`low-risk-cache-readiness` is a report-only governance contract for future
+cache execution promotion. It aggregates the required evidence for low-risk
+cache candidates: dry-run token reference, operation log reference, locked
+state reference, identity check reference, sensitive exclusions, rule quality
+gate, recycle mode, and confirmation phrase. The same readiness evidence is
+required by browser cache promotion gates and preset plan templates. The report
+keeps `execution_enabled=false` and does not run cleanup.
+The paired `cleanwin.low-risk-cache-readiness-validation.v1` contract validates
+the same evidence as machine-readable blockers, and workflow decision/trace
+contracts require that validation artifact before any recycle execution
+handoff.
+
+`contract-exposure-matrix` emits `cleanwin.contract-exposure-matrix.v1` and the
+paired `cleanwin.contract-exposure-validation.v1` consistency check. It keeps
+governance contracts aligned across the schema registry, CLI commands,
+`ai-tools --provider`, MCP resources, workflow trace references, evidence
+bundle references, and docs mentions. The matrix is read-only and only reports
+missing exposure such as `MISSING_SCHEMA_REGISTRY_ENTRY`,
+`MISSING_CLI_COMMAND`, `MISSING_AI_TOOLS_PROVIDER`, `MISSING_MCP_RESOURCE`,
+`MISSING_DOCS_REFERENCE`, `MISSING_WORKFLOW_TRACE_REFERENCE`, and
+`MISSING_EVIDENCE_BUNDLE_REFERENCE`.
 
 `external-rule-translate` parses a local `winapp2.ini` or CleanerML XML file
 into `cleanwin.external-rule-translation.v1` candidates. The translator is
@@ -405,7 +431,8 @@ detection metadata, exclusions, unsupported semantics, sensitive exclusions,
 dangerous path flags, and `review_required=true`. The import sandbox also emits
 a review queue and provenance index so translated winapp2/CleanerML rules remain
 report-only until owner review and promotion gates approve them.
-Translated candidates also expose a quality gate with risk, recoverability,
+Translated candidates also expose an `external-rule-quality` gate through
+`cleanwin.external-rule-quality-summary.v1`, with risk, recoverability,
 dangerous path count, unsupported semantic count, active marker gaps, sensitive
 exclusion gaps, and fixture coverage gaps.
 
@@ -438,7 +465,7 @@ cache layers.
 
 ## 🤖 AI Invocation Patterns
 
-cleanwin exposes 8 AI tools:
+cleanwin exposes structured AI tools:
 
 | Tool | Risk | Auto-call | Purpose |
 |---|---:|---:|---|
@@ -492,7 +519,7 @@ The server:
 - Rejects unknown tools and invalid arguments.
 - Denies raw command arguments.
 - Applies cleanwin host-policy checks before calling the CLI.
-- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://inventory/installed-apps`, `cleanwin://inventory/windows`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, and `cleanwin://inventory/startup-services`.
+- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/schema-registry`, `cleanwin://ai/schema-validation`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://ai/runbook`, `cleanwin://ai/workflow-router`, `cleanwin://ai/environment-index`, `cleanwin://ai/workflow-decision`, `cleanwin://ai/workflow-trace`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://engineering/low-risk-cache-readiness`, `cleanwin://engineering/contract-exposure-matrix`, `cleanwin://inventory/installed-apps`, `cleanwin://inventory/windows`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, `cleanwin://inventory/startup-services`, and `cleanwin://plan/review-sample`.
 
 To point the MCP server at a specific CLI script or binary:
 
@@ -570,7 +597,7 @@ CI entrypoint:
 - `windows-smoke-matrix` tracks required Windows 10/11 evidence for read-only debloat/privacy, startup/service/task, and system-health diagnostics before any execution-model expansion.
 - `system-health-report` remains diagnostic-only and uses scan/review commands such as DISM `ScanHealth`/`CheckHealth`, SFC scan, CHKDSK scan, Settings troubleshooters, and pending reboot registry queries without repair flags.
 - `system-health-evidence` parser contracts convert captured DISM and pending reboot registry-query output into structured findings without running DISM, registry commands, or repair actions.
-- `windows-evidence-bundle` emits a caller-managed JSONL evidence chain that links report refs, snapshot refs, simulated plan refs, rollback drill refs, promotion gate refs, recovery readiness refs, and Windows smoke CI refs. It does not write files, collect Windows artifacts, or run cleanup, registry, AppX, service, task, DISM, or PowerShell commands.
+- `windows-evidence-bundle` emits `cleanwin.windows-evidence-bundle.v1` as a caller-managed JSONL evidence chain that links report refs, snapshot refs, simulated plan refs, rollback drill refs, promotion gate refs, low-risk cache readiness refs, recovery readiness refs, and Windows smoke CI refs. It does not write files, collect Windows artifacts, or run cleanup, registry, AppX, service, task, DISM, or PowerShell commands.
 
 Governance roadmap:
 

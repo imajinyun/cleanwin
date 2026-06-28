@@ -16,6 +16,7 @@ def _preset(
     risk: str,
     target_user: str,
     review_steps: list[str],
+    required_evidence: list[str],
 ) -> dict[str, Any]:
     argv = ["cleanwin", "--json", "plan", "--categories", ",".join(categories)]
     for rule_id in rule_ids:
@@ -27,6 +28,7 @@ def _preset(
         "rule_ids": rule_ids,
         "risk": risk,
         "target_user": target_user,
+        "required_evidence": required_evidence,
         "plan_template": {
             "schema": "cleanwin.preset-plan-template.v1",
             "argv": argv,
@@ -35,6 +37,9 @@ def _preset(
             "requires_plan_review": True,
             "requires_validate_plan": True,
             "requires_matching_dry_run_token": True,
+            "requires_readiness_report": True,
+            "readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
+            "required_evidence": required_evidence,
         },
         "review_steps": review_steps,
     }
@@ -55,6 +60,14 @@ def preset_catalog_report() -> dict[str, Any]:
             ],
             risk="low",
             target_user="general-developer",
+            required_evidence=[
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             review_steps=["Review candidate paths before execution.", "Prefer official cleanup commands where available."],
         ),
         _preset(
@@ -72,6 +85,16 @@ def preset_catalog_report() -> dict[str, Any]:
             ],
             risk="medium",
             target_user="browser-heavy-user",
+            required_evidence=[
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "locked_state_ref",
+                "identity_check_ref",
+                "sensitive_exclusions",
+                "rule_quality_gate",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             review_steps=["Confirm browser profiles are not locked.", "Exclude cookies, passwords, sessions, extensions, history, and profile databases."],
         ),
         _preset(
@@ -87,6 +110,16 @@ def preset_catalog_report() -> dict[str, Any]:
             ],
             risk="medium",
             target_user="app-cleanup-review",
+            required_evidence=[
+                "dry_run_token_ref",
+                "operation_log_ref",
+                "identity_check_ref",
+                "rule_quality_gate",
+                "active_install_marker",
+                "installed_app_inventory_ref",
+                "recycle_mode",
+                "confirmation_phrase",
+            ],
             review_steps=["Check installed-app-inventory before planning leftovers.", "Skip cleanup when active install markers are present."],
         ),
     ]
@@ -106,6 +139,7 @@ def preset_catalog_report() -> dict[str, Any]:
             "requires_explicit_plan_generation": True,
             "requires_validate_plan": True,
             "requires_human_review": True,
+            "requires_readiness_report": True,
             "requires_matching_dry_run_token": True,
             "ai_auto_call_allowed": False,
         },
