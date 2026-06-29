@@ -33,6 +33,7 @@ from cleanwincli.core import (
     load_plan,
     low_risk_cache_readiness_command,
     official_command_plan_command,
+    operation_log_readiness_command,
     permanent_delete_denial_command,
     policy_simulate,
     preset_catalog_command,
@@ -137,6 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
             "rule-quality-dashboard",
             "promotion-gates",
             "low-risk-cache-readiness",
+            "operation-log-readiness",
             "contract-exposure-matrix",
             "browser-profile-inventory",
             "debloat-privacy-report",
@@ -178,6 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("rule-quality-dashboard", help="show read-only cleanup rule quality dashboard")
     subparsers.add_parser("promotion-gates", help="show report-to-execution promotion gates")
     subparsers.add_parser("low-risk-cache-readiness", help="show read-only low-risk cache execution readiness gates")
+    subparsers.add_parser("operation-log-readiness", help="show read-only operation log readiness gates")
     contract_exposure_parser = subparsers.add_parser("contract-exposure-matrix", help="show read-only contract exposure consistency matrix")
     contract_exposure_parser.add_argument("--validate", action="store_true")
     subparsers.add_parser("browser-profile-inventory", help="show read-only browser profile and cache layer inventory")
@@ -333,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "low-risk-cache-readiness":
             emit(low_risk_cache_readiness_command(), as_json=args.json)
+            return 0
+        if args.command == "operation-log-readiness":
+            emit(operation_log_readiness_command(), as_json=args.json)
             return 0
         if args.command == "contract-exposure-matrix":
             payload = contract_exposure_matrix_command(validate=args.validate)

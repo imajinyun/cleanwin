@@ -43,6 +43,7 @@ MCP_RESOURCE_SCHEMAS: tuple[tuple[str, str], ...] = (
     ("cleanwin://engineering/doctor", "cleanwin.doctor.v1"),
     ("cleanwin://engineering/recovery-readiness", "cleanwin.recovery-readiness.v1"),
     ("cleanwin://engineering/low-risk-cache-readiness", "cleanwin.low-risk-cache-execution-readiness.v1"),
+    ("cleanwin://engineering/operation-log-readiness", "cleanwin.operation-log-readiness.v1"),
     ("cleanwin://engineering/contract-exposure-matrix", "cleanwin.contract-exposure-matrix.v1"),
     ("cleanwin://inventory/installed-apps", "cleanwin.installed-app-inventory.v1"),
     ("cleanwin://inventory/windows", "cleanwin.windows-inventory.v1"),

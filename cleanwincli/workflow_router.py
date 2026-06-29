@@ -108,7 +108,7 @@ def workflow_router_report() -> dict[str, Any]:
                 "auto_call_allowed": False,
                 "allowed_tools": ["cleanwin_execute_plan"],
                 "cli_commands": [["cleanwin", "--json", "execute-plan", "--execute"]],
-                "produces": ["cleanwin.execute.v1", "cleanwin.operation-log.jsonl"],
+                "produces": ["cleanwin.execute.v1", "cleanwin.operation-log-readiness-validation.v1", "cleanwin.operation-log.jsonl"],
                 "required_previous_steps": ["validate-and-review", "dry-run-execution"],
                 "required_artifacts": [
                     "validated plan",
@@ -116,6 +116,7 @@ def workflow_router_report() -> dict[str, Any]:
                     "policy simulation allow decision",
                     "matching dry-run confirmation token",
                     "low-risk cache readiness validation",
+                    "operation log readiness validation",
                     "operation log path",
                 ],
                 "required_arguments": {

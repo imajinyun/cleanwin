@@ -19,6 +19,7 @@ from cleanwincli.execution_contracts import (
     validate_service_task_disable_plan,
 )
 from cleanwincli.external_rules import external_rule_quality_summary, external_rule_translation_sample
+from cleanwincli.operation_log_readiness import operation_log_readiness_report, validate_operation_log_readiness
 from cleanwincli.promotion_gates import validate_promotion_gate_action
 from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dashboard_report
 from cleanwincli.system_health import system_health_evidence_report
@@ -108,6 +109,8 @@ _REGISTRY: tuple[tuple[str, int, str, str, str, str, tuple[str, ...]], ...] = (
     ("cleanwin.promotion-gate-validation.v1", 1, "cleanwincli.promotion_gates", "stable", "contract", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.low-risk-cache-execution-readiness.v1", 1, "cleanwincli.cache_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.low-risk-cache-readiness-validation.v1", 1, "cleanwincli.cache_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.operation-log-readiness.v1", 1, "cleanwincli.operation_log_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
+    ("cleanwin.operation-log-readiness-validation.v1", 1, "cleanwincli.operation_log_readiness", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.contract-exposure-matrix.v1", 1, "cleanwincli.contract_exposure", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.contract-exposure-validation.v1", 1, "cleanwincli.contract_exposure", "stable", "governance", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
     ("cleanwin.debloat-privacy-report.v1", 1, "cleanwincli.debloat_privacy", "stable", "report", "cleanwin", ("cli", "ai-host", "mcp", "ci")),
@@ -1492,10 +1495,29 @@ def _sample_workflow_decision() -> dict[str, Any]:
         "auto_call_allowed": False,
         "allowed_tools": ["cleanwin_execute_plan"],
         "provided_artifacts": [],
-        "required_artifacts": ["validated plan", "human review", "policy simulation allow decision", "matching dry-run confirmation token", "operation log path"],
-        "missing_artifacts": ["validated plan", "human review", "policy simulation allow decision", "matching dry-run confirmation token", "operation log path"],
+        "required_artifacts": [
+            "validated plan",
+            "human review",
+            "policy simulation allow decision",
+            "matching dry-run confirmation token",
+            "low-risk cache readiness validation",
+            "operation log readiness validation",
+            "operation log path",
+        ],
+        "missing_artifacts": [
+            "validated plan",
+            "human review",
+            "policy simulation allow decision",
+            "matching dry-run confirmation token",
+            "low-risk cache readiness validation",
+            "operation log readiness validation",
+            "operation log path",
+        ],
         "blocking_reasons": [
-            {"code": "MISSING_REQUIRED_ARTIFACTS", "detail": "validated plan, human review, policy simulation allow decision, matching dry-run confirmation token, operation log path"},
+            {
+                "code": "MISSING_REQUIRED_ARTIFACTS",
+                "detail": "validated plan, human review, policy simulation allow decision, matching dry-run confirmation token, low-risk cache readiness validation, operation log readiness validation, operation log path",
+            },
             {"code": "DESTRUCTIVE_ROUTE_REQUIRES_MANUAL_GATES", "detail": "Destructive routes are not auto-callable and require explicit execution gates."},
         ],
     }
@@ -1513,9 +1535,20 @@ def _sample_workflow_trace() -> dict[str, Any]:
             {"step": 2, "route": "read-only-inventory", "artifact_schema": "cleanwin.inspect.v1", "required": True},
             {"step": 3, "route": "plan-cleanup", "artifact_schema": "cleanwin.plan.v1", "required": True},
             {"step": 4, "route": "validate-and-review", "artifact_schema": "cleanwin.review.v1", "required": True},
-            {"step": 5, "route": "dry-run-execution", "artifact_schema": "cleanwin.ai-confirmation-summary.v1", "required": True},
+            {"step": 5, "route": "validate-and-review", "artifact_schema": "cleanwin.ai-policy-simulation.v1", "required": True},
+            {"step": 6, "route": "dry-run-execution", "artifact_schema": "cleanwin.ai-confirmation-summary.v1", "required": True},
+            {"step": 7, "route": "recycle-execution", "artifact_schema": "cleanwin.low-risk-cache-readiness-validation.v1", "required": True, "destructive": False},
+            {"step": 8, "route": "recycle-execution", "artifact_schema": "cleanwin.operation-log-readiness-validation.v1", "required": True, "destructive": False},
+            {"step": 9, "route": "recycle-execution", "artifact_schema": "cleanwin.operation-log.jsonl", "required": True, "destructive": True},
         ],
-        "execution_gate": {"requires_all_prior_artifacts": True, "requires_matching_dry_run_token": True, "requires_operation_log": True, "ai_auto_call_allowed": False},
+        "execution_gate": {
+            "requires_all_prior_artifacts": True,
+            "requires_matching_plan_fingerprint": True,
+            "requires_matching_dry_run_token": True,
+            "requires_operation_log": True,
+            "requires_operation_log_readiness_validation": True,
+            "ai_auto_call_allowed": False,
+        },
         "non_goals": ["This report does not read local artifact files.", "This report does not execute cleanup."],
     }
 
@@ -1608,10 +1641,14 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 "safe_to_execute": True,
                 "required_readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
                 "required_readiness_validation_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
+                "required_operation_log_readiness_schema": "cleanwin.operation-log-readiness.v1",
+                "required_operation_log_readiness_validation_schema": "cleanwin.operation-log-readiness-validation.v1",
                 "readiness_command": ["cleanwin", "--json", "low-risk-cache-readiness"],
-                "required_evidence_refs": ["dry_run_token_ref", "operation_log_ref", "identity_check_ref", "rule_quality_gate"],
+                "operation_log_readiness_command": ["cleanwin", "--json", "operation-log-readiness"],
+                "required_evidence_refs": ["dry_run_token_ref", "operation_log_ref", "operation_log_readiness_ref", "identity_check_ref", "rule_quality_gate"],
                 "requires_human_confirmation": True,
                 "requires_matching_dry_run_token": True,
+                "requires_operation_log_readiness": True,
                 "requires_plan_context": True,
                 "required_predecessor_tools": ["cleanwin_validate_plan", "cleanwin_policy_simulate", "cleanwin_dry_run_plan", "cleanwin_execute_plan"],
                 "blocked_reasons": [],
@@ -1758,6 +1795,13 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 "target_action": "browser-cache-delete",
                 "evidence": ["browser", "profile_name", "profile_path", "cache_layer", "locked_profile_state", "locked_state_ref", "sensitive_exclusions"],
             },
+        )
+    if schema_name == "cleanwin.operation-log-readiness.v1":
+        return operation_log_readiness_report()
+    if schema_name == "cleanwin.operation-log-readiness-validation.v1":
+        return validate_operation_log_readiness(
+            source_report={"schema": "cleanwin.browser-profile-inventory.v1"},
+            proposed_action={"target_action": "browser-cache-delete"},
         )
     if schema_name == "cleanwin.contract-exposure-matrix.v1":
         return contract_exposure_matrix()

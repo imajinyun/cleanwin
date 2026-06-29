@@ -108,6 +108,13 @@ def workflow_trace_report() -> dict[str, Any]:
             {
                 "step": 8,
                 "route": "recycle-execution",
+                "artifact_schema": "cleanwin.operation-log-readiness-validation.v1",
+                "required": True,
+                "destructive": False,
+            },
+            {
+                "step": 9,
+                "route": "recycle-execution",
                 "artifact_schema": "cleanwin.operation-log.jsonl",
                 "required": True,
                 "destructive": True,
@@ -118,6 +125,7 @@ def workflow_trace_report() -> dict[str, Any]:
             "requires_matching_plan_fingerprint": True,
             "requires_matching_dry_run_token": True,
             "requires_operation_log": True,
+            "requires_operation_log_readiness_validation": True,
             "ai_auto_call_allowed": False,
         },
         "non_goals": ["This report does not read local artifact files.", "This report does not execute cleanup."],

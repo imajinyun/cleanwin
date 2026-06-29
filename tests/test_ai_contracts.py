@@ -194,6 +194,7 @@ def test_workflow_context_schema_samples_are_registered(
             "cleanwin.workflow-decision.v1",
             "cleanwin.workflow-trace.v1",
             "cleanwin.low-risk-cache-readiness-validation.v1",
+            "cleanwin.operation-log-readiness-validation.v1",
         ]
     )
     decision = samples["cleanwin.workflow-decision.v1"]
@@ -204,6 +205,9 @@ def test_workflow_context_schema_samples_are_registered(
     readiness_validation = samples["cleanwin.low-risk-cache-readiness-validation.v1"]
     assert_payload_status_false(readiness_validation, "valid")
     assert_execution_disabled(readiness_validation)
+    operation_log_readiness_validation = samples["cleanwin.operation-log-readiness-validation.v1"]
+    assert_payload_status_false(operation_log_readiness_validation, "valid")
+    assert_execution_disabled(operation_log_readiness_validation)
 
 
 def test_schema_samples_cover_package_and_browser_cache_categories(

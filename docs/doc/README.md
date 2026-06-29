@@ -253,6 +253,7 @@ python3 cleanwin.py --json official-command-plan
 python3 cleanwin.py --json rule-pack-catalog
 python3 cleanwin.py --json rule-quality-dashboard
 python3 cleanwin.py --json low-risk-cache-readiness
+python3 cleanwin.py --json operation-log-readiness
 python3 cleanwin.py --json contract-exposure-matrix --validate
 python3 cleanwin.py --json browser-profile-inventory
 python3 cleanwin.py --json debloat-privacy-report
@@ -403,14 +404,20 @@ without enabling execution.
 `low-risk-cache-readiness` is a report-only governance contract for future
 cache execution promotion. It aggregates the required evidence for low-risk
 cache candidates: dry-run token reference, operation log reference, locked
-state reference, identity check reference, sensitive exclusions, rule quality
-gate, recycle mode, and confirmation phrase. The same readiness evidence is
-required by browser cache promotion gates and preset plan templates. The report
-keeps `execution_enabled=false` and does not run cleanup.
+log readiness reference, locked state reference, identity check reference,
+sensitive exclusions, rule quality gate, recycle mode, and confirmation phrase.
+The same readiness evidence is required by browser cache promotion gates and
+preset plan templates. The report keeps `execution_enabled=false` and does not
+run cleanup.
 The paired `cleanwin.low-risk-cache-readiness-validation.v1` contract validates
 the same evidence as machine-readable blockers, and workflow decision/trace
 contracts require that validation artifact before any recycle execution
 handoff.
+`operation-log-readiness` adds the structured report-only companion contract
+for the operation log handoff. Its
+`cleanwin.operation-log-readiness-validation.v1` validator requires a structured
+readiness ref, recycle delete mode, matching dry-run token ref, and matching
+plan fingerprint before the low-risk cache readiness validator can pass.
 
 `contract-exposure-matrix` emits `cleanwin.contract-exposure-matrix.v1` and the
 paired `cleanwin.contract-exposure-validation.v1` consistency check. It keeps
@@ -420,7 +427,8 @@ bundle references, and docs mentions. The matrix is read-only and only reports
 missing exposure such as `MISSING_SCHEMA_REGISTRY_ENTRY`,
 `MISSING_CLI_COMMAND`, `MISSING_AI_TOOLS_PROVIDER`, `MISSING_MCP_RESOURCE`,
 `MISSING_DOCS_REFERENCE`, `MISSING_WORKFLOW_TRACE_REFERENCE`, and
-`MISSING_EVIDENCE_BUNDLE_REFERENCE`.
+`MISSING_EVIDENCE_BUNDLE_REFERENCE`. Optional matrix surfaces are marked
+`not_applicable` instead of counted as missing.
 
 `external-rule-translate` parses a local `winapp2.ini` or CleanerML XML file
 into `cleanwin.external-rule-translation.v1` candidates. The translator is
@@ -519,7 +527,7 @@ The server:
 - Rejects unknown tools and invalid arguments.
 - Denies raw command arguments.
 - Applies cleanwin host-policy checks before calling the CLI.
-- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/schema-registry`, `cleanwin://ai/schema-validation`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://ai/runbook`, `cleanwin://ai/workflow-router`, `cleanwin://ai/environment-index`, `cleanwin://ai/workflow-decision`, `cleanwin://ai/workflow-trace`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://engineering/low-risk-cache-readiness`, `cleanwin://engineering/contract-exposure-matrix`, `cleanwin://inventory/installed-apps`, `cleanwin://inventory/windows`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, `cleanwin://inventory/startup-services`, and `cleanwin://plan/review-sample`.
+- Exposes resources such as `cleanwin://ai/tools`, `cleanwin://ai/host-policy`, `cleanwin://ai/schema-registry`, `cleanwin://ai/schema-validation`, `cleanwin://ai/readiness`, `cleanwin://ai/self-test`, `cleanwin://ai/runbook`, `cleanwin://ai/workflow-router`, `cleanwin://ai/environment-index`, `cleanwin://ai/workflow-decision`, `cleanwin://ai/workflow-trace`, `cleanwin://engineering/doctor`, `cleanwin://engineering/recovery-readiness`, `cleanwin://engineering/low-risk-cache-readiness`, `cleanwin://engineering/operation-log-readiness`, `cleanwin://engineering/contract-exposure-matrix`, `cleanwin://inventory/installed-apps`, `cleanwin://inventory/windows`, `cleanwin://plan/official-command-plan`, `cleanwin://inventory/debloat-privacy`, `cleanwin://inventory/startup-services`, and `cleanwin://plan/review-sample`.
 
 To point the MCP server at a specific CLI script or binary:
 

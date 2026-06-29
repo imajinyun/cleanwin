@@ -42,13 +42,27 @@ class ContractExposureExpectation:
 CONTRACT_EXPOSURE_EXPECTATIONS: tuple[ContractExposureExpectation, ...] = (
     ContractExposureExpectation(
         contract_id="low-risk-cache-readiness",
-        schemas=("cleanwin.low-risk-cache-execution-readiness.v1", "cleanwin.low-risk-cache-readiness-validation.v1"),
+        schemas=(
+            "cleanwin.low-risk-cache-execution-readiness.v1",
+            "cleanwin.low-risk-cache-readiness-validation.v1",
+            "cleanwin.operation-log-readiness.v1",
+            "cleanwin.operation-log-readiness-validation.v1",
+        ),
         cli_command="low-risk-cache-readiness",
         ai_tools_provider="low-risk-cache-readiness",
         mcp_resource="cleanwin://engineering/low-risk-cache-readiness",
         workflow_trace_schema="cleanwin.low-risk-cache-readiness-validation.v1",
         evidence_bundle_ref="gate.low-risk-cache-readiness",
-        docs_refs=("low-risk-cache-readiness", "cleanwin.low-risk-cache-readiness-validation.v1"),
+        docs_refs=("low-risk-cache-readiness", "cleanwin.low-risk-cache-readiness-validation.v1", "operation-log-readiness"),
+    ),
+    ContractExposureExpectation(
+        contract_id="operation-log-readiness",
+        schemas=("cleanwin.operation-log-readiness.v1", "cleanwin.operation-log-readiness-validation.v1"),
+        cli_command="operation-log-readiness",
+        ai_tools_provider="operation-log-readiness",
+        mcp_resource="cleanwin://engineering/operation-log-readiness",
+        workflow_trace_schema="cleanwin.operation-log-readiness-validation.v1",
+        docs_refs=("operation-log-readiness", "cleanwin.operation-log-readiness-validation.v1"),
     ),
     ContractExposureExpectation(
         contract_id="promotion-gates",
@@ -165,7 +179,7 @@ def _status(value: bool | None) -> str:
 
 
 def _presence_row(name: str, value: bool | None) -> dict[str, Any]:
-    return {"name": name, "status": _status(value), "present": value is True}
+    return {"name": name, "status": _status(value), "present": value is True, "required": value is not None}
 
 
 def _missing_schema_errors(expectation: ContractExposureExpectation, schema_names: set[str]) -> list[dict[str, str]]:
@@ -258,6 +272,7 @@ def contract_exposure_matrix(
         },
         "non_goals": [
             "This matrix does not enable cleanup execution.",
+            "Rows marked not_applicable are optional exposure surfaces and are not counted as missing.",
             "This matrix does not run Windows, PowerShell, DISM, registry, AppX, service, task, or cleanup commands.",
             "This matrix only validates contract exposure consistency.",
         ],

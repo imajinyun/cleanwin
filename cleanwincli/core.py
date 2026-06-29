@@ -47,6 +47,7 @@ from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
 from cleanwincli.models import PLAN_SCHEMA, HostContext, Plan, plan_from_dict
 from cleanwincli.official_commands import official_command_plan_report
+from cleanwincli.operation_log_readiness import operation_log_readiness_report
 from cleanwincli.presets import preset_catalog_report
 from cleanwincli.promotion_gates import promotion_gates_report
 from cleanwincli.protection import validate_filesystem_candidate
@@ -555,10 +556,14 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         "allowed_delete_modes": ["recycle"],
         "required_readiness_schema": "cleanwin.low-risk-cache-execution-readiness.v1",
         "required_readiness_validation_schema": "cleanwin.low-risk-cache-readiness-validation.v1",
+        "required_operation_log_readiness_schema": "cleanwin.operation-log-readiness.v1",
+        "required_operation_log_readiness_validation_schema": "cleanwin.operation-log-readiness-validation.v1",
         "readiness_command": ["cleanwin", "--json", "low-risk-cache-readiness"],
+        "operation_log_readiness_command": ["cleanwin", "--json", "operation-log-readiness"],
         "required_evidence_refs": [
             "dry_run_token_ref",
             "operation_log_ref",
+            "operation_log_readiness_ref",
             "locked_state_ref",
             "identity_check_ref",
             "sensitive_exclusions",
@@ -570,6 +575,7 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         "requires_human_confirmation": True,
         "requires_matching_dry_run_token": True,
         "requires_operation_log": True,
+        "requires_operation_log_readiness": True,
         "requires_identity_match": True,
         "requires_regeneration_rationale": True,
         "requires_plan_context": require_context,
@@ -666,6 +672,8 @@ def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
         return promotion_gates_report()
     if provider == "low-risk-cache-readiness":
         return low_risk_cache_execution_readiness_report()
+    if provider == "operation-log-readiness":
+        return operation_log_readiness_report()
     if provider == "contract-exposure-matrix":
         return contract_exposure_matrix()
     if provider == "browser-profile-inventory":
@@ -808,6 +816,10 @@ def promotion_gates_command() -> dict[str, Any]:
 
 def low_risk_cache_readiness_command() -> dict[str, Any]:
     return low_risk_cache_execution_readiness_report()
+
+
+def operation_log_readiness_command() -> dict[str, Any]:
+    return operation_log_readiness_report()
 
 
 def contract_exposure_matrix_command(*, validate: bool = False) -> dict[str, Any]:

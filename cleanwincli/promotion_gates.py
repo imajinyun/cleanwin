@@ -258,6 +258,7 @@ def promotion_gates_report() -> dict[str, Any]:
                 "sensitive_exclusions",
                 "dry_run_token_ref",
                 "operation_log_ref",
+                "operation_log_readiness_ref",
                 "identity_check_ref",
                 "rule_quality_gate",
                 "recycle_mode",

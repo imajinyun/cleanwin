@@ -60,12 +60,13 @@ def test_contract_exposure_matrix_covers_governance_contracts(
     rows = _row_by_id(matrix)
 
     assert_payload_status_true(matrix, "valid")
-    assert_summary_counts(matrix, {"contract_count": 7, "missing_exposure_count": 0})
-    assert_exact_count(matrix["rows"], 7)
+    assert_summary_counts(matrix, {"contract_count": 8, "missing_exposure_count": 0})
+    assert_exact_count(matrix["rows"], 8)
     assert_contains_all(
         rows,
         [
             "low-risk-cache-readiness",
+            "operation-log-readiness",
             "promotion-gates",
             "workflow-decision",
             "workflow-trace",
@@ -82,6 +83,16 @@ def test_contract_exposure_matrix_covers_governance_contracts(
             "mcp_resource.status": "present",
             "workflow_trace.status": "present",
             "evidence_bundle.status": "present",
+            "docs.status": "present",
+        },
+    )
+    assert_field_values(
+        rows["operation-log-readiness"],
+        {
+            "cli_command.status": "present",
+            "ai_tools_provider.status": "present",
+            "mcp_resource.status": "present",
+            "workflow_trace.status": "present",
             "docs.status": "present",
         },
     )

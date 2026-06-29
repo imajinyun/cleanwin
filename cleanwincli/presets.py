@@ -63,6 +63,7 @@ def preset_catalog_report() -> dict[str, Any]:
             required_evidence=[
                 "dry_run_token_ref",
                 "operation_log_ref",
+                "operation_log_readiness_ref",
                 "identity_check_ref",
                 "rule_quality_gate",
                 "recycle_mode",
@@ -88,6 +89,7 @@ def preset_catalog_report() -> dict[str, Any]:
             required_evidence=[
                 "dry_run_token_ref",
                 "operation_log_ref",
+                "operation_log_readiness_ref",
                 "locked_state_ref",
                 "identity_check_ref",
                 "sensitive_exclusions",
@@ -113,6 +115,7 @@ def preset_catalog_report() -> dict[str, Any]:
             required_evidence=[
                 "dry_run_token_ref",
                 "operation_log_ref",
+                "operation_log_readiness_ref",
                 "identity_check_ref",
                 "rule_quality_gate",
                 "active_install_marker",

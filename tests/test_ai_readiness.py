@@ -232,6 +232,7 @@ def test_workflow_trace_documents_required_artifact_chain(
             "cleanwin.review.v1",
             "cleanwin.ai-confirmation-summary.v1",
             "cleanwin.low-risk-cache-readiness-validation.v1",
+            "cleanwin.operation-log-readiness-validation.v1",
             "cleanwin.operation-log.jsonl",
         ],
     )
