@@ -64,7 +64,7 @@ from cleanwincli.output import render_human_payload
 
 def emit(payload: dict[str, Any], *, as_json: bool) -> None:
     if as_json:
-        print(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))
+        print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         print(render_human_payload(payload))
 

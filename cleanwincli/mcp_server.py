@@ -197,7 +197,7 @@ def tool_error(tool_name: str, message: str, *, policy_decision: dict[str, Any] 
     if policy_decision is not None:
         structured["policy_decision"] = policy_decision
     result: dict[str, Any] = {
-        "content": [{"type": "text", "text": json.dumps(structured, sort_keys=True, ensure_ascii=False)}],
+        "content": [{"type": "text", "text": json.dumps(structured, sort_keys=True)}],
         "structuredContent": structured,
         "isError": True,
     }
@@ -214,7 +214,7 @@ def tool_argument_error(tool_name: str, validation: dict[str, Any], *, policy_de
         "argument_validation": validation,
     }
     return {
-        "content": [{"type": "text", "text": json.dumps(structured, sort_keys=True, ensure_ascii=False)}],
+        "content": [{"type": "text", "text": json.dumps(structured, sort_keys=True)}],
         "structuredContent": structured,
         "governanceDecision": policy_decision,
         "isError": True,
@@ -369,7 +369,7 @@ def handle_request(request: Mapping[str, Any]) -> dict[str, Any] | None:
         return {
             "jsonrpc": "2.0",
             "id": request_id,
-            "result": {"contents": [{"uri": uri, "mimeType": "application/json", "text": json.dumps(payload, sort_keys=True, ensure_ascii=False)}]},
+            "result": {"contents": [{"uri": uri, "mimeType": "application/json", "text": json.dumps(payload, sort_keys=True)}]},
         }
     if method == "shutdown":
         return {"jsonrpc": "2.0", "id": request_id, "result": None}
@@ -396,7 +396,7 @@ def main() -> None:
             except json.JSONDecodeError:
                 response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
             if response is not None:
-                print(json.dumps(response, sort_keys=True, ensure_ascii=False), flush=True)
+                print(json.dumps(response, sort_keys=True), flush=True)
             if isinstance(request, Mapping) and request.get("method") == "shutdown":
                 stop = True
                 break
@@ -412,7 +412,7 @@ def main_once() -> None:
         except json.JSONDecodeError:
             response = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
         if response is not None:
-            print(json.dumps(response, sort_keys=True, ensure_ascii=False), flush=True)
+            print(json.dumps(response, sort_keys=True), flush=True)
 
 
 if __name__ == "__main__":

@@ -75,6 +75,20 @@ def test_non_json_cli_output_uses_progress_summary(
         ],
     )
 
+
+def test_json_cli_output_is_safe_for_legacy_windows_code_pages(
+    run_cleanwin: RunCleanWin,
+    cleanwin_result_json: CleanWinResultJSON,
+    assert_returncode: AssertReturnCode,
+    assert_payload_schema: AssertPayloadSchema,
+) -> None:
+    result = run_cleanwin("schema-registry", env={"PYTHONIOENCODING": "cp1252"})
+
+    assert_returncode(result, 0)
+    payload = cleanwin_result_json(result)
+    assert_payload_schema(payload, "cleanwin.ai-schema-registry.v1")
+
+
 def test_inspect_temp_finds_sandbox_candidate(
     tmp_path: Path,
     cleanwin_json: CleanWinJSON,
