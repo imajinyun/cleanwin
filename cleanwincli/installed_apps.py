@@ -24,6 +24,12 @@ def _source_status(source_id: str, *, available: bool, reason: str, evidence: di
     }
 
 
+def _default_root_when_env_present(path: str, env: Mapping[str, str]) -> Path | None:
+    if env:
+        return Path(path)
+    return None
+
+
 def _normalize_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
@@ -214,7 +220,10 @@ def _registry_uninstall_entries() -> tuple[list[dict[str, Any]], list[dict[str, 
 
 
 def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    base_roots = [_env_root(env, "USERPROFILE") or _env_root(env, "HOME"), _env_root(env, "PROGRAMDATA") or _windows_default_root(r"C:\ProgramData")]
+    base_roots = [
+        _env_root(env, "USERPROFILE") or _env_root(env, "HOME"),
+        _env_root(env, "PROGRAMDATA") or _default_root_when_env_present(r"C:\ProgramData", env),
+    ]
     roots = [root.joinpath("scoop", "apps") for root in base_roots if root is not None]
     apps: list[dict[str, Any]] = []
     sources: list[dict[str, Any]] = []
@@ -248,7 +257,7 @@ def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict
 
 
 def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    base_root = _env_root(env, "PROGRAMDATA") or _windows_default_root(r"C:\ProgramData")
+    base_root = _env_root(env, "PROGRAMDATA") or _default_root_when_env_present(r"C:\ProgramData", env)
     if base_root is None:
         return [], [_source_status("chocolatey-lib", available=False, reason="path-root-unavailable")]
     root = base_root.joinpath("chocolatey", "lib")

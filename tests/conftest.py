@@ -181,7 +181,15 @@ def make_temp_plan_fixture(write_text_file: WriteTextFile) -> MakeTempPlan:
     def _make_temp_plan_fixture(tmp_path: Path, test_mode: bool = False) -> TempPlanFixture:
         temp_root = tmp_path / "Temp"
         target = write_text_file(temp_root / "stale.tmp", "x")
-        env = {"TEMP": str(temp_root), "TMP": str(temp_root)}
+        env = {
+            "TEMP": str(temp_root),
+            "TMP": str(temp_root),
+            "APPDATA": str(tmp_path / "Roaming"),
+            "LOCALAPPDATA": str(tmp_path / "LocalAppData"),
+            "PROGRAMDATA": str(tmp_path / "ProgramData"),
+            "PROGRAMFILES": str(tmp_path / "ProgramFiles"),
+            "USERPROFILE": str(tmp_path / "User"),
+        }
         if test_mode:
             env["CLEANWIN_TEST_MODE"] = "1"
         return temp_root, target, env

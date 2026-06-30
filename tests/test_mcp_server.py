@@ -172,7 +172,17 @@ def make_mcp_temp_plan(
         temp_root = make_directory(tmp_path / "Temp")
         stale_file = write_text_file(temp_root / "stale.tmp", "x")
         plan_file = tmp_path / "plan.json"
-        env = cleanwin_test_env(extra={"TEMP": str(temp_root), "TMP": str(temp_root)})
+        env = cleanwin_test_env(
+            extra={
+                "TEMP": str(temp_root),
+                "TMP": str(temp_root),
+                "APPDATA": str(tmp_path / "Roaming"),
+                "LOCALAPPDATA": str(tmp_path / "LocalAppData"),
+                "PROGRAMDATA": str(tmp_path / "ProgramData"),
+                "PROGRAMFILES": str(tmp_path / "ProgramFiles"),
+                "USERPROFILE": str(tmp_path / "User"),
+            }
+        )
         cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
         return plan_file, stale_file, env
 
