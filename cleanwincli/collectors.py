@@ -35,6 +35,27 @@ def _env_value(env: dict[str, str], *keys: str) -> str | None:
     return None
 
 
+def _windows_fixture_root(env: dict[str, str]) -> Path | None:
+    roots = {
+        "LOCALAPPDATA": "LocalAppData",
+        "APPDATA": "Roaming",
+        "PROGRAMDATA": "ProgramData",
+        "USERPROFILE": "User",
+    }
+    parents: set[Path] = set()
+    for key, leaf_name in roots.items():
+        value = _env_value(env, key)
+        if not value:
+            return None
+        path = Path(value)
+        if path.name.lower() != leaf_name.lower():
+            return None
+        parents.add(path.parent)
+    if len(parents) != 1:
+        return None
+    return next(iter(parents))
+
+
 def parse_categories(value: str | None) -> list[str]:
     if not value:
         return sorted(DEFAULT_SAFE_CATEGORIES)
@@ -315,7 +336,8 @@ def _default_prefixed_rule_path(
 def generic_rule_roots(rules: tuple[dict[str, str], ...], env: dict[str, str]) -> list[tuple[dict[str, str], Path]]:
     local_app_data = _env_value(env, "LOCALAPPDATA")
     user_profile = _env_value(env, "USERPROFILE", "HOME")
-    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
+    fixture_root = _windows_fixture_root(env)
+    program_data = str(fixture_root / "ProgramData") if fixture_root else _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
     roots: list[tuple[dict[str, str], Path]] = []
     for rule in rules:
         path = _default_prefixed_rule_path(
@@ -372,9 +394,10 @@ def _active_marker_exists(marker: str, *, env: dict[str, str]) -> bool:
     local_app_data = _env_value(env, "LOCALAPPDATA")
     roaming_app_data = _env_value(env, "APPDATA")
     user_profile = _env_value(env, "USERPROFILE", "HOME")
-    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
-    program_files = _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
-    program_files_x86 = _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
+    fixture_root = _windows_fixture_root(env)
+    program_data = str(fixture_root / "ProgramData") if fixture_root else _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
+    program_files = str(fixture_root / "ProgramFiles") if fixture_root else _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
+    program_files_x86 = str(fixture_root / "ProgramFiles(x86)") if fixture_root else _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
     path = _default_prefixed_rule_path(
         marker,
         local_app_data=local_app_data,
@@ -393,9 +416,10 @@ def app_leftover_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, object]
     local_app_data = _env_value(env, "LOCALAPPDATA")
     roaming_app_data = _env_value(env, "APPDATA")
     user_profile = _env_value(env, "USERPROFILE", "HOME")
-    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
-    program_files = _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
-    program_files_x86 = _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
+    fixture_root = _windows_fixture_root(env)
+    program_data = str(fixture_root / "ProgramData") if fixture_root else _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
+    program_files = str(fixture_root / "ProgramFiles") if fixture_root else _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
+    program_files_x86 = str(fixture_root / "ProgramFiles(x86)") if fixture_root else _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
     roots: list[tuple[dict[str, object], Path]] = []
     for rule in APP_LEFTOVER_RULES:
         raw_markers = rule.get("active_markers", ())
