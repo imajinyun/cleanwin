@@ -22,6 +22,19 @@ BROWSER_PROFILE_CACHE_RULES = browser_profile_cache_rules()
 APP_LEFTOVER_RULES = cast(tuple[dict[str, object], ...], catalog_rules("app_leftover_rules"))
 
 
+def _env_value(env: dict[str, str], *keys: str) -> str | None:
+    for key in keys:
+        value = env.get(key)
+        if value:
+            return value
+    lowered = {key.lower(): value for key, value in env.items()}
+    for key in keys:
+        value = lowered.get(key.lower())
+        if value:
+            return value
+    return None
+
+
 def parse_categories(value: str | None) -> list[str]:
     if not value:
         return sorted(DEFAULT_SAFE_CATEGORIES)
@@ -356,12 +369,12 @@ def _rule_specificity(rule: dict[str, object]) -> tuple[int, int, int]:
 
 
 def _active_marker_exists(marker: str, *, env: dict[str, str]) -> bool:
-    local_app_data = env.get("LOCALAPPDATA")
-    roaming_app_data = env.get("APPDATA")
-    user_profile = env.get("USERPROFILE") or env.get("HOME")
-    program_data = env.get("PROGRAMDATA") or r"C:\ProgramData"
-    program_files = env.get("PROGRAMFILES") or r"C:\Program Files"
-    program_files_x86 = env.get("PROGRAMFILES(X86)") or env.get("ProgramFiles(x86)") or r"C:\Program Files (x86)"
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    roaming_app_data = _env_value(env, "APPDATA")
+    user_profile = _env_value(env, "USERPROFILE", "HOME")
+    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
+    program_files = _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
+    program_files_x86 = _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
     path = _default_prefixed_rule_path(
         marker,
         local_app_data=local_app_data,
@@ -377,12 +390,12 @@ def _active_marker_exists(marker: str, *, env: dict[str, str]) -> bool:
 
 
 def app_leftover_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, object], Path]]:
-    local_app_data = env.get("LOCALAPPDATA")
-    roaming_app_data = env.get("APPDATA")
-    user_profile = env.get("USERPROFILE") or env.get("HOME")
-    program_data = env.get("PROGRAMDATA") or r"C:\ProgramData"
-    program_files = env.get("PROGRAMFILES") or r"C:\Program Files"
-    program_files_x86 = env.get("PROGRAMFILES(X86)") or env.get("ProgramFiles(x86)") or r"C:\Program Files (x86)"
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    roaming_app_data = _env_value(env, "APPDATA")
+    user_profile = _env_value(env, "USERPROFILE", "HOME")
+    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
+    program_files = _env_value(env, "PROGRAMFILES") or r"C:\Program Files"
+    program_files_x86 = _env_value(env, "PROGRAMFILES(X86)", "ProgramFiles(x86)") or r"C:\Program Files (x86)"
     roots: list[tuple[dict[str, object], Path]] = []
     for rule in APP_LEFTOVER_RULES:
         raw_markers = rule.get("active_markers", ())

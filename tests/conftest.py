@@ -137,6 +137,10 @@ def make_windows_cache_env() -> MakeWindowsCacheEnv:
             "LOCALAPPDATA": str(root / "LocalAppData"),
             "PROGRAMDATA": str(root / "ProgramData"),
             "PROGRAMFILES": str(root / "ProgramFiles"),
+            "ProgramData": str(root / "ProgramData"),
+            "ProgramFiles": str(root / "ProgramFiles"),
+            "ProgramFiles(x86)": str(root / "ProgramFiles(x86)"),
+            "PROGRAMFILES(X86)": str(root / "ProgramFiles(x86)"),
             "USERPROFILE": str(root / "User"),
         }
 
