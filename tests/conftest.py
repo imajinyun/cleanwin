@@ -147,6 +147,19 @@ def make_windows_cache_env() -> MakeWindowsCacheEnv:
     return _make_windows_cache_env
 
 
+def merge_subprocess_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    merged = dict(os.environ)
+    if extra:
+        by_lower = {key.lower(): key for key in merged}
+        for key, value in extra.items():
+            existing_key = by_lower.pop(key.lower(), None)
+            if existing_key is not None and existing_key != key:
+                merged.pop(existing_key, None)
+            merged[key] = value
+            by_lower[key.lower()] = key
+    return merged
+
+
 def load_json_file(path: Path) -> JSONPayload:
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
@@ -204,9 +217,7 @@ def make_temp_plan_fixture(write_text_file: WriteTextFile) -> MakeTempPlan:
 @pytest.fixture
 def run_cleanwin(repo_root: Path) -> RunCleanWin:
     def _run_cleanwin(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        merged_env = dict(os.environ)
-        if env:
-            merged_env.update(env)
+        merged_env = merge_subprocess_env(env)
         merged_env["PYTHONPATH"] = str(repo_root)
         return subprocess.run(
             [sys.executable, str(repo_root / "cleanwin.py"), "--json", *args],
@@ -223,9 +234,7 @@ def run_cleanwin(repo_root: Path) -> RunCleanWin:
 @pytest.fixture
 def run_cleanwin_human(repo_root: Path) -> RunCleanWin:
     def _run_cleanwin_human(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-        merged_env = dict(os.environ)
-        if env:
-            merged_env.update(env)
+        merged_env = merge_subprocess_env(env)
         merged_env["PYTHONPATH"] = str(repo_root)
         return subprocess.run(
             [sys.executable, str(repo_root / "cleanwin.py"), *args],

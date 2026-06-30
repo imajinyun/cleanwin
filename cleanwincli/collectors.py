@@ -204,10 +204,10 @@ def candidate_for(
 def temp_roots(env: dict[str, str]) -> list[Path]:
     roots: list[Path] = []
     for key in ("TEMP", "TMP"):
-        value = env.get(key)
+        value = _env_value(env, key)
         if value:
             roots.append(Path(value))
-    local_app_data = env.get("LOCALAPPDATA")
+    local_app_data = _env_value(env, "LOCALAPPDATA")
     if local_app_data:
         roots.append(Path(local_app_data) / "Temp")
     return dedupe_paths(roots)
@@ -228,10 +228,10 @@ def _default_rule_path(rule: dict[str, str], *, local_app_data: str | None, user
 
 def dev_cache_roots(env: dict[str, str]) -> list[Path]:
     roots: list[Path] = []
-    local_app_data = env.get("LOCALAPPDATA")
-    user_profile = env.get("USERPROFILE") or env.get("HOME")
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    user_profile = _env_value(env, "USERPROFILE", "HOME")
     for rule in DEV_CACHE_RULES:
-        value = env.get(rule["env_key"])
+        value = _env_value(env, rule["env_key"])
         if value:
             path = Path(value)
             if rule["rule_id"] == "dev-cache.cargo.registry":
@@ -246,11 +246,11 @@ def dev_cache_roots(env: dict[str, str]) -> list[Path]:
 
 
 def dev_cache_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, str], Path]]:
-    local_app_data = env.get("LOCALAPPDATA")
-    user_profile = env.get("USERPROFILE") or env.get("HOME")
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    user_profile = _env_value(env, "USERPROFILE", "HOME")
     roots: list[tuple[dict[str, str], Path]] = []
     for rule in DEV_CACHE_RULES:
-        value = env.get(rule["env_key"])
+        value = _env_value(env, rule["env_key"])
         paths: list[Path] = []
         if value:
             path = Path(value)
@@ -313,9 +313,9 @@ def _default_prefixed_rule_path(
 
 
 def generic_rule_roots(rules: tuple[dict[str, str], ...], env: dict[str, str]) -> list[tuple[dict[str, str], Path]]:
-    local_app_data = env.get("LOCALAPPDATA")
-    user_profile = env.get("USERPROFILE") or env.get("HOME")
-    program_data = env.get("PROGRAMDATA") or r"C:\ProgramData"
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    user_profile = _env_value(env, "USERPROFILE", "HOME")
+    program_data = _env_value(env, "PROGRAMDATA") or r"C:\ProgramData"
     roots: list[tuple[dict[str, str], Path]] = []
     for rule in rules:
         path = _default_prefixed_rule_path(
@@ -426,8 +426,8 @@ def app_leftover_rule_roots(env: dict[str, str]) -> list[tuple[dict[str, object]
 
 
 def browser_profile_cache_roots(env: dict[str, str]) -> list[tuple[dict[str, str], Path]]:
-    local_app_data = env.get("LOCALAPPDATA")
-    roaming_app_data = env.get("APPDATA")
+    local_app_data = _env_value(env, "LOCALAPPDATA")
+    roaming_app_data = _env_value(env, "APPDATA")
     roots: list[tuple[dict[str, str], Path]] = []
     browser_roots: list[tuple[Path, str]] = []
     if local_app_data:
@@ -692,7 +692,7 @@ def collect_findings(categories: list[str], *, env: dict[str, str] | None = None
         if _matches_rule_filter(finding.rule_id, allowed_rule_ids):
             findings.append(finding)
     if "docker-report" in categories:
-        docker_local = env.get("LOCALAPPDATA")
+        docker_local = _env_value(env, "LOCALAPPDATA")
         docker_paths = [r"%LOCALAPPDATA%\\Docker", r"%LOCALAPPDATA%\\Docker\\wsl", r"%LOCALAPPDATA%\\Docker\\log"]
         if docker_local:
             docker_paths = [str(Path(docker_local) / "Docker"), str(Path(docker_local) / "Docker" / "wsl"), str(Path(docker_local) / "Docker" / "log")]
@@ -713,7 +713,7 @@ def collect_findings(categories: list[str], *, env: dict[str, str] | None = None
         if _matches_rule_filter(finding.rule_id, allowed_rule_ids):
             findings.append(finding)
     if "wsl-report" in categories:
-        wsl_local = env.get("LOCALAPPDATA")
+        wsl_local = _env_value(env, "LOCALAPPDATA")
         wsl_paths = [r"%LOCALAPPDATA%\\Packages", r"%USERPROFILE%\\AppData\\Local\\lxss"]
         if wsl_local:
             wsl_paths = [str(Path(wsl_local) / "Packages"), str(Path(wsl_local) / "lxss")]
@@ -734,7 +734,7 @@ def collect_findings(categories: list[str], *, env: dict[str, str] | None = None
         if _matches_rule_filter(finding.rule_id, allowed_rule_ids):
             findings.append(finding)
     if "visual-studio-report" in categories:
-        user_profile = env.get("USERPROFILE") or env.get("HOME")
+        user_profile = _env_value(env, "USERPROFILE", "HOME")
         vs_paths = [r"%LOCALAPPDATA%\\Microsoft\\VisualStudio", r"%USERPROFILE%\\.nuget\\packages"]
         if user_profile:
             vs_paths[1] = str(Path(user_profile) / ".nuget" / "packages")
@@ -755,8 +755,8 @@ def collect_findings(categories: list[str], *, env: dict[str, str] | None = None
         if _matches_rule_filter(finding.rule_id, allowed_rule_ids):
             findings.append(finding)
     if "browser-cache-report" in categories:
-        local_app_data = env.get("LOCALAPPDATA")
-        roaming_app_data = env.get("APPDATA")
+        local_app_data = _env_value(env, "LOCALAPPDATA")
+        roaming_app_data = _env_value(env, "APPDATA")
         browser_paths = [r"%LOCALAPPDATA%\\Google\\Chrome\\User Data", r"%LOCALAPPDATA%\\Microsoft\\Edge\\User Data", r"%APPDATA%\\Mozilla\\Firefox\\Profiles"]
         if local_app_data:
             browser_paths[0] = str(Path(local_app_data) / "Google" / "Chrome" / "User Data")
