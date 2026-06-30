@@ -263,7 +263,12 @@ jobs:
           Set-Content -Path $candidate -Value "x" -NoNewline
           $env:TEMP = $tempRoot.FullName
           $env:TMP = $tempRoot.FullName
-          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
+          $env:APPDATA = Join-Path $tmp.FullName "Roaming"
+          $env:LOCALAPPDATA = Join-Path $tmp.FullName "LocalAppData"
+          $env:PROGRAMDATA = Join-Path $tmp.FullName "ProgramData"
+          $env:PROGRAMFILES = Join-Path $tmp.FullName "ProgramFiles"
+          $env:USERPROFILE = Join-Path $tmp.FullName "User"
+          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --max-items 1 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
           Set-Content -Path $candidate -Value "changed" -NoNewline
           .\.venv\Scripts\python.exe cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context | Tee-Object -Variable result
           if ($LASTEXITCODE -eq 0) { throw "validate-plan should fail after identity drift" }
@@ -279,8 +284,13 @@ jobs:
           $env:CLEANWIN_TEST_MODE = "1"
           $env:TEMP = $tempRoot.FullName
           $env:TMP = $tempRoot.FullName
+          $env:APPDATA = Join-Path $tmp.FullName "Roaming"
+          $env:LOCALAPPDATA = Join-Path $tmp.FullName "LocalAppData"
+          $env:PROGRAMDATA = Join-Path $tmp.FullName "ProgramData"
+          $env:PROGRAMFILES = Join-Path $tmp.FullName "ProgramFiles"
+          $env:USERPROFILE = Join-Path $tmp.FullName "User"
           $plan = Join-Path $tmp.FullName "plan.json"
-          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --output $plan | Out-Null
+          .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --max-items 1 --output $plan | Out-Null
           $dry = .\.venv\Scripts\python.exe cleanwin.py --json execute-plan --plan-file $plan --no-require-plan-context | ConvertFrom-Json
           .\.venv\Scripts\python.exe cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
           if (Test-Path $candidate) { throw "candidate should have moved to test trash" }
