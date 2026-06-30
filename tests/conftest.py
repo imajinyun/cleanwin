@@ -150,13 +150,11 @@ def make_windows_cache_env() -> MakeWindowsCacheEnv:
 def merge_subprocess_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     merged = dict(os.environ)
     if extra:
-        by_lower = {key.lower(): key for key in merged}
         for key, value in extra.items():
-            existing_key = by_lower.pop(key.lower(), None)
-            if existing_key is not None and existing_key != key:
+            lowered_key = key.lower()
+            for existing_key in [item for item in merged if item.lower() == lowered_key]:
                 merged.pop(existing_key, None)
             merged[key] = value
-            by_lower[key.lower()] = key
     return merged
 
 
