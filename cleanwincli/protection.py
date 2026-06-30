@@ -40,12 +40,14 @@ def is_user_profile_root_or_known_data(path_text: str) -> bool:
     if not looks_like_windows_path(path_text):
         return False
     parts = windows_parts(path_text)
-    if len(parts) < 3:
+    if len(parts) < 2:
         return False
     try:
         users_idx = parts.index("users")
     except ValueError:
         return False
+    if len(parts) <= users_idx + 2:
+        return True
     rel = parts[users_idx + 2 :]
     if not rel:
         return True

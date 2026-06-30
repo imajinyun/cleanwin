@@ -37,7 +37,6 @@ PROTECTED_WINDOWS_ROOTS = (
     "c:\\program files (x86)",
     "c:\\programdata",
     "c:\\programdata\\microsoft",
-    "c:\\users",
 )
 
 PROTECTED_ROOT_SUFFIXES = (

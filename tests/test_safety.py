@@ -69,6 +69,7 @@ def test_symlink_candidate_is_rejected(tmp_path: Path, write_text_file: WriteTex
 @pytest.mark.parametrize(
     ("path", "expected"),
     [
+        (r"C:\Users\alice\AppData\Local\npm-cache\_cacache", False),
         (r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cache", False),
         (r"C:\Users\alice\AppData\Local\Microsoft\Edge\User Data\Profile 1\Code Cache", False),
         (r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Profile 2\Cache", False),
