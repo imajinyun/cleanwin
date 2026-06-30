@@ -41,6 +41,11 @@ cleanwin 无运行时依赖，需要 Python 3.10+。
 # 从源码直接运行
 python3 cleanwin.py --json capabilities
 
+# 发布到 PyPI 后通过 pipx 安装
+pipx install cleanwin
+cleanwin --json doctor
+cleanwin-mcp
+
 # 安装为可编辑 Python 包
 python3 -m pip install -e .
 cleanwin --json capabilities
@@ -50,6 +55,10 @@ cleanwin-mcp
 ```
 
 项目元数据位于 `pyproject.toml`；命令入口是 `cleanwin` 和 `cleanwin-mcp`。
+Windows portable release 会产出 `cleanwin-<version>-windows-x64.zip`，其中
+包含 `cleanwin.exe`、`cleanwin-mcp.exe` 和 SHA256 checksum。该 zip 是 WinGet
+portable manifest 的源 artifact；不要让 WinGet 在安装流程中执行
+`pip install`。
 
 ---
 
@@ -575,6 +584,7 @@ CI 入口：
 
 - `.github/workflows/ci.yml` 通过 Makefile target 在 Python 3.10 和 3.12 上运行 Linux 质量门禁，因此 pytest 入口会在结束后清理测试残留。
 - `.github/workflows/ci.yml` 还会运行 package install smoke 和可选 Docker sandbox gate。
+- `.github/workflows/windows-portable-release.yml` 在 `windows-latest` 上构建面向 WinGet 的 portable zip，smoke-test `cleanwin.exe --json doctor` 和 MCP initialize，并上传 archive、checksum 和 `cleanwin.windows-portable-release.v1` manifest。
 - `.github/workflows/windows-smoke.yml` 创建 `.venv`，安装 `.[dev]`，并在 `windows-latest` 上运行 pytest、Ruff、mypy、compile checks、identity drift smoke 和 test-mode recycle smoke。
 - `.github/workflows/windows-smoke.yml` 会上传 `cleanwin-windows-json-evidence` artifact bundle，包含 `windows-inventory`、`debloat-privacy-report`、`startup-service-inventory`、`system-health-report`、`promotion-gates`、promotion validation、`recovery-readiness`、`windows-smoke-matrix`、`windows-native-artifacts`、`windows-artifact-layout`、`windows-artifact-validation`、native collector summary，以及 pytest、Ruff、mypy 和 compile result summary 的 JSON 文件。
 - `.github/workflows/windows-smoke.yml` 还会上传 `cleanwin-windows-native-evidence`，包含只读 collector 在 `artifacts/windows-native` 生成的 native `.json`、`.xml`、`.reg`、`.txt`、`.csv`、`.log` 和 `manifest.json` artifacts。

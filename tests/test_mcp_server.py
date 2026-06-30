@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from cleanwincli import __version__
+from cleanwincli import __version__, mcp_server
 
 ROOT = Path(__file__).resolve().parents[1]
 MCP_MODULE = "cleanwincli.mcp_server"
@@ -66,6 +66,23 @@ def build_mcp_request(method: str, *, request_id: int = 1, params: JSONPayload |
     if params is not None:
         request["params"] = params
     return request
+
+
+def test_mcp_finds_sibling_cleanwin_executable_for_portable_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    write_text_file: WriteTextFile,
+    assert_exact_sequence: Callable[[Sequence[Any], Sequence[Any]], None],
+) -> None:
+    sibling_cli = tmp_path / ("cleanwin.exe" if sys.platform == "win32" else "cleanwin")
+    write_text_file(sibling_cli, "")
+    portable_mcp = tmp_path / ("cleanwin-mcp.exe" if sys.platform == "win32" else "cleanwin-mcp")
+    write_text_file(portable_mcp, "")
+
+    monkeypatch.delenv("CLEANWIN_CLI", raising=False)
+    monkeypatch.setattr(mcp_server.sys, "executable", str(portable_mcp))
+
+    assert_exact_sequence(mcp_server.find_cleanwin(), [str(sibling_cli)])
 
 
 @pytest.fixture

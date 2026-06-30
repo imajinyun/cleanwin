@@ -430,6 +430,35 @@ def test_windows_smoke_uses_repo_venv_pytest_entrypoints(
     assert_none_match([workflow], lambda text: "python -m pytest" in text or "unittest" in text)
 
 
+def test_windows_portable_release_builds_winget_ready_archive(
+    repo_root: Path,
+    assert_text_contains_all: AssertTextContainsAll,
+) -> None:
+    workflow = (repo_root / ".github" / "workflows" / "windows-portable-release.yml").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        workflow,
+        [
+            "runs-on: windows-latest",
+            "release:",
+            "workflow_dispatch:",
+            "contents: write",
+            "pyinstaller",
+            "--onefile --collect-data cleanwincli --name cleanwin cleanwin.py",
+            "--onefile --collect-data cleanwincli --name cleanwin-mcp cleanwincli\\mcp_server.py",
+            "cleanwin.exe --json doctor",
+            "cleanwin-mcp.exe",
+            "cleanwin-$version-windows-x64.zip",
+            "Get-FileHash",
+            "cleanwin.windows-portable-release.v1",
+            "winget_manifest_ready = $true",
+            "cleanwin-windows-portable-release",
+            "softprops/action-gh-release@v2",
+            "github.event_name == 'release'",
+        ],
+    )
+
+
 def test_docs_describe_pytest_only_venv_workflow(
     repo_root: Path,
     assert_none_match: AssertNoneMatch,

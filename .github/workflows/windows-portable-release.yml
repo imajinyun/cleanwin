@@ -1,0 +1,98 @@
+name: Windows Portable Release
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  portable:
+    name: Build Windows portable CLI
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel and install release tooling
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip build pyinstaller
+          .\.venv\Scripts\python.exe -m pip install .
+          .\.venv\Scripts\python.exe -m build --sdist --wheel
+
+      - name: Build portable executables
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts\portable | Out-Null
+          .\.venv\Scripts\pyinstaller.exe --clean --noconfirm --onefile --collect-data cleanwincli --name cleanwin cleanwin.py
+          .\.venv\Scripts\pyinstaller.exe --clean --noconfirm --onefile --collect-data cleanwincli --name cleanwin-mcp cleanwincli\mcp_server.py
+          Copy-Item dist\cleanwin.exe artifacts\portable\cleanwin.exe
+          Copy-Item dist\cleanwin-mcp.exe artifacts\portable\cleanwin-mcp.exe
+          @'
+          cleanwin Windows portable CLI
+
+          Commands:
+            cleanwin.exe --json doctor
+            cleanwin-mcp.exe
+
+          Safety posture:
+            Default workflows are inventory, planning, validation, and review.
+            Cleanup execution remains gated by plan validation, explicit flags,
+            operation logs, recycle mode, confirmation phrase, and dry-run token.
+          '@ | Set-Content -Encoding utf8 artifacts\portable\README.txt
+
+      - name: Smoke portable executables
+        shell: pwsh
+        run: |
+          $doctor = .\artifacts\portable\cleanwin.exe --json doctor | ConvertFrom-Json
+          if (-not $doctor.ready) { throw "portable cleanwin doctor reported not ready" }
+          $mcpInitialize = @{ jsonrpc = "2.0"; id = 1; method = "initialize" } | ConvertTo-Json -Compress
+          $mcpResponse = $mcpInitialize | .\artifacts\portable\cleanwin-mcp.exe | ConvertFrom-Json
+          if ($mcpResponse.result.serverInfo.name -ne "cleanwin-mcp") { throw "portable cleanwin MCP initialize failed" }
+
+      - name: Create portable archive and checksum
+        shell: pwsh
+        run: |
+          $version = .\.venv\Scripts\python.exe -c "from cleanwincli import __version__; print(__version__)"
+          $archive = "cleanwin-$version-windows-x64.zip"
+          Compress-Archive -Path artifacts\portable\* -DestinationPath "artifacts\$archive" -Force
+          $hash = (Get-FileHash "artifacts\$archive" -Algorithm SHA256).Hash
+          "$hash  $archive" | Set-Content -Encoding ascii "artifacts\$archive.sha256"
+          @{
+            schema = "cleanwin.windows-portable-release.v1"
+            version = $version
+            archive = $archive
+            sha256 = $hash
+            installer_type = "zip"
+            nested_installer_type = "portable"
+            commands = @("cleanwin.exe", "cleanwin-mcp.exe")
+            winget_manifest_ready = $true
+          } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts\windows-portable-release.json
+
+      - name: Upload portable release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanwin-windows-portable-release
+          path: |
+            artifacts/cleanwin-*-windows-x64.zip
+            artifacts/cleanwin-*-windows-x64.zip.sha256
+            artifacts/windows-portable-release.json
+
+      - name: Attach portable assets to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/cleanwin-*-windows-x64.zip
+            artifacts/cleanwin-*-windows-x64.zip.sha256
+            artifacts/windows-portable-release.json

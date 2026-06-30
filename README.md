@@ -83,6 +83,11 @@ python3 -m cleanwincli.mcp_server
 # ▶️ Run directly
 python3 cleanwin.py --json capabilities
 
+# 📦 Install from PyPI with pipx after publication
+pipx install cleanwin
+cleanwin --json doctor
+cleanwin-mcp
+
 # 📥 Install as editable package
 python3 -m pip install -e .
 cleanwin --json capabilities
@@ -90,6 +95,12 @@ cleanwin-mcp
 ```
 
 > Requires Python 3.10+. Runtime dependencies: none.
+
+Windows portable releases are produced as `cleanwin-<version>-windows-x64.zip`
+with `cleanwin.exe`, `cleanwin-mcp.exe`, and a SHA256 checksum. That archive is
+the intended input for a future WinGet portable manifest; WinGet should install
+the signed release asset directly instead of running `pip install` during
+installation.
 
 ---
 

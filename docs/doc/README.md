@@ -41,6 +41,11 @@ cleanwin has no runtime dependencies and requires Python 3.10+.
 # Run from source
 python3 cleanwin.py --json capabilities
 
+# Install from PyPI with pipx after publication
+pipx install cleanwin
+cleanwin --json doctor
+cleanwin-mcp
+
 # Install as an editable Python package
 python3 -m pip install -e .
 cleanwin --json capabilities
@@ -50,6 +55,10 @@ cleanwin-mcp
 ```
 
 Project metadata lives in `pyproject.toml`; the console scripts are `cleanwin` and `cleanwin-mcp`.
+Windows portable release builds produce `cleanwin-<version>-windows-x64.zip`
+with `cleanwin.exe`, `cleanwin-mcp.exe`, and a SHA256 checksum. Use that archive
+as the source artifact for WinGet portable manifests; do not make WinGet invoke
+`pip install` during installation.
 
 ---
 
@@ -598,6 +607,7 @@ CI entrypoint:
 
 - `.github/workflows/ci.yml` runs Linux quality gates on Python 3.10 and 3.12 through Makefile targets, so pytest entrypoints clean test leftovers after completion.
 - `.github/workflows/ci.yml` also runs package install smoke checks and the optional Docker sandbox gate.
+- `.github/workflows/windows-portable-release.yml` builds the WinGet-ready portable zip on `windows-latest`, smoke-tests `cleanwin.exe --json doctor` and MCP initialize, and uploads the archive, checksum, and `cleanwin.windows-portable-release.v1` manifest.
 - `.github/workflows/windows-smoke.yml` creates `.venv`, installs `.[dev]`, and runs pytest, Ruff, mypy, compile checks, identity drift smoke, and test-mode recycle smoke on `windows-latest`.
 - `.github/workflows/windows-smoke.yml` uploads a `cleanwin-windows-json-evidence` artifact bundle with JSON reports for `windows-inventory`, `debloat-privacy-report`, `startup-service-inventory`, `system-health-report`, `promotion-gates`, promotion validation, `recovery-readiness`, `windows-smoke-matrix`, `windows-native-artifacts`, `windows-artifact-layout`, `windows-artifact-validation`, native collector summary, plus pytest, Ruff, mypy, and compile result summaries.
 - `.github/workflows/windows-smoke.yml` also uploads `cleanwin-windows-native-evidence` with the read-only collector's native `.json`, `.xml`, `.reg`, `.txt`, `.csv`, `.log`, and `manifest.json` artifacts from `artifacts/windows-native`.

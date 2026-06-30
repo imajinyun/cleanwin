@@ -55,6 +55,10 @@ def find_cleanwin() -> list[str]:
         if configured_path.suffix == ".py":
             return [sys.executable, str(configured_path)]
         return [str(configured_path)]
+    executable_name = "cleanwin.exe" if os.name == "nt" else "cleanwin"
+    sibling_cli = Path(sys.executable).resolve().with_name(executable_name)
+    if sibling_cli.exists():
+        return [str(sibling_cli)]
     project_root = Path(__file__).resolve().parents[1]
     script = project_root / "cleanwin.py"
     if script.exists():
