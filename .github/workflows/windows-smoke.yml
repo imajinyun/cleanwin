@@ -270,9 +270,20 @@ jobs:
           $env:USERPROFILE = Join-Path $tmp.FullName "User"
           .\.venv\Scripts\python.exe cleanwin.py --json plan --categories temp --older-than-days 0 --max-items 1 --output (Join-Path $tmp.FullName "plan.json") | Out-Null
           Set-Content -Path $candidate -Value "changed" -NoNewline
-          .\.venv\Scripts\python.exe cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context | Tee-Object -Variable result
-          if ($LASTEXITCODE -eq 0) { throw "validate-plan should fail after identity drift" }
+          $oldNativeCommandPreference = $PSNativeCommandUseErrorActionPreference
+          $PSNativeCommandUseErrorActionPreference = $false
+          try {
+            $result = .\.venv\Scripts\python.exe cleanwin.py --json validate-plan --plan-file (Join-Path $tmp.FullName "plan.json") --no-require-plan-context
+            $validateExitCode = $LASTEXITCODE
+          }
+          finally {
+            $PSNativeCommandUseErrorActionPreference = $oldNativeCommandPreference
+          }
+          $result | Write-Output
+          if ($validateExitCode -eq 0) { throw "validate-plan should fail after identity drift" }
+          if ($validateExitCode -ne 2) { throw "validate-plan should exit 2 after identity drift, got $validateExitCode" }
           if (-not ($result -join "`n").Contains("Filesystem identity mismatch")) { throw "missing identity mismatch error" }
+          & cmd /c exit 0
 
       - name: Test-mode recycle smoke
         shell: pwsh
