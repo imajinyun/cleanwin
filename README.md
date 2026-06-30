@@ -114,6 +114,13 @@ then run it locally. It downloads the latest portable release, verifies the
 published checksum, installs under `%LOCALAPPDATA%\Programs\cleanwin`, updates
 the user `PATH`, and runs `cleanwin.exe --json doctor`.
 
+To upgrade, run the installer again — it detects an existing cleanwin install
+and replaces it in place. To uninstall:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1 -Uninstall
+```
+
 ---
 
 ## ✅ Development Workflow

@@ -98,6 +98,3 @@ Icon?
 .harness/
 .aiflow/
 *.log
-*.json
-!cleanwincli/rules/
-!cleanwincli/rules/*.json

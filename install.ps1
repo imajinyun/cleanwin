@@ -1,7 +1,9 @@
 param(
     [string]$Version = "latest",
     [string]$InstallDir = "",
-    [switch]$NoPathUpdate
+    [switch]$NoPathUpdate,
+    [switch]$Uninstall,
+    [switch]$Force
 )
 
 Set-StrictMode -Version Latest
@@ -59,30 +61,124 @@ function Add-UserPathEntry {
         $NewPath = (@($Parts) + $PathEntry) -join ";"
         [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
         $env:Path = (@($env:Path -split ";" | Where-Object { $_ }) + $PathEntry) -join ";"
+        return $true
+    }
+    return $false
+}
+
+function Remove-UserPathEntry {
+    param([string]$PathEntry)
+
+    $CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if ([string]::IsNullOrWhiteSpace($CurrentPath)) {
+        return $false
+    }
+    $Parts = @($CurrentPath -split ";" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $NewParts = @($Parts | Where-Object { $_.TrimEnd("\") -ine $PathEntry.TrimEnd("\") })
+    if ($NewParts.Count -eq $Parts.Count) {
+        return $false
+    }
+    $NewPath = $NewParts -join ";"
+    [Environment]::SetEnvironmentVariable("Path", $NewPath, "User")
+    $env:Path = (@($env:Path -split ";" | Where-Object { $_ -and $_.TrimEnd("\") -ine $PathEntry.TrimEnd("\") }) -join ";")
+    return $true
+}
+
+function Get-InstalledVersion {
+    param([string]$Dir)
+
+    $Exe = Join-Path $Dir "cleanwin.exe"
+    if (-not (Test-Path -LiteralPath $Exe -PathType Leaf)) {
+        return $null
+    }
+    try {
+        $Info = & $Exe --json doctor 2>$null | ConvertFrom-Json
+        if ($null -ne $Info -and $null -ne $Info.version) {
+            return $Info.version
+        }
+    } catch {
+    }
+    return $null
+}
+
+function Resolve-InstallDir {
+    param([string]$Dir)
+
+    if ([string]::IsNullOrWhiteSpace($Dir)) {
+        if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+            throw "LOCALAPPDATA is not set; pass -InstallDir explicitly."
+        }
+        $Dir = Join-Path $env:LOCALAPPDATA "Programs\cleanwin"
+    }
+
+    $Dir = [System.IO.Path]::GetFullPath($Dir)
+    $ParentDir = Split-Path -Parent $Dir
+    if ([string]::IsNullOrWhiteSpace($ParentDir)) {
+        throw "InstallDir must include a parent directory."
+    }
+    $RootDir = [System.IO.Path]::GetPathRoot($Dir)
+    if ($Dir.TrimEnd("\", "/") -eq $RootDir.TrimEnd("\", "/")) {
+        throw "InstallDir must not be a filesystem root."
+    }
+    return $Dir
+}
+
+function Invoke-Uninstall {
+    param([string]$Dir)
+
+    if (-not (Test-Path -LiteralPath $Dir)) {
+        Write-Host "cleanwin is not installed at $Dir"
+        return
+    }
+
+    $HasCleanwin = Test-Path -LiteralPath (Join-Path $Dir "cleanwin.exe") -PathType Leaf
+    $HasMcp = Test-Path -LiteralPath (Join-Path $Dir "cleanwin-mcp.exe") -PathType Leaf
+    if (-not ($HasCleanwin -or $HasMcp)) {
+        if (-not $Force) {
+            throw "Refusing to remove directory that does not look like a cleanwin install: $Dir`nUse -Force to override."
+        }
+    }
+
+    $RemovedFromPath = $false
+    if (-not $NoPathUpdate) {
+        $RemovedFromPath = Remove-UserPathEntry -PathEntry $Dir
+    }
+
+    Write-Host "Uninstalling cleanwin from $Dir..."
+    Remove-Item -LiteralPath $Dir -Recurse -Force
+
+    Write-Host "cleanwin uninstalled."
+    if ($RemovedFromPath) {
+        Write-Host "Removed from user PATH. Restart your terminal for changes to take effect in existing sessions."
     }
 }
 
-if ([string]::IsNullOrWhiteSpace($InstallDir)) {
-    if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
-        throw "LOCALAPPDATA is not set; pass -InstallDir explicitly."
-    }
-    $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\cleanwin"
-}
+$InstallDir = Resolve-InstallDir -Dir $InstallDir
 
-$InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
-$ParentDir = Split-Path -Parent $InstallDir
-if ([string]::IsNullOrWhiteSpace($ParentDir)) {
-    throw "InstallDir must include a parent directory."
-}
-$RootDir = [System.IO.Path]::GetPathRoot($InstallDir)
-if ($InstallDir.TrimEnd("\", "/") -eq $RootDir.TrimEnd("\", "/")) {
-    throw "InstallDir must not be a filesystem root."
+if ($Uninstall) {
+    Invoke-Uninstall -Dir $InstallDir
+    exit 0
 }
 
 Write-Host "Resolving cleanwin release metadata..."
 $Release = Invoke-RestMethod -Uri $ReleaseApi -Headers @{ "User-Agent" = "cleanwin-installer" }
+$TargetVersion = $Release.tag_name
 $ArchiveAsset = Get-ReleaseAsset -Release $Release -Pattern "cleanwin-*-windows-x64.zip"
 $ChecksumAsset = Get-ReleaseAsset -Release $Release -Pattern "$($ArchiveAsset.name).sha256"
+
+$ExistingVersion = Get-InstalledVersion -Dir $InstallDir
+if ($null -ne $ExistingVersion -and -not $Force) {
+    $ExistingTag = if ($ExistingVersion.StartsWith("v", [System.StringComparison]::OrdinalIgnoreCase)) { $ExistingVersion } else { "v$ExistingVersion" }
+    if ($ExistingTag -ieq $TargetVersion) {
+        Write-Host "cleanwin $TargetVersion is already installed at $InstallDir"
+        if (-not $NoPathUpdate) {
+            $null = Add-UserPathEntry -PathEntry $InstallDir
+        }
+        Write-Host "Try: cleanwin --json inspect --categories temp,dev-cache --max-items 10"
+        exit 0
+    }
+    Write-Host "Upgrading cleanwin from $ExistingTag to $TargetVersion..."
+}
 
 $TempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("cleanwin-install-" + [System.Guid]::NewGuid().ToString())
 $ArchivePath = Join-Path $TempRoot $ArchiveAsset.name
@@ -112,6 +208,7 @@ try {
         throw "Archive is missing cleanwin-mcp.exe"
     }
 
+    $ParentDir = Split-Path -Parent $InstallDir
     New-Item -ItemType Directory -Force -Path $ParentDir | Out-Null
     if (Test-Path -LiteralPath $InstallDir) {
         $ExistingItems = @(Get-ChildItem -LiteralPath $InstallDir -Force)
@@ -124,8 +221,9 @@ try {
     }
     Move-Item -LiteralPath $ExtractDir -Destination $InstallDir
 
+    $PathAdded = $false
     if (-not $NoPathUpdate) {
-        Add-UserPathEntry -PathEntry $InstallDir
+        $PathAdded = Add-UserPathEntry -PathEntry $InstallDir
     }
 
     Write-Host "Verifying cleanwin..."
@@ -134,12 +232,13 @@ try {
         throw "cleanwin doctor reported not ready after installation."
     }
 
-    Write-Host "cleanwin installed successfully."
-    Write-Host "Version: $($Release.tag_name)"
+    $Action = if ($null -ne $ExistingVersion) { "upgraded to" } else { "installed successfully" }
+    Write-Host "cleanwin $Action."
+    Write-Host "Version: $TargetVersion"
     Write-Host "Path: $InstallDir"
     Write-Host "Try: cleanwin --json inspect --categories temp,dev-cache --max-items 10"
-    if (-not $NoPathUpdate) {
-        Write-Host "Restart your terminal if the cleanwin command is not found in existing sessions."
+    if ($PathAdded) {
+        Write-Host "Added to user PATH. Restart your terminal for changes to take effect in existing sessions."
     }
 }
 finally {

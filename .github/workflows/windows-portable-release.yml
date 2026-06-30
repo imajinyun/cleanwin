@@ -2,6 +2,9 @@ name: Windows Portable Release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
   release:
     types: [published]
 
@@ -82,6 +85,55 @@ jobs:
             powershell_installer_ready = $true
             install_script = "install.ps1"
           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts\windows-portable-release.json
+
+      - name: Smoke installer end-to-end
+        shell: pwsh
+        run: |
+          $version = .\.venv\Scripts\python.exe -c "from cleanwincli import __version__; print(__version__)"
+          $archive = "cleanwin-$version-windows-x64.zip"
+          $archivePath = Resolve-Path "artifacts\$archive"
+          $checksumPath = Resolve-Path "artifacts\$archive.sha256"
+          $installerPath = Resolve-Path "install.ps1"
+
+          $installRoot = Join-Path $env:TEMP ("cleanwin-install-smoke-" + [Guid]::NewGuid().ToString())
+          $installDir = Join-Path $installRoot "cleanwin"
+
+          try {
+            $mockRelease = @{
+              tag_name = "v$version"
+              assets = @(
+                @{ name = $archive; browser_download_url = "file://$archivePath" },
+                @{ name = "$archive.sha256"; browser_download_url = "file://$checksumPath" }
+              )
+            }
+            $mockReleaseJson = $mockRelease | ConvertTo-Json -Depth 4 -Compress
+            $mockReleasePath = Join-Path $installRoot "release.json"
+            Set-Content -Path $mockReleasePath -Value $mockReleaseJson -Encoding utf8
+
+            $mockInstaller = Join-Path $installRoot "install-smoke.ps1"
+            $installerContent = Get-Content -LiteralPath $installerPath -Raw
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-RestMethod -Uri $ReleaseApi -Headers @{ "User-Agent" = "cleanwin-installer" }'), "Get-Content -LiteralPath '$mockReleasePath' -Raw | ConvertFrom-Json"
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-WebRequest -Uri $ArchiveAsset.browser_download_url -OutFile $ArchivePath -Headers @{ "User-Agent" = "cleanwin-installer" }'), 'Copy-Item -LiteralPath ([Uri]$ArchiveAsset.browser_download_url).LocalPath -Destination $ArchivePath'
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-WebRequest -Uri $ChecksumAsset.browser_download_url -OutFile $ChecksumPath -Headers @{ "User-Agent" = "cleanwin-installer" }'), 'Copy-Item -LiteralPath ([Uri]$ChecksumAsset.browser_download_url).LocalPath -Destination $ChecksumPath'
+            Set-Content -Path $mockInstaller -Value $installerContent -Encoding utf8
+
+            & $mockInstaller -InstallDir $installDir -NoPathUpdate
+            if (-not (Test-Path (Join-Path $installDir "cleanwin.exe") -PathType Leaf)) { throw "install failed: cleanwin.exe missing" }
+            if (-not (Test-Path (Join-Path $installDir "cleanwin-mcp.exe") -PathType Leaf)) { throw "install failed: cleanwin-mcp.exe missing" }
+            $doctor = & (Join-Path $installDir "cleanwin.exe") --json doctor | ConvertFrom-Json
+            if (-not $doctor.ready) { throw "installed cleanwin doctor not ready" }
+
+            & $mockInstaller -InstallDir $installDir -NoPathUpdate
+            Write-Host "reinstall (same version) completed without error"
+
+            & $mockInstaller -InstallDir $installDir -Uninstall -NoPathUpdate
+            if (Test-Path $installDir) { throw "uninstall failed: directory still exists" }
+            Write-Host "uninstall completed successfully"
+          } finally {
+            if (Test-Path $installRoot) {
+              Remove-Item -LiteralPath $installRoot -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
 
       - name: Upload portable release artifact
         uses: actions/upload-artifact@v4

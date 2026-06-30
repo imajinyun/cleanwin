@@ -277,7 +277,7 @@ def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list
                     display_name = package_id or display_name
                     version = package_version or ""
             except ET.ParseError:
-                pass
+                pass  # Malformed nuspec: keep directory name as display_name
         app = {
             "source": "chocolatey",
             "key_path": str(package_dir),

@@ -218,7 +218,7 @@ def _chromium_profile_names(root: Path) -> list[str]:
         try:
             names.extend(path.name for path in root.iterdir() if path.is_dir() and path.name.startswith("Profile "))
         except OSError:
-            pass
+            pass  # Unreadable profile directory: fall back to Default only
     return sorted(set(names), key=str.lower)
 
 

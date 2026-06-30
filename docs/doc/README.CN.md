@@ -72,6 +72,12 @@ checksum。`install.ps1` 会作为 GitHub Release asset 发布，提供不依赖
 release、校验发布的 checksum、安装到 `%LOCALAPPDATA%\Programs\cleanwin`、更新
 当前用户 `PATH`，并运行 `cleanwin.exe --json doctor`。
 
+升级时重新运行安装脚本即可——脚本会检测已存在的 cleanwin 安装并原地替换。卸载：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1 -Uninstall
+```
+
 ---
 
 ## ✨ 核心亮点
