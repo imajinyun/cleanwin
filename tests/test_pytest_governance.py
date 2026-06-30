@@ -448,14 +448,58 @@ def test_windows_portable_release_builds_winget_ready_archive(
             "--onefile --collect-data cleanwincli --name cleanwin-mcp cleanwincli\\mcp_server.py",
             "cleanwin.exe --json doctor",
             "cleanwin-mcp.exe",
+            "Copy-Item LICENSE artifacts\\portable\\LICENSE",
+            "Copy-Item README.md artifacts\\portable\\README.md",
             "cleanwin-$version-windows-x64.zip",
             "Get-FileHash",
             "cleanwin.windows-portable-release.v1",
-            "winget_manifest_ready = $true",
+            "portable_zip_ready = $true",
+            "powershell_installer_ready = $true",
+            "install_script = \"install.ps1\"",
             "cleanwin-windows-portable-release",
+            "install.ps1",
             "softprops/action-gh-release@v2",
             "github.event_name == 'release'",
         ],
+    )
+
+
+def test_windows_portable_installer_uses_release_checksum_and_user_path(
+    repo_root: Path,
+    assert_text_contains_all: AssertTextContainsAll,
+    assert_none_match: AssertNoneMatch,
+) -> None:
+    installer = (repo_root / "install.ps1").read_text(encoding="utf-8")
+
+    assert_text_contains_all(
+        installer,
+        [
+            "https://api.github.com/repos/$Repo/releases/latest",
+            "cleanwin-*-windows-x64.zip",
+            "Get-FileHash -LiteralPath $ArchivePath -Algorithm SHA256",
+            "SHA256 mismatch",
+            "Expand-Archive -LiteralPath $ArchivePath",
+            "Join-Path $env:LOCALAPPDATA \"Programs\\cleanwin\"",
+            "[Environment]::SetEnvironmentVariable(\"Path\", $NewPath, \"User\")",
+            "cleanwin.exe\") --json doctor",
+            "Refusing to replace non-empty directory that does not look like a cleanwin install",
+            "Remove-Item -LiteralPath $TempRoot -Recurse -Force -ErrorAction SilentlyContinue",
+        ],
+    )
+    assert_none_match(
+        [installer],
+        lambda text: any(
+            fragment in text
+            for fragment in [
+                "Invoke-Expression",
+                " iEX",
+                "Set-ExecutionPolicy",
+                "Start-Process",
+                "New-Service",
+                "Register-ScheduledTask",
+                "cleanwin.exe --json execute-plan",
+            ]
+        ),
     )
 
 

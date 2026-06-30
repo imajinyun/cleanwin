@@ -41,6 +41,16 @@ cleanwin 无运行时依赖，需要 Python 3.10+。
 # 从源码直接运行
 python3 cleanwin.py --json capabilities
 
+# 使用 Windows portable release
+# 从 GitHub Releases 下载 cleanwin-<version>-windows-x64.zip，解压后运行：
+.\cleanwin.exe --json doctor
+.\cleanwin.exe --json inspect --categories temp,dev-cache --max-items 10
+
+# 将 Windows portable release 安装到当前用户 PATH
+irm https://github.com/imajinyun/cleanwin/releases/latest/download/install.ps1 -OutFile install-cleanwin.ps1
+powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1
+cleanwin --json doctor
+
 # 发布到 PyPI 后通过 pipx 安装
 pipx install cleanwin
 cleanwin --json doctor
@@ -56,9 +66,11 @@ cleanwin-mcp
 
 项目元数据位于 `pyproject.toml`；命令入口是 `cleanwin` 和 `cleanwin-mcp`。
 Windows portable release 会产出 `cleanwin-<version>-windows-x64.zip`，其中
-包含 `cleanwin.exe`、`cleanwin-mcp.exe` 和 SHA256 checksum。该 zip 是 WinGet
-portable manifest 的源 artifact；不要让 WinGet 在安装流程中执行
-`pip install`。
+包含 `cleanwin.exe`、`cleanwin-mcp.exe`、`LICENSE`、`README.md` 和 SHA256
+checksum。`install.ps1` 会作为 GitHub Release asset 发布，提供不依赖 WinGet
+审核的类包管理器体验：先下载脚本，再在本地执行。它会下载 latest portable
+release、校验发布的 checksum、安装到 `%LOCALAPPDATA%\Programs\cleanwin`、更新
+当前用户 `PATH`，并运行 `cleanwin.exe --json doctor`。
 
 ---
 

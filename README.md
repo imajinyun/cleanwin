@@ -83,6 +83,17 @@ python3 -m cleanwincli.mcp_server
 # ▶️ Run directly
 python3 cleanwin.py --json capabilities
 
+# 🪟 Install from the Windows portable release
+# Download cleanwin-<version>-windows-x64.zip from GitHub Releases, unzip it,
+# then run:
+.\cleanwin.exe --json doctor
+.\cleanwin.exe --json inspect --categories temp,dev-cache --max-items 10
+
+# 🧰 Install the Windows portable release into the user PATH
+irm https://github.com/imajinyun/cleanwin/releases/latest/download/install.ps1 -OutFile install-cleanwin.ps1
+powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1
+cleanwin --json doctor
+
 # 📦 Install from PyPI with pipx after publication
 pipx install cleanwin
 cleanwin --json doctor
@@ -97,10 +108,11 @@ cleanwin-mcp
 > Requires Python 3.10+. Runtime dependencies: none.
 
 Windows portable releases are produced as `cleanwin-<version>-windows-x64.zip`
-with `cleanwin.exe`, `cleanwin-mcp.exe`, and a SHA256 checksum. That archive is
-the intended input for a future WinGet portable manifest; WinGet should install
-the signed release asset directly instead of running `pip install` during
-installation.
+with `cleanwin.exe`, `cleanwin-mcp.exe`, `LICENSE`, `README.md`, and a SHA256
+checksum. `install.ps1` is attached to the GitHub Release; download it first,
+then run it locally. It downloads the latest portable release, verifies the
+published checksum, installs under `%LOCALAPPDATA%\Programs\cleanwin`, updates
+the user `PATH`, and runs `cleanwin.exe --json doctor`.
 
 ---
 

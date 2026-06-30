@@ -38,6 +38,8 @@ jobs:
           .\.venv\Scripts\pyinstaller.exe --clean --noconfirm --onefile --collect-data cleanwincli --name cleanwin-mcp cleanwincli\mcp_server.py
           Copy-Item dist\cleanwin.exe artifacts\portable\cleanwin.exe
           Copy-Item dist\cleanwin-mcp.exe artifacts\portable\cleanwin-mcp.exe
+          Copy-Item LICENSE artifacts\portable\LICENSE
+          Copy-Item README.md artifacts\portable\README.md
           @'
           cleanwin Windows portable CLI
 
@@ -76,7 +78,9 @@ jobs:
             installer_type = "zip"
             nested_installer_type = "portable"
             commands = @("cleanwin.exe", "cleanwin-mcp.exe")
-            winget_manifest_ready = $true
+            portable_zip_ready = $true
+            powershell_installer_ready = $true
+            install_script = "install.ps1"
           } | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 artifacts\windows-portable-release.json
 
       - name: Upload portable release artifact
@@ -87,6 +91,7 @@ jobs:
             artifacts/cleanwin-*-windows-x64.zip
             artifacts/cleanwin-*-windows-x64.zip.sha256
             artifacts/windows-portable-release.json
+            install.ps1
 
       - name: Attach portable assets to GitHub Release
         if: github.event_name == 'release'
@@ -96,3 +101,4 @@ jobs:
             artifacts/cleanwin-*-windows-x64.zip
             artifacts/cleanwin-*-windows-x64.zip.sha256
             artifacts/windows-portable-release.json
+            install.ps1
