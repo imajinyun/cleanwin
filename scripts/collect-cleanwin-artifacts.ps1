@@ -156,6 +156,92 @@ function Command-Exists {
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+function Get-ObjectPropertyValue {
+    param(
+        [object]$InputObject,
+        [string]$Name
+    )
+
+    if ($null -eq $InputObject) {
+        return $null
+    }
+    $Property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $Property) {
+        return $null
+    }
+    return $Property.Value
+}
+
+function Get-CimClassName {
+    param([object]$InputObject)
+
+    $CimClass = Get-ObjectPropertyValue -InputObject $InputObject -Name "CimClass"
+    return Get-ObjectPropertyValue -InputObject $CimClass -Name "CimClassName"
+}
+
+function Convert-TaskActionForJson {
+    param([object]$Action)
+
+    return [ordered]@{
+        type = Get-CimClassName -InputObject $Action
+        execute = Get-ObjectPropertyValue -InputObject $Action -Name "Execute"
+        arguments = Get-ObjectPropertyValue -InputObject $Action -Name "Arguments"
+        working_directory = Get-ObjectPropertyValue -InputObject $Action -Name "WorkingDirectory"
+        class_id = Get-ObjectPropertyValue -InputObject $Action -Name "ClassId"
+        data = Get-ObjectPropertyValue -InputObject $Action -Name "Data"
+    }
+}
+
+function Convert-TaskTriggerForJson {
+    param([object]$Trigger)
+
+    return [ordered]@{
+        type = Get-CimClassName -InputObject $Trigger
+        enabled = Get-ObjectPropertyValue -InputObject $Trigger -Name "Enabled"
+        start_boundary = Get-ObjectPropertyValue -InputObject $Trigger -Name "StartBoundary"
+        end_boundary = Get-ObjectPropertyValue -InputObject $Trigger -Name "EndBoundary"
+        execution_time_limit = Get-ObjectPropertyValue -InputObject $Trigger -Name "ExecutionTimeLimit"
+        days_interval = Get-ObjectPropertyValue -InputObject $Trigger -Name "DaysInterval"
+        weeks_interval = Get-ObjectPropertyValue -InputObject $Trigger -Name "WeeksInterval"
+        days_of_week = Get-ObjectPropertyValue -InputObject $Trigger -Name "DaysOfWeek"
+        random_delay = Get-ObjectPropertyValue -InputObject $Trigger -Name "RandomDelay"
+    }
+}
+
+function Convert-ScheduledTaskForJson {
+    param([object]$Task)
+
+    $Principal = Get-ObjectPropertyValue -InputObject $Task -Name "Principal"
+    $Settings = Get-ObjectPropertyValue -InputObject $Task -Name "Settings"
+    $Triggers = @(Get-ObjectPropertyValue -InputObject $Task -Name "Triggers")
+    $Actions = @(Get-ObjectPropertyValue -InputObject $Task -Name "Actions")
+
+    return [ordered]@{
+        TaskName = Get-ObjectPropertyValue -InputObject $Task -Name "TaskName"
+        TaskPath = Get-ObjectPropertyValue -InputObject $Task -Name "TaskPath"
+        State = [string](Get-ObjectPropertyValue -InputObject $Task -Name "State")
+        Author = Get-ObjectPropertyValue -InputObject $Task -Name "Author"
+        Description = Get-ObjectPropertyValue -InputObject $Task -Name "Description"
+        URI = Get-ObjectPropertyValue -InputObject $Task -Name "URI"
+        Principal = [ordered]@{
+            user_id = Get-ObjectPropertyValue -InputObject $Principal -Name "UserId"
+            group_id = Get-ObjectPropertyValue -InputObject $Principal -Name "GroupId"
+            logon_type = [string](Get-ObjectPropertyValue -InputObject $Principal -Name "LogonType")
+            run_level = [string](Get-ObjectPropertyValue -InputObject $Principal -Name "RunLevel")
+        }
+        Triggers = @($Triggers | Where-Object { $null -ne $_ } | ForEach-Object { Convert-TaskTriggerForJson -Trigger $_ })
+        Actions = @($Actions | Where-Object { $null -ne $_ } | ForEach-Object { Convert-TaskActionForJson -Action $_ })
+        Settings = [ordered]@{
+            enabled = Get-ObjectPropertyValue -InputObject $Settings -Name "Enabled"
+            hidden = Get-ObjectPropertyValue -InputObject $Settings -Name "Hidden"
+            wake_to_run = Get-ObjectPropertyValue -InputObject $Settings -Name "WakeToRun"
+            run_only_if_network_available = Get-ObjectPropertyValue -InputObject $Settings -Name "RunOnlyIfNetworkAvailable"
+            multiple_instances = [string](Get-ObjectPropertyValue -InputObject $Settings -Name "MultipleInstances")
+            execution_time_limit = Get-ObjectPropertyValue -InputObject $Settings -Name "ExecutionTimeLimit"
+        }
+    }
+}
+
 function Collect-AppxPackages {
     $Command = "Get-AppxPackage -AllUsers"
     try {
@@ -211,8 +297,9 @@ function Collect-ScheduledTasks {
     }
 
     try {
-        $Tasks = Get-ScheduledTask | Select-Object TaskName, TaskPath, State, Author, Description, URI, Principal, Triggers, Actions, Settings
-        Write-JsonArtifact -Id "scheduled-task-json" -RelativePath "scheduled-tasks\scheduled-tasks.json" -Schema "cleanwin.scheduled-task-json-artifact.v1" -Collector "scheduled-task-json" -Value $Tasks -Command "Get-ScheduledTask"
+        $Tasks = Get-ScheduledTask
+        $TaskRecords = @($Tasks | ForEach-Object { Convert-ScheduledTaskForJson -Task $_ })
+        Write-JsonArtifact -Id "scheduled-task-json" -RelativePath "scheduled-tasks\scheduled-tasks.json" -Schema "cleanwin.scheduled-task-json-artifact.v1" -Collector "scheduled-task-json" -Value $TaskRecords -Command "Get-ScheduledTask"
         foreach ($Task in $Tasks) {
             $SafeName = (($Task.TaskPath.Trim("\") + "-" + $Task.TaskName) -replace '[\\/:*?"<>| ]+', "_").Trim("_")
             if (-not $SafeName) {
