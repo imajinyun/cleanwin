@@ -14,6 +14,20 @@ from typing import Any
 
 PLAN_SCHEMA = "cleanwin.plan.v1"
 
+CATEGORY_TEMP = "temp"
+CATEGORY_DEV_CACHE = "dev-cache"
+CATEGORY_PACKAGE_CACHE = "package-cache"
+CATEGORY_BROWSER_CACHE = "browser-cache"
+CATEGORY_APP_LEFTOVERS = "app-leftovers"
+
+ALL_CATEGORIES: tuple[str, ...] = (
+    CATEGORY_TEMP,
+    CATEGORY_DEV_CACHE,
+    CATEGORY_PACKAGE_CACHE,
+    CATEGORY_BROWSER_CACHE,
+    CATEGORY_APP_LEFTOVERS,
+)
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()

@@ -46,7 +46,17 @@ from cleanwincli.external_rules import external_rule_translation_sample, transla
 from cleanwincli.file_reports import file_report
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.installed_apps import installed_app_inventory_report
-from cleanwincli.models import PLAN_SCHEMA, HostContext, Plan, plan_from_dict
+from cleanwincli.models import (
+    CATEGORY_APP_LEFTOVERS,
+    CATEGORY_BROWSER_CACHE,
+    CATEGORY_DEV_CACHE,
+    CATEGORY_PACKAGE_CACHE,
+    CATEGORY_TEMP,
+    PLAN_SCHEMA,
+    HostContext,
+    Plan,
+    plan_from_dict,
+)
 from cleanwincli.official_commands import official_command_plan_report
 from cleanwincli.operation_log_readiness import operation_log_readiness_report
 from cleanwincli.presets import preset_catalog_report
@@ -64,7 +74,7 @@ from cleanwincli.windows_smoke import windows_smoke_matrix_report
 from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
 
-EXECUTABLE_CACHE_CATEGORIES = frozenset({"temp", "dev-cache", "package-cache", "browser-cache"})
+EXECUTABLE_CACHE_CATEGORIES = frozenset({CATEGORY_TEMP, CATEGORY_DEV_CACHE, CATEGORY_PACKAGE_CACHE, CATEGORY_BROWSER_CACHE})
 
 
 def capabilities() -> dict[str, Any]:
@@ -83,7 +93,7 @@ def capabilities() -> dict[str, Any]:
             "protected user data paths",
             "operation log write failures",
         ],
-        "safe_categories": ["app-leftovers", "browser-cache", "dev-cache", "package-cache", "temp"],
+        "safe_categories": [CATEGORY_APP_LEFTOVERS, CATEGORY_BROWSER_CACHE, CATEGORY_DEV_CACHE, CATEGORY_PACKAGE_CACHE, CATEGORY_TEMP],
         "executable_cache_categories": sorted(EXECUTABLE_CACHE_CATEGORIES),
         "read_only_categories": [
             "browser-cache-report",
@@ -526,19 +536,19 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         "Mozilla Firefox": "Use Firefox > Clear recent history",
     }
     for candidate in candidates:
-        if candidate.category == "browser-cache" and candidate.cache_owner in browser_tool_commands:
+        if candidate.category == CATEGORY_BROWSER_CACHE and candidate.cache_owner in browser_tool_commands:
             strategy_cleanup_commands.add(browser_tool_commands[candidate.cache_owner])
     cleanup_strategy = {
-        "preferred": "official-tool-or-app-ui" if "browser-cache" in candidate_categories else "official-cli-command",
+        "preferred": "official-tool-or-app-ui" if CATEGORY_BROWSER_CACHE in candidate_categories else "official-cli-command",
         "fallback": "cleanwin-recycle-execution",
         "requires_review": True,
         "official_cleanup_commands": sorted(strategy_cleanup_commands),
     }
     sensitive_exclusions = []
-    if any(candidate.category == "browser-cache" for candidate in candidates):
+    if any(candidate.category == CATEGORY_BROWSER_CACHE for candidate in candidates):
         sensitive_exclusions.append(
             {
-                "category": "browser-cache",
+                "category": CATEGORY_BROWSER_CACHE,
                 "reason": "Only browser cache directories are planned; profile databases, cookies, sessions, passwords, extensions, and sync state remain excluded.",
                 "excluded_patterns": [
                     {"pattern": "Cookies", "risk": "authentication sessions and site state"},
