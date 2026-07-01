@@ -8,6 +8,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from cleanwincli.report_helpers import source_status
+
 BROWSER_PROFILE_INVENTORY_SCHEMA = "cleanwin.browser-profile-inventory.v1"
 LOCKED_STATE_SCHEMA = "cleanwin.locked-state.v1"
 
@@ -64,10 +66,6 @@ _RELATED_APP_PROCESS_NAMES = {
     "pycharm64.exe",
     "webstorm64.exe",
 }
-
-
-def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
 
 
 def _path_exists(path: Path) -> bool:
@@ -243,7 +241,7 @@ def _chromium_profiles(browser: str, owner: str, root: Path, *, process_names: s
                 "safe_to_execute": False,
             }
         )
-    source = _source_status(browser.lower(), available=_path_exists(root), reason="profile-root-scan", evidence={"root": str(root)})
+    source = source_status(browser.lower(), available=_path_exists(root), reason="profile-root-scan", evidence={"root": str(root)})
     return profiles, source
 
 
@@ -271,7 +269,7 @@ def _firefox_profiles(root: Path, *, process_names: set[str], process_scan_perfo
                 "safe_to_execute": False,
             }
         )
-    return profiles, _source_status("firefox", available=_path_exists(root), reason="profile-root-scan", evidence={"root": str(root)})
+    return profiles, source_status("firefox", available=_path_exists(root), reason="profile-root-scan", evidence={"root": str(root)})
 
 
 def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> dict[str, Any]:
@@ -306,7 +304,7 @@ def browser_profile_inventory_report(env: Mapping[str, str] | None = None) -> di
         profiles.extend(firefox_profiles)
         sources.append(source)
     else:
-        sources.append(_source_status("firefox", available=False, reason="appdata-env-missing"))
+        sources.append(source_status("firefox", available=False, reason="appdata-env-missing"))
 
     cache_layers = [layer for profile in profiles for layer in profile["cache_layers"]]
     locked_layers = [layer for layer in cache_layers if layer["locked_state"]["locked"]]

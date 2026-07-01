@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from cleanwincli.operation_log_readiness import validate_operation_log_readiness
+from cleanwincli.report_helpers import quality_gate_from_payload, values_from_mapping
 
 LOW_RISK_CACHE_EXECUTION_READINESS_SCHEMA = "cleanwin.low-risk-cache-execution-readiness.v1"
 LOW_RISK_CACHE_EXECUTION_READINESS_VALIDATION_SCHEMA = "cleanwin.low-risk-cache-readiness-validation.v1"
@@ -49,33 +50,8 @@ CACHE_READINESS_VIOLATION_CODES = [
 ]
 
 
-def _values_from_mapping(payload: Mapping[str, Any], key: str) -> set[str]:
-    value = payload.get(key)
-    if isinstance(value, Mapping):
-        return {str(item) for item in value.keys()}
-    if isinstance(value, Iterable) and not isinstance(value, str | bytes):
-        return {str(item) for item in value}
-    return set()
 
 
-def _quality_gate_from_payload(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> Mapping[str, Any]:
-    quality_gate = proposed_action.get("quality_gate")
-    if isinstance(quality_gate, Mapping):
-        return quality_gate
-    quality_gate = source_report.get("quality_gate")
-    if isinstance(quality_gate, Mapping):
-        return quality_gate
-    candidates = source_report.get("candidates")
-    if isinstance(candidates, Iterable) and not isinstance(candidates, str | bytes):
-        for candidate in candidates:
-            if isinstance(candidate, Mapping) and isinstance(candidate.get("quality_gate"), Mapping):
-                return candidate["quality_gate"]
-    review_queue = source_report.get("review_queue")
-    if isinstance(review_queue, Iterable) and not isinstance(review_queue, str | bytes):
-        for item in review_queue:
-            if isinstance(item, Mapping) and isinstance(item.get("quality_gate"), Mapping):
-                return item["quality_gate"]
-    return {}
 
 
 def validate_low_risk_cache_readiness(
@@ -84,7 +60,7 @@ def validate_low_risk_cache_readiness(
     proposed_action: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Validate readiness evidence without enabling cache execution."""
-    provided_evidence = _values_from_mapping(proposed_action, "evidence")
+    provided_evidence = values_from_mapping(proposed_action, "evidence")
     missing_evidence: list[str] = []
     errors: list[dict[str, str]] = []
     evidence_error_codes = {
@@ -103,7 +79,7 @@ def validate_low_risk_cache_readiness(
             missing_evidence.append(evidence)
             errors.append({"code": evidence_error_codes[evidence], "detail": evidence})
 
-    quality_gate = _quality_gate_from_payload(source_report, proposed_action)
+    quality_gate = quality_gate_from_payload(source_report, proposed_action)
     quality_gate_blockers: list[str] = []
     if not quality_gate:
         if "rule_quality_gate" not in missing_evidence:

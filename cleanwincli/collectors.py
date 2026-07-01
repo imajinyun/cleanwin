@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import fnmatch
-import os
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +12,7 @@ from cleanwincli.identity import capture_filesystem_identity
 from cleanwincli.models import Candidate, Finding
 from cleanwincli.protection import validate_filesystem_candidate
 from cleanwincli.protection_data import DEFAULT_SAFE_CATEGORIES, READ_ONLY_CATEGORIES
+from cleanwincli.report_helpers import get_env
 from cleanwincli.rule_catalog import browser_profile_cache_rules, catalog_rules
 
 DEV_CACHE_RULES = cast(tuple[dict[str, str], ...], catalog_rules("dev_cache_rules"))
@@ -539,7 +539,7 @@ def collect_candidates(
     max_items: int = 100,
     rule_ids: list[str] | None = None,
 ) -> list[Candidate]:
-    env = env or dict(os.environ)
+    env = get_env(env)
     candidates: list[Candidate] = []
     per_root_limit = max(1, max_items)
     allowed_rule_ids = {item for item in (rule_ids or []) if item}
@@ -644,7 +644,7 @@ def collect_candidates(
 
 
 def collect_findings(categories: list[str], *, env: dict[str, str] | None = None, rule_ids: list[str] | None = None) -> list[Finding]:
-    env = env or dict(os.environ)
+    env = get_env(env)
     findings: list[Finding] = []
     allowed_rule_ids = {item for item in (rule_ids or []) if item}
     if "registry-report" in categories:

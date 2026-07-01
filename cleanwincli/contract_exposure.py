@@ -144,11 +144,20 @@ def _registry_schema_names_from_source() -> set[str]:
 def _provider_names() -> set[str]:
     source = _read_text(CORE_SOURCE)
     providers: set[str] = set()
-    marker = 'if provider == "'
+    if_marker = 'if provider == "'
+    in_registry = False
     for line in source.splitlines():
         stripped = line.strip()
-        if stripped.startswith(marker):
-            providers.add(stripped.removeprefix(marker).split('"', 1)[0])
+        if stripped.startswith('_AI_TOOLS_REGISTRY'):
+            in_registry = True
+            continue
+        if in_registry:
+            if stripped.startswith('}'):
+                break
+            if stripped.startswith('"') and '":' in stripped:
+                providers.add(stripped.removeprefix('"').split('":', 1)[0])
+        if stripped.startswith(if_marker):
+            providers.add(stripped.removeprefix(if_marker).split('"', 1)[0])
     return providers
 
 

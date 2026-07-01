@@ -10,6 +10,8 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from cleanwincli.report_helpers import get_env
+
 FILE_REPORT_SCHEMA = "cleanwin.file-report.v1"
 
 DEFAULT_MIN_LARGE_FILE_BYTES = 100 * 1024 * 1024
@@ -128,7 +130,7 @@ def file_report(
     max_files_scanned: int = DEFAULT_MAX_FILES_SCANNED,
     hash_bytes: int = DEFAULT_HASH_BYTES,
 ) -> dict[str, Any]:
-    current_env = dict(os.environ if env is None else env)
+    current_env = get_env(env)
     roots = _scan_roots(current_env)
     files, budget = _iter_files(roots, max_files=max_files_scanned)
     records = [record for record in (_file_record(path, env=current_env) for path in files) if record is not None]

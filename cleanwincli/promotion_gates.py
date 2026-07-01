@@ -6,6 +6,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from cleanwincli.cache_readiness import CACHE_READINESS_REQUIRED_TESTS, validate_low_risk_cache_readiness
+from cleanwincli.report_helpers import quality_gate_from_payload, values_from_mapping
 
 PROMOTION_GATES_SCHEMA = "cleanwin.promotion-gates.v1"
 PROMOTION_GATE_VALIDATION_SCHEMA = "cleanwin.promotion-gate-validation.v1"
@@ -325,13 +326,6 @@ def promotion_gates_report() -> dict[str, Any]:
     }
 
 
-def _values_from_mapping(payload: Mapping[str, Any], key: str) -> set[str]:
-    value = payload.get(key)
-    if isinstance(value, Mapping):
-        return {str(item) for item in value.keys()}
-    if isinstance(value, Iterable) and not isinstance(value, str | bytes):
-        return {str(item) for item in value}
-    return set()
 
 
 def _gate_for_action(gates: list[dict[str, Any]], proposed_action: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -345,28 +339,10 @@ def _gate_for_action(gates: list[dict[str, Any]], proposed_action: Mapping[str, 
     return None
 
 
-def _quality_gate_from_payload(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> Mapping[str, Any]:
-    quality_gate = proposed_action.get("quality_gate")
-    if isinstance(quality_gate, Mapping):
-        return quality_gate
-    quality_gate = source_report.get("quality_gate")
-    if isinstance(quality_gate, Mapping):
-        return quality_gate
-    candidates = source_report.get("candidates")
-    if isinstance(candidates, Iterable) and not isinstance(candidates, str | bytes):
-        for candidate in candidates:
-            if isinstance(candidate, Mapping) and isinstance(candidate.get("quality_gate"), Mapping):
-                return candidate["quality_gate"]
-    review_queue = source_report.get("review_queue")
-    if isinstance(review_queue, Iterable) and not isinstance(review_queue, str | bytes):
-        for item in review_queue:
-            if isinstance(item, Mapping) and isinstance(item.get("quality_gate"), Mapping):
-                return item["quality_gate"]
-    return {}
 
 
 def _external_rule_quality_errors(source_report: Mapping[str, Any], proposed_action: Mapping[str, Any]) -> tuple[list[str], list[str], list[dict[str, str]]]:
-    quality_gate = _quality_gate_from_payload(source_report, proposed_action)
+    quality_gate = quality_gate_from_payload(source_report, proposed_action)
     missing_reviews: list[str] = []
     blockers: list[str] = []
     errors: list[dict[str, str]] = []
@@ -428,7 +404,7 @@ def _browser_cache_locked_state_errors(source_report: Mapping[str, Any], propose
     locked_state = _locked_state_from_payload(source_report, proposed_action)
     missing: list[str] = []
     errors: list[dict[str, str]] = []
-    if "locked_state_ref" not in _values_from_mapping(proposed_action, "evidence"):
+    if "locked_state_ref" not in values_from_mapping(proposed_action, "evidence"):
         missing.append("locked_state_ref")
     if not locked_state:
         missing.append("locked_state")
@@ -453,11 +429,11 @@ def validate_promotion_gate_action(
     gates = promotion_gates_report()["gates"]
     gate = _gate_for_action(gates, proposed_action)
     source_schema = str(source_report.get("schema") or proposed_action.get("source_report_schema") or "")
-    provided_evidence = _values_from_mapping(proposed_action, "evidence")
-    provided_snapshots = _values_from_mapping(proposed_action, "snapshots")
-    provided_rollback_metadata = _values_from_mapping(proposed_action, "rollback_metadata")
-    provided_tests = _values_from_mapping(proposed_action, "tests")
-    provided_confirmations = _values_from_mapping(proposed_action, "human_confirmations")
+    provided_evidence = values_from_mapping(proposed_action, "evidence")
+    provided_snapshots = values_from_mapping(proposed_action, "snapshots")
+    provided_rollback_metadata = values_from_mapping(proposed_action, "rollback_metadata")
+    provided_tests = values_from_mapping(proposed_action, "tests")
+    provided_confirmations = values_from_mapping(proposed_action, "human_confirmations")
 
     if gate is None:
         return {

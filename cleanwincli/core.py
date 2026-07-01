@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -619,103 +620,68 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
     }
 
 
+_AI_TOOLS_REGISTRY: dict[str, Callable[..., dict[str, Any]]] = {
+    "catalog": tool_catalog,
+    "openai": openai_functions_export,
+    "anthropic": anthropic_tools_export,
+    "parity": provider_export_parity,
+    "validation": validate_ai_schema,
+    "registry": schema_registry,
+    "host-policy": lambda: render_ai_host_policy(tool_catalog=tool_catalog()),
+    "readiness": ai_readiness_report,
+    "self-test": ai_self_test_report,
+    "runbook": ai_runbook_report,
+    "workflow-router": workflow_router_report,
+    "environment-index": environment_index_report,
+    "workflow-decision": lambda: workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan"),
+    "workflow-trace": workflow_trace_report,
+    "doctor": doctor_report,
+    "file-report": file_report,
+    "recovery-readiness": recovery_readiness_report,
+    "scan-governance": scan_governance_report,
+    "external-rule-translate": external_rule_translation_sample,
+    "installed-app-inventory": installed_app_inventory_report,
+    "official-command-plan": official_command_plan_report,
+    "preset-catalog": preset_catalog_report,
+    "rule-pack-catalog": rule_pack_catalog_report,
+    "rule-quality-dashboard": rule_quality_dashboard_report,
+    "promotion-gates": promotion_gates_report,
+    "low-risk-cache-readiness": low_risk_cache_execution_readiness_report,
+    "operation-log-readiness": operation_log_readiness_report,
+    "contract-exposure-matrix": contract_exposure_matrix,
+    "browser-profile-inventory": browser_profile_inventory_report,
+    "debloat-privacy-report": debloat_privacy_report,
+    "backup-delete-contract": backup_delete_contract_report,
+    "disable-revert-contract": disable_revert_contract_report,
+    "permanent-delete-denial": permanent_delete_denial_report,
+    "registry-privacy-plan": registry_privacy_change_plan_report,
+    "appx-removal-plan": appx_removal_plan_report,
+    "service-task-disable-plan": service_task_disable_plan_report,
+    "rollback-drill-report": rollback_drill_report,
+    "startup-service-inventory": startup_service_inventory_report,
+    "system-health-report": system_health_report,
+    "windows-artifact-layout": artifact_layout_report,
+    "windows-artifact-validate": artifact_validation_report,
+    "windows-native-artifacts": windows_native_artifacts_report,
+    "windows-inventory": windows_inventory_report,
+    "windows-smoke-matrix": windows_smoke_matrix_report,
+    "windows-evidence-bundle": windows_evidence_bundle_report,
+}
+
+
 def ai_tools_report(provider: str = "catalog") -> dict[str, Any]:
-    if provider == "catalog":
-        return tool_catalog()
-    if provider == "openai":
-        return openai_functions_export()
-    if provider == "anthropic":
-        return anthropic_tools_export()
-    if provider == "parity":
-        return provider_export_parity()
-    if provider == "validation":
-        return validate_ai_schema()
-    if provider == "registry":
-        return schema_registry()
-    if provider == "host-policy":
-        return render_ai_host_policy(tool_catalog=tool_catalog())
-    if provider == "readiness":
-        return ai_readiness_report()
-    if provider == "self-test":
-        return ai_self_test_report()
-    if provider == "runbook":
-        return ai_runbook_report()
-    if provider == "workflow-router":
-        return workflow_router_report()
-    if provider == "environment-index":
-        return environment_index_report()
-    if provider == "workflow-decision":
-        return workflow_decision_report(route_id="recycle-execution", requested_tool="cleanwin_execute_plan")
-    if provider == "workflow-trace":
-        return workflow_trace_report()
-    if provider == "doctor":
-        return doctor_report()
-    if provider == "file-report":
-        return file_report()
-    if provider == "recovery-readiness":
-        return recovery_readiness_report()
-    if provider == "scan-governance":
-        return scan_governance_report()
-    if provider == "external-rule-translate":
-        return external_rule_translation_sample()
-    if provider == "installed-app-inventory":
-        return installed_app_inventory_report()
-    if provider == "official-command-plan":
-        return official_command_plan_report()
-    if provider == "preset-catalog":
-        return preset_catalog_report()
-    if provider == "rule-pack-catalog":
-        return rule_pack_catalog_report()
-    if provider == "rule-quality-dashboard":
-        return rule_quality_dashboard_report()
-    if provider == "promotion-gates":
-        return promotion_gates_report()
-    if provider == "low-risk-cache-readiness":
-        return low_risk_cache_execution_readiness_report()
-    if provider == "operation-log-readiness":
-        return operation_log_readiness_report()
-    if provider == "contract-exposure-matrix":
-        return contract_exposure_matrix()
-    if provider == "browser-profile-inventory":
-        return browser_profile_inventory_report()
-    if provider == "debloat-privacy-report":
-        return debloat_privacy_report()
-    if provider == "backup-delete-contract":
-        return backup_delete_contract_report()
-    if provider == "disable-revert-contract":
-        return disable_revert_contract_report()
-    if provider == "permanent-delete-denial":
-        return permanent_delete_denial_report()
-    if provider == "registry-privacy-plan":
-        return registry_privacy_change_plan_report()
-    if provider == "appx-removal-plan":
-        return appx_removal_plan_report()
-    if provider == "service-task-disable-plan":
-        return service_task_disable_plan_report()
-    if provider == "rollback-drill-report":
-        return rollback_drill_report()
-    if provider == "startup-service-inventory":
-        return startup_service_inventory_report()
-    if provider == "system-health-report":
-        return system_health_report()
-    if provider == "windows-artifact-layout":
-        return artifact_layout_report()
-    if provider == "windows-artifact-validate":
-        return artifact_validation_report()
-    if provider == "windows-native-artifacts":
-        return windows_native_artifacts_report()
-    if provider == "windows-inventory":
-        return windows_inventory_report()
-    if provider == "windows-smoke-matrix":
-        return windows_smoke_matrix_report()
-    if provider == "windows-evidence-bundle":
-        return windows_evidence_bundle_report()
     if provider == "review-sample":
         sample = schema_registry().get("samples", {}).get("cleanwin.review.v1")
         if isinstance(sample, dict):
             return sample
         raise RuntimeError("Schema sample unavailable: cleanwin.review.v1")
-    raise RuntimeError(f"Unsupported ai-tools provider: {provider}")
+    handler = _AI_TOOLS_REGISTRY.get(provider)
+    if handler is None:
+        raise RuntimeError(f"Unsupported ai-tools provider: {provider}")
+    result = handler()
+    if not isinstance(result, dict):
+        raise RuntimeError(f"AI tools provider {provider} did not return a dict")
+    return result
 
 
 def host_policy_report(*, validate: bool = False) -> dict[str, Any]:

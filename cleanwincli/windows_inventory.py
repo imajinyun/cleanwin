@@ -7,6 +7,8 @@ import platform
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from cleanwincli.report_helpers import source_status
+
 WINDOWS_INVENTORY_SCHEMA = "cleanwin.windows-inventory.v1"
 COLLECTION_PLAN_SCHEMA = "cleanwin.windows-inventory-collection-plan.v1"
 APPX_CLASSIFICATION_SCHEMA = "cleanwin.appx-package-classification.v1"
@@ -56,15 +58,6 @@ _APPX_OEM_TOKENS = (
     "lenovo",
     "msi",
 )
-
-
-def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "id": source_id,
-        "available": available,
-        "reason": reason,
-        "evidence": evidence or {},
-    }
 
 
 def _count(items: Iterable[Mapping[str, Any]]) -> int:
@@ -234,7 +227,7 @@ def _inventory_section(
         collection_plan["artifact_contract"] = artifact_contract
     if fixture_items is None:
         items: list[dict[str, Any]] = []
-        source = _source_status(
+        source = source_status(
             source_id,
             available=False,
             reason="external-command-not-executed",
@@ -252,7 +245,7 @@ def _inventory_section(
         items = [dict(item) for item in fixture_items]
         if enriched_items is not None:
             items = enriched_items
-        source = _source_status(
+        source = source_status(
             source_id,
             available=True,
             reason="test-fixture",

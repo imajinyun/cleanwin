@@ -8,11 +8,9 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from cleanwincli.report_helpers import get_env, source_status
+
 STARTUP_SERVICE_INVENTORY_SCHEMA = "cleanwin.startup-service-inventory.v1"
-
-
-def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
 
 
 def _startup_registry_keys() -> list[tuple[str, str]]:
@@ -51,7 +49,7 @@ def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] |
         for root_name, key_path in keys:
             full_key = rf"{root_name}\{key_path}"
             values = raw_registry_values.get(full_key, {})
-            sources.append(_source_status("registry-startup-fixture", available=True, reason="test-fixture", evidence={"key": full_key}))
+            sources.append(source_status("registry-startup-fixture", available=True, reason="test-fixture", evidence={"key": full_key}))
             for name, command in values.items():
                 entries.append(
                     {
@@ -68,11 +66,11 @@ def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] |
                 )
         return entries, sources
     if os.name != "nt":
-        return [], [_source_status("registry-startup", available=False, reason="not-windows", evidence={"os_name": os.name})]
+        return [], [source_status("registry-startup", available=False, reason="not-windows", evidence={"os_name": os.name})]
     try:
         import winreg as _winreg  # type: ignore[import-not-found]
     except ImportError:
-        return [], [_source_status("registry-startup", available=False, reason="winreg-unavailable")]
+        return [], [source_status("registry-startup", available=False, reason="winreg-unavailable")]
     winreg: Any = _winreg
     hives = {"HKCU": winreg.HKEY_CURRENT_USER, "HKLM": winreg.HKEY_LOCAL_MACHINE}
     for root_name, key_path in keys:
@@ -95,9 +93,9 @@ def _registry_run_entries(raw_registry_values: Mapping[str, Mapping[str, Any]] |
                             "safe_to_execute": False,
                         }
                     )
-            sources.append(_source_status("registry-startup", available=True, reason="registry-key-read", evidence={"key": full_key}))
+            sources.append(source_status("registry-startup", available=True, reason="registry-key-read", evidence={"key": full_key}))
         except OSError as exc:
-            sources.append(_source_status("registry-startup", available=False, reason="registry-key-unavailable", evidence={"key": full_key, "error": str(exc)}))
+            sources.append(source_status("registry-startup", available=False, reason="registry-key-unavailable", evidence={"key": full_key, "error": str(exc)}))
     return entries, sources
 
 
@@ -111,7 +109,7 @@ def _registry_extension_entries(
         for root_name, key_path, entry_type, risk in keys:
             full_key = rf"{root_name}\{key_path}"
             values = raw_registry_values.get(full_key, {})
-            sources.append(_source_status("registry-startup-extension-fixture", available=True, reason="test-fixture", evidence={"key": full_key, "entry_type": entry_type}))
+            sources.append(source_status("registry-startup-extension-fixture", available=True, reason="test-fixture", evidence={"key": full_key, "entry_type": entry_type}))
             for name, raw_value in values.items():
                 raw_text = raw_value.hex() if isinstance(raw_value, bytes) else str(raw_value)
                 entries.append(
@@ -129,7 +127,7 @@ def _registry_extension_entries(
                 )
         return entries, sources
     return [], [
-        _source_status(
+        source_status(
             "registry-startup-extensions",
             available=False,
             reason="registry-extension-inventory-not-executed",
@@ -186,7 +184,7 @@ def _startup_folder_entries(env: Mapping[str, str]) -> tuple[list[dict[str, Any]
             continue
         source_id, root = item
         if not root.exists():
-            sources.append(_source_status(source_id, available=False, reason="path-missing", evidence={"path": str(root)}))
+            sources.append(source_status(source_id, available=False, reason="path-missing", evidence={"path": str(root)}))
             continue
         for child in sorted(root.iterdir(), key=lambda path: path.name.lower()):
             if child.is_file() and not child.is_symlink():
@@ -203,13 +201,13 @@ def _startup_folder_entries(env: Mapping[str, str]) -> tuple[list[dict[str, Any]
                         "safe_to_execute": False,
                     }
                 )
-        sources.append(_source_status(source_id, available=True, reason="filesystem-directory", evidence={"path": str(root)}))
+        sources.append(source_status(source_id, available=True, reason="filesystem-directory", evidence={"path": str(root)}))
     return entries, sources
 
 
 def _service_entries(raw_services: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if raw_services is None:
-        return [], _source_status("services", available=False, reason="external-command-not-executed", evidence={"command": "Get-Service | Select Name,Status,StartType"})
+        return [], source_status("services", available=False, reason="external-command-not-executed", evidence={"command": "Get-Service | Select Name,Status,StartType"})
     entries = []
     for service in raw_services:
         binary_path = str(service.get("PathName") or service.get("BinaryPathName") or service.get("binary_path") or "")
@@ -242,7 +240,7 @@ def _service_entries(raw_services: Iterable[Mapping[str, Any]] | None) -> tuple[
                 "safe_to_execute": False,
             }
         )
-    return [entry for entry in entries if entry["name"]], _source_status("services", available=True, reason="test-fixture")
+    return [entry for entry in entries if entry["name"]], source_status("services", available=True, reason="test-fixture")
 
 
 def _first_present(values: Mapping[str, Any], *keys: str) -> Any:
@@ -295,7 +293,7 @@ def _service_risk(service: Mapping[str, Any]) -> str:
 
 def _scheduled_task_entries(raw_tasks: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if raw_tasks is None:
-        return [], _source_status("scheduled-tasks", available=False, reason="external-command-not-executed", evidence={"command": "schtasks /Query /FO CSV /V"})
+        return [], source_status("scheduled-tasks", available=False, reason="external-command-not-executed", evidence={"command": "schtasks /Query /FO CSV /V"})
     entries = []
     for task in raw_tasks:
         task_name = str(task.get("TaskName") or task.get("name") or "")
@@ -323,7 +321,7 @@ def _scheduled_task_entries(raw_tasks: Iterable[Mapping[str, Any]] | None) -> tu
                 "safe_to_execute": False,
             }
         )
-    return [entry for entry in entries if entry["name"]], _source_status("scheduled-tasks", available=True, reason="test-fixture")
+    return [entry for entry in entries if entry["name"]], source_status("scheduled-tasks", available=True, reason="test-fixture")
 
 
 def _scheduled_task_folder(task_name: str) -> str:
@@ -340,7 +338,7 @@ def startup_service_inventory_report(
     raw_tasks: Iterable[Mapping[str, Any]] | None = None,
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    current_env = dict(os.environ if env is None else env)
+    current_env = get_env(env)
     registry_entries, registry_sources = _registry_run_entries(raw_registry_values)
     registry_extension_entries, registry_extension_sources = _registry_extension_entries(raw_registry_values)
     folder_entries, folder_sources = _startup_folder_entries(current_env)

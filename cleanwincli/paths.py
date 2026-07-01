@@ -6,6 +6,8 @@ import os
 import re
 from pathlib import Path, PureWindowsPath
 
+from cleanwincli.report_helpers import get_env
+
 CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 
@@ -14,7 +16,7 @@ def has_control_characters(value: str) -> bool:
 
 
 def expand_environment_path(value: str, env: dict[str, str] | None = None) -> str:
-    env = env or dict(os.environ)
+    env = get_env(env)
     expanded = value
     for key, replacement in env.items():
         expanded = expanded.replace(f"%{key}%", replacement)

@@ -8,6 +8,8 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from cleanwincli.report_helpers import get_env, source_status
+
 DEBLOAT_PRIVACY_REPORT_SCHEMA = "cleanwin.debloat-privacy-report.v1"
 
 _POLICY_SPECS: tuple[tuple[str, str, str, str, str, set[int | str], str, list[str]], ...] = (
@@ -1833,31 +1835,27 @@ _APPX_REVIEW_TOKENS: tuple[tuple[str, str, str], ...] = (
 )
 
 
-def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {"id": source_id, "available": available, "reason": reason, "evidence": evidence or {}}
-
-
 def _registry_value(root_name: str, subkey_path: str, value_name: str, *, raw_values: Mapping[str, Any] | None = None) -> tuple[Any | None, dict[str, Any]]:
     key = rf"{root_name}\{subkey_path}\{value_name}"
     if raw_values is not None:
-        return raw_values.get(key), _source_status("registry-fixture", available=True, reason="test-fixture", evidence={"key": key})
+        return raw_values.get(key), source_status("registry-fixture", available=True, reason="test-fixture", evidence={"key": key})
     if os.name != "nt":
-        return None, _source_status("registry-privacy-policy", available=False, reason="not-windows", evidence={"key": key, "os_name": os.name})
+        return None, source_status("registry-privacy-policy", available=False, reason="not-windows", evidence={"key": key, "os_name": os.name})
     try:
         import winreg as _winreg  # type: ignore[import-not-found]
     except ImportError:
-        return None, _source_status("registry-privacy-policy", available=False, reason="winreg-unavailable", evidence={"key": key})
+        return None, source_status("registry-privacy-policy", available=False, reason="winreg-unavailable", evidence={"key": key})
     winreg: Any = _winreg
     hives = {"HKLM": winreg.HKEY_LOCAL_MACHINE, "HKCU": winreg.HKEY_CURRENT_USER}
     hive = hives.get(root_name)
     if hive is None:
-        return None, _source_status("registry-privacy-policy", available=False, reason="unsupported-hive", evidence={"key": key})
+        return None, source_status("registry-privacy-policy", available=False, reason="unsupported-hive", evidence={"key": key})
     try:
         with winreg.OpenKey(hive, subkey_path, 0, winreg.KEY_READ) as registry_key:
             value, _value_type = winreg.QueryValueEx(registry_key, value_name)
-            return value, _source_status("registry-privacy-policy", available=True, reason="registry-value-read", evidence={"key": key})
+            return value, source_status("registry-privacy-policy", available=True, reason="registry-value-read", evidence={"key": key})
     except OSError as exc:
-        return None, _source_status("registry-privacy-policy", available=False, reason="registry-value-unavailable", evidence={"key": key, "error": str(exc)})
+        return None, source_status("registry-privacy-policy", available=False, reason="registry-value-unavailable", evidence={"key": key, "error": str(exc)})
 
 
 def _policy_finding(
@@ -1907,7 +1905,7 @@ def _policy_finding(
 
 def _appx_inventory_source(raw_appx_packages: Iterable[Mapping[str, Any]] | None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     if raw_appx_packages is None:
-        return [], _source_status("appx-packages", available=False, reason="external-command-not-executed", evidence={"command": "Get-AppxPackage -AllUsers"})
+        return [], source_status("appx-packages", available=False, reason="external-command-not-executed", evidence={"command": "Get-AppxPackage -AllUsers"})
     packages = [
         {
             "name": str(package.get("Name") or package.get("name") or ""),
@@ -1918,7 +1916,7 @@ def _appx_inventory_source(raw_appx_packages: Iterable[Mapping[str, Any]] | None
         }
         for package in raw_appx_packages
     ]
-    return [package for package in packages if package["name"]], _source_status("appx-packages", available=True, reason="test-fixture")
+    return [package for package in packages if package["name"]], source_status("appx-packages", available=True, reason="test-fixture")
 
 
 def _appx_review_metadata(package_name: str) -> dict[str, str] | None:
@@ -1944,7 +1942,7 @@ def _oem_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[d
             continue
         source_id, path = item
         exists = path.exists()
-        sources.append(_source_status(source_id, available=exists, reason="path-present" if exists else "path-missing", evidence={"path": str(path)}))
+        sources.append(source_status(source_id, available=exists, reason="path-present" if exists else "path-missing", evidence={"path": str(path)}))
         if exists:
             findings.append(
                 {
@@ -1967,7 +1965,7 @@ def debloat_privacy_report(
     raw_appx_packages: Iterable[Mapping[str, Any]] | None = None,
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    current_env = dict(os.environ if env is None else env)
+    current_env = get_env(env)
     sources: list[dict[str, Any]] = []
     findings: list[dict[str, Any]] = []
     for spec in _POLICY_SPECS:

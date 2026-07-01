@@ -11,17 +11,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from cleanwincli.collectors import APP_LEFTOVER_RULES, app_leftover_rule_roots
+from cleanwincli.report_helpers import source_status
 
 INSTALLED_APP_INVENTORY_SCHEMA = "cleanwin.installed-app-inventory.v1"
-
-
-def _source_status(source_id: str, *, available: bool, reason: str, evidence: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "id": source_id,
-        "available": available,
-        "reason": reason,
-        "evidence": evidence or {},
-    }
 
 
 def _default_root_when_env_present(path: str, env: Mapping[str, str]) -> Path | None:
@@ -177,7 +169,7 @@ def _windows_default_root(value: str) -> Path | None:
 def _registry_uninstall_entries() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     if os.name != "nt":
         return [], [
-            _source_status(
+            source_status(
                 "registry-uninstall",
                 available=False,
                 reason="not-windows",
@@ -187,7 +179,7 @@ def _registry_uninstall_entries() -> tuple[list[dict[str, Any]], list[dict[str, 
     try:
         import winreg as _winreg  # type: ignore[import-not-found]
     except ImportError:
-        return [], [_source_status("registry-uninstall", available=False, reason="winreg-unavailable")]
+        return [], [source_status("registry-uninstall", available=False, reason="winreg-unavailable")]
     winreg: Any = _winreg
 
     roots = [
@@ -213,9 +205,9 @@ def _registry_uninstall_entries() -> tuple[list[dict[str, Any]], list[dict[str, 
                             name, value, _value_type = winreg.EnumValue(app_key, value_index)
                             values[str(name)] = value
                         entries.append(values)
-            sources.append(_source_status(source_id, available=True, reason="registry-key-read", evidence={"key": rf"{root_name}\{subkey_path}"}))
+            sources.append(source_status(source_id, available=True, reason="registry-key-read", evidence={"key": rf"{root_name}\{subkey_path}"}))
         except OSError as exc:
-            sources.append(_source_status(source_id, available=False, reason="registry-key-unavailable", evidence={"key": rf"{root_name}\{subkey_path}", "error": str(exc)}))
+            sources.append(source_status(source_id, available=False, reason="registry-key-unavailable", evidence={"key": rf"{root_name}\{subkey_path}", "error": str(exc)}))
     return entries, sources
 
 
@@ -229,7 +221,7 @@ def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict
     sources: list[dict[str, Any]] = []
     for root in roots:
         if not root.exists():
-            sources.append(_source_status("scoop-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
+            sources.append(source_status("scoop-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
             continue
         for child in sorted(item for item in root.iterdir() if item.is_dir()):
             app = {
@@ -252,17 +244,17 @@ def _scoop_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict
             }
             app["uninstall_strategy"] = _uninstall_strategy(app)
             apps.append(app)
-        sources.append(_source_status("scoop-apps", available=True, reason="filesystem-manifest", evidence={"path": str(root)}))
+        sources.append(source_status("scoop-apps", available=True, reason="filesystem-manifest", evidence={"path": str(root)}))
     return apps, sources
 
 
 def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     base_root = _env_root(env, "PROGRAMDATA") or _default_root_when_env_present(r"C:\ProgramData", env)
     if base_root is None:
-        return [], [_source_status("chocolatey-lib", available=False, reason="path-root-unavailable")]
+        return [], [source_status("chocolatey-lib", available=False, reason="path-root-unavailable")]
     root = base_root.joinpath("chocolatey", "lib")
     if not root.exists():
-        return [], [_source_status("chocolatey-lib", available=False, reason="path-missing", evidence={"path": str(root)})]
+        return [], [source_status("chocolatey-lib", available=False, reason="path-missing", evidence={"path": str(root)})]
     apps: list[dict[str, Any]] = []
     for package_dir in sorted(item for item in root.iterdir() if item.is_dir()):
         display_name = package_dir.name
@@ -298,7 +290,7 @@ def _chocolatey_apps(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list
         }
         app["uninstall_strategy"] = _uninstall_strategy(app)
         apps.append(app)
-    return apps, [_source_status("chocolatey-lib", available=True, reason="filesystem-manifest", evidence={"path": str(root)})]
+    return apps, [source_status("chocolatey-lib", available=True, reason="filesystem-manifest", evidence={"path": str(root)})]
 
 
 def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -313,7 +305,7 @@ def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], l
     sources: list[dict[str, Any]] = []
     for root in roots:
         if not root.exists():
-            sources.append(_source_status("portable-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
+            sources.append(source_status("portable-apps", available=False, reason="path-missing", evidence={"path": str(root)}))
             continue
         for child in sorted(item for item in root.iterdir() if item.is_dir()):
             app = {
@@ -336,7 +328,7 @@ def _portable_locations(env: Mapping[str, str]) -> tuple[list[dict[str, Any]], l
             }
             app["uninstall_strategy"] = _uninstall_strategy(app)
             apps.append(app)
-        sources.append(_source_status("portable-apps", available=True, reason="filesystem-directory", evidence={"path": str(root)}))
+        sources.append(source_status("portable-apps", available=True, reason="filesystem-directory", evidence={"path": str(root)}))
     return apps, sources
 
 
@@ -429,7 +421,7 @@ def installed_app_inventory_report(
         registry_entries, sources = _registry_uninstall_entries()
     else:
         registry_entries = [dict(entry) for entry in raw_registry_entries]
-        sources = [_source_status("registry-uninstall-injected", available=True, reason="test-fixture")]
+        sources = [source_status("registry-uninstall-injected", available=True, reason="test-fixture")]
 
     registry_apps = [
         app
@@ -461,8 +453,8 @@ def installed_app_inventory_report(
             *scoop_sources,
             *chocolatey_sources,
             *portable_sources,
-            _source_status("winget", available=False, reason="external-command-not-executed", evidence={"command": "winget list"}),
-            _source_status("appx", available=False, reason="external-command-not-executed", evidence={"command": "Get-AppxPackage -AllUsers"}),
+            source_status("winget", available=False, reason="external-command-not-executed", evidence={"command": "winget list"}),
+            source_status("appx", available=False, reason="external-command-not-executed", evidence={"command": "Get-AppxPackage -AllUsers"}),
         ],
         "applications": applications,
         "leftover_correlations": correlations,
