@@ -55,6 +55,46 @@ jobs:
       - name: Pytest governance smoke
         run: make pytest-governance-smoke
 
+  quality-windows:
+    name: Windows Python 3.12 quality
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Lint
+        run: make lint
+
+      - name: Pytest
+        run: make pytest
+
+      - name: Type check
+        run: make type
+
+      - name: Compile
+        run: make compile
+
+      - name: Docs smoke
+        run: make docs-smoke
+
+      - name: AI smoke
+        run: make ai-smoke
+
+      - name: MCP smoke
+        run: make mcp-smoke
+
+      - name: Version smoke
+        run: make version-smoke
+
+      - name: Pytest governance smoke
+        run: make pytest-governance-smoke
+
   package:
     name: Package smoke
     runs-on: ubuntu-latest

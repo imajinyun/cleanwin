@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-02
+
 ### Added
 
 - Windows portable release workflow producing `cleanwin-<version>-windows-x64.zip`
@@ -20,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Windows quality matrix in main CI (Python 3.10 and 3.12 on windows-latest)
 - End-to-end installer smoke test in the portable release workflow
 - App-leftovers rules for common Windows applications
+- Scoop bucket distribution at `imajinyun/cleanwin-bucket` with
+  China-friendly mirror fallback chain
+- Automatic Scoop bucket version bump on release via `repository_dispatch`
 
 ### Changed
 
@@ -27,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directories are excluded
 - `aiflow.yaml` workspace globs use recursive `**/*` patterns
 - Portable release workflow also triggers on `v*` tag pushes
+- Scoop bump moved into portable release workflow to avoid race between
+  asset upload and dispatch
 
 ### Security
 
@@ -35,3 +42,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   existing cleanwin installs
 
 [Unreleased]: https://github.com/imajinyun/cleanwin/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/imajinyun/cleanwin/releases/tag/v0.1.0

@@ -308,6 +308,64 @@ jobs:
           .\.venv\Scripts\python.exe cleanwin.py --json execute-plan --plan-file $plan --execute --yes --no-require-plan-context --trash-root (Join-Path $tmp.FullName "trash") --operation-log (Join-Path $tmp.FullName "ops.jsonl") --confirmation-phrase $dry.confirmation.required_phrase --confirmation-token $dry.confirmation.confirmation_token | Out-Null
           if (Test-Path $candidate) { throw "candidate should have moved to test trash" }
 
+      - name: Install script smoke
+        shell: pwsh
+        run: |
+          $version = .\.venv\Scripts\python.exe -c "from cleanwincli import __version__; print(__version__)"
+          $archive = "cleanwin-$version-windows-x64.zip"
+          $stagingDir = Join-Path ([System.IO.Path]::GetTempPath()) ("cleanwin-install-smoke-" + [Guid]::NewGuid().ToString())
+          $portableDir = Join-Path $stagingDir "portable"
+          $installDir = Join-Path $stagingDir "install"
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+
+          # Build a minimal mock portable zip from the source tree
+          Copy-Item cleanwin.py (Join-Path $portableDir "cleanwin.py")
+          New-Item -ItemType Directory -Force -Path (Join-Path $portableDir "cleanwincli") | Out-Null
+          Get-ChildItem cleanwincli -Filter *.py | Copy-Item -Destination (Join-Path $portableDir "cleanwincli")
+          Set-Content -Path (Join-Path $portableDir "cleanwin.exe") -Value "@echo off`npython %~dp0cleanwin.py %*" -Encoding ascii
+          Set-Content -Path (Join-Path $portableDir "cleanwin-mcp.exe") -Value "@echo off`npython -m cleanwincli.mcp_server %*" -Encoding ascii
+          Set-Content -Path (Join-Path $portableDir "LICENSE") -Value "MIT" -Encoding ascii
+          Set-Content -Path (Join-Path $portableDir "README.md") -Value "# cleanwin" -Encoding ascii
+
+          Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath (Join-Path $stagingDir $archive) -Force
+          $hash = (Get-FileHash (Join-Path $stagingDir $archive) -Algorithm SHA256).Hash
+          "$hash  $archive" | Set-Content -Encoding ascii (Join-Path $stagingDir "$archive.sha256")
+
+          try {
+            $mockRelease = @{
+              tag_name = "v$version"
+              assets = @(
+                @{ name = $archive; browser_download_url = "file://$(Join-Path $stagingDir $archive)" },
+                @{ name = "$archive.sha256"; browser_download_url = "file://$(Join-Path $stagingDir "$archive.sha256")" }
+              )
+            }
+            $mockReleaseJson = $mockRelease | ConvertTo-Json -Depth 4 -Compress
+            $mockReleasePath = Join-Path $stagingDir "release.json"
+            Set-Content -Path $mockReleasePath -Value $mockReleaseJson -Encoding utf8
+
+            $mockInstaller = Join-Path $stagingDir "install-smoke.ps1"
+            $installerContent = Get-Content -LiteralPath "install.ps1" -Raw
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-RestMethod -Uri $ReleaseApi -Headers @{ "User-Agent" = "cleanwin-installer" }'), "Get-Content -LiteralPath '$mockReleasePath' -Raw | ConvertFrom-Json"
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-WebRequest -Uri $ArchiveAsset.browser_download_url -OutFile $ArchivePath -Headers @{ "User-Agent" = "cleanwin-installer" }'), 'Copy-Item -LiteralPath ([Uri]$ArchiveAsset.browser_download_url).LocalPath -Destination $ArchivePath'
+            $installerContent = $installerContent -replace [regex]::Escape('Invoke-WebRequest -Uri $ChecksumAsset.browser_download_url -OutFile $ChecksumPath -Headers @{ "User-Agent" = "cleanwin-installer" }'), 'Copy-Item -LiteralPath ([Uri]$ChecksumAsset.browser_download_url).LocalPath -Destination $ChecksumPath'
+            Set-Content -Path $mockInstaller -Value $installerContent -Encoding utf8
+
+            & $mockInstaller -InstallDir $installDir -NoPathUpdate
+            if (-not (Test-Path (Join-Path $installDir "cleanwin.py") -PathType Leaf)) { throw "install failed: cleanwin.py missing" }
+            Write-Host "install completed successfully"
+
+            & $mockInstaller -InstallDir $installDir -NoPathUpdate
+            Write-Host "reinstall (same version) completed without error"
+
+            & $mockInstaller -InstallDir $installDir -Uninstall -NoPathUpdate
+            if (Test-Path $installDir) { throw "uninstall failed: directory still exists" }
+            Write-Host "uninstall completed successfully"
+          } finally {
+            if (Test-Path $stagingDir) {
+              Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
       - name: Cleanup generated artifacts
         if: always()
         shell: pwsh
