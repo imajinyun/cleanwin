@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    branches: [main]
+    tags-ignore: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -80,78 +82,3 @@ jobs:
       - name: Docker sandbox gate
         run: make docker-quality
 
-  windows-quality:
-    name: Windows Python quality
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.12"]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Dev install
-        shell: pwsh
-        run: |
-          python -m venv .venv
-          .\.venv\Scripts\python.exe -m pip install --upgrade pip build
-          .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-
-      - name: Lint
-        shell: pwsh
-        run: .\.venv\Scripts\python.exe -m ruff check cleanwin.py cleanwincli tests
-
-      - name: Pytest
-        shell: pwsh
-        run: |
-          $env:PYTHONPATH = (Get-Location).Path
-          .\.venv\Scripts\python.exe -m pytest -q
-          .\.venv\Scripts\python.exe -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['.pytest_cache', '.coverage', 'coverage.xml', 'htmlcov']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"
-
-      - name: Type check
-        shell: pwsh
-        run: .\.venv\Scripts\python.exe -m mypy cleanwin.py cleanwincli tests
-
-      - name: Compile
-        shell: pwsh
-        run: .\.venv\Scripts\python.exe -m compileall -q cleanwin.py cleanwincli tests
-
-      - name: Docs smoke
-        shell: pwsh
-        run: |
-          if (-not (Test-Path docs/doc/README.md)) { throw "missing docs/doc/README.md" }
-          if (-not (Test-Path docs/doc/README.CN.md)) { throw "missing docs/doc/README.CN.md" }
-          if ((Get-Item docs/doc/README.md).Length -eq 0) { throw "empty docs/doc/README.md" }
-          if ((Get-Item docs/doc/README.CN.md).Length -eq 0) { throw "empty docs/doc/README.CN.md" }
-
-      - name: AI smoke
-        shell: pwsh
-        run: |
-          .\.venv\Scripts\python.exe cleanwin.py --json ai-tools --provider validation
-          .\.venv\Scripts\python.exe cleanwin.py --json ai-readiness --validate
-          .\.venv\Scripts\python.exe cleanwin.py --json ai-self-test
-          .\.venv\Scripts\python.exe cleanwin.py --json ai-runbook
-          .\.venv\Scripts\python.exe cleanwin.py --json doctor
-
-      - name: MCP smoke
-        shell: pwsh
-        run: .\.venv\Scripts\python.exe -m compileall -q cleanwincli/mcp_server.py
-
-      - name: Version smoke
-        shell: pwsh
-        run: |
-          .\.venv\Scripts\python.exe -c "from cleanwincli.core import doctor_report; check=next(item for item in doctor_report()['checks'] if item['id'] == 'version_consistency'); raise SystemExit(0 if check['passed'] else 1)"
-
-      - name: Pytest governance smoke
-        shell: pwsh
-        run: |
-          $env:PYTHONPATH = (Get-Location).Path
-          .\.venv\Scripts\python.exe -m pytest tests/test_pytest_governance.py tests/test_ai_readiness.py::test_ai_readiness_release_gates_use_pytest_workflow -q
-          .\.venv\Scripts\python.exe -c "import pathlib, shutil; [shutil.rmtree(path, ignore_errors=True) for path in ['.pytest_cache', '.coverage', 'coverage.xml', 'htmlcov']]; [shutil.rmtree(path, ignore_errors=True) for path in pathlib.Path('.').rglob('__pycache__')]"

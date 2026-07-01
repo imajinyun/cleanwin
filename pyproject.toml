@@ -6,9 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "cleanwin"
 version = "0.1.0"
 description = "A conservative Windows cleanup CLI with dry-run, plans, and fail-closed deletion."
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 license = "MIT"
+authors = [
+    { name = "imajinyun" },
+]
 keywords = ["windows", "cleanup", "cli", "dry-run", "safety"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,6 +27,13 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+
+[project.urls]
+Homepage = "https://github.com/imajinyun/cleanwin"
+Repository = "https://github.com/imajinyun/cleanwin"
+Documentation = "https://github.com/imajinyun/cleanwin/blob/main/docs/doc/README.md"
+Issues = "https://github.com/imajinyun/cleanwin/issues"
+Changelog = "https://github.com/imajinyun/cleanwin/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

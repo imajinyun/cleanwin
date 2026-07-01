@@ -210,6 +210,9 @@ try {
 
     $ParentDir = Split-Path -Parent $InstallDir
     New-Item -ItemType Directory -Force -Path $ParentDir | Out-Null
+
+    $BackupDir = ""
+    $RollbackNeeded = $false
     if (Test-Path -LiteralPath $InstallDir) {
         $ExistingItems = @(Get-ChildItem -LiteralPath $InstallDir -Force)
         $ExistingCleanwinExe = Test-Path -LiteralPath (Join-Path $InstallDir "cleanwin.exe") -PathType Leaf
@@ -217,19 +220,38 @@ try {
         if ($ExistingItems.Count -gt 0 -and -not ($ExistingCleanwinExe -and $ExistingMcpExe)) {
             throw "Refusing to replace non-empty directory that does not look like a cleanwin install: $InstallDir"
         }
-        Remove-Item -LiteralPath $InstallDir -Recurse -Force
-    }
-    Move-Item -LiteralPath $ExtractDir -Destination $InstallDir
-
-    $PathAdded = $false
-    if (-not $NoPathUpdate) {
-        $PathAdded = Add-UserPathEntry -PathEntry $InstallDir
+        $BackupDir = Join-Path $ParentDir ("cleanwin.backup-" + [System.Guid]::NewGuid().ToString("N"))
+        Move-Item -LiteralPath $InstallDir -Destination $BackupDir
+        $RollbackNeeded = $true
     }
 
-    Write-Host "Verifying cleanwin..."
-    $Doctor = & (Join-Path $InstallDir "cleanwin.exe") --json doctor | ConvertFrom-Json
-    if (-not $Doctor.ready) {
-        throw "cleanwin doctor reported not ready after installation."
+    try {
+        Move-Item -LiteralPath $ExtractDir -Destination $InstallDir
+
+        $PathAdded = $false
+        if (-not $NoPathUpdate) {
+            $PathAdded = Add-UserPathEntry -PathEntry $InstallDir
+        }
+
+        Write-Host "Verifying cleanwin..."
+        $Doctor = & (Join-Path $InstallDir "cleanwin.exe") --json doctor | ConvertFrom-Json
+        if (-not $Doctor.ready) {
+            throw "cleanwin doctor reported not ready after installation."
+        }
+
+        if ($RollbackNeeded -and (Test-Path -LiteralPath $BackupDir)) {
+            Remove-Item -LiteralPath $BackupDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        if ($RollbackNeeded -and (Test-Path -LiteralPath $BackupDir)) {
+            Write-Host "Rolling back to previous installation..."
+            if (Test-Path -LiteralPath $InstallDir) {
+                Remove-Item -LiteralPath $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Move-Item -LiteralPath $BackupDir -Destination $InstallDir -ErrorAction SilentlyContinue
+            Write-Host "Rollback complete."
+        }
+        throw
     }
 
     $Action = if ($null -ne $ExistingVersion) { "upgraded to" } else { "installed successfully" }

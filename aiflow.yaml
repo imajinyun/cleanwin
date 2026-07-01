@@ -6,13 +6,15 @@ store_path: .aiflow/store.json
 workspace:
   include_globs:
     - "*.py"
+    - "*.ps1"
+    - "*.md"
     - "pyproject.toml"
     - "aiflow.yaml"
     - "Makefile"
     - "Dockerfile.test"
     - "AGENTS.md"
-    - "README.md"
     - "LICENSE"
+    - "CHANGELOG.md"
     - ".github/*"
     - ".github/workflows/*"
     - "scripts/**/*"
