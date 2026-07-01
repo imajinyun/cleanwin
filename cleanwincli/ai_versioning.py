@@ -1687,7 +1687,7 @@ def schema_sample(schema_name: str) -> dict[str, Any] | None:
                 {
                     "id": "version_consistency",
                     "passed": True,
-                    "detail": "Package metadata, installed distribution metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+                    "detail": "Installed distribution, pyproject.toml, and capabilities version must stay in sync with the single source of truth.",
                     "evidence": {"pyproject_version": "0.1.0", "distribution_version": "0.1.0", "package_version": "0.1.0", "capabilities_version": "0.1.0"},
                 },
             ],

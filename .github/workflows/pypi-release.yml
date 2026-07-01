@@ -9,8 +9,49 @@ permissions:
   contents: read
 
 jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Lint
+        run: make lint
+
+      - name: Pytest
+        run: make pytest
+
+      - name: Type check
+        run: make type
+
+      - name: Compile
+        run: make compile
+
+      - name: Docs smoke
+        run: make docs-smoke
+
+      - name: AI smoke
+        run: make ai-smoke
+
+      - name: MCP smoke
+        run: make mcp-smoke
+
+      - name: Version smoke
+        run: make version-smoke
+
+      - name: Governance smoke
+        run: make pytest-governance-smoke
+
   pypi-publish:
     name: Build and publish to PyPI
+    needs: quality
     runs-on: ubuntu-latest
     environment:
       name: pypi

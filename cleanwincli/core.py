@@ -440,7 +440,7 @@ def doctor_report() -> dict[str, Any]:
             and capabilities_report.get("version") == __version__
             and (pyproject_version is None or pyproject_version == __version__)
             and (distribution_version is None or distribution_version == __version__),
-            "Package metadata, installed distribution metadata, cleanwincli.__version__, and capabilities version must stay in sync.",
+            "Installed distribution, pyproject.toml, and capabilities version must stay in sync with the single source of truth.",
             {
                 "pyproject_version": pyproject_version,
                 "distribution_version": distribution_version,

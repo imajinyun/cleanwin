@@ -114,6 +114,90 @@ def test_plan_validate_round_trip(
     cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
     assert_plan_file_valid(plan_file, env)
 
+
+def test_policy_simulate_dry_run_allowed_with_valid_plan(
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_json: CleanWinJSON,
+    make_temp_plan_fixture: MakeTempPlan,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    _, _, env = make_temp_plan_fixture(tmp_path, False)
+    plan_file = tmp_path / "plan.json"
+    cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
+
+    payload = cleanwin_json(
+        "policy-simulate",
+        "--plan-file", str(plan_file),
+        "--no-require-plan-context",
+        env=env,
+    )
+    assert_payload_schema(payload, "cleanwin.ai-policy-simulation.v1")
+    assert_payload_status_true(payload, "validation", "valid")
+    assert_field_values(
+        payload,
+        {
+            "execute_intent": False,
+            "delete_mode": "recycle",
+            "safe_to_execute": False,
+            "decision.tool": "cleanwin_dry_run_plan",
+        },
+    )
+    assert_payload_status_true(payload, "decision", "allowed")
+
+
+def test_policy_simulate_execute_denied_without_confirmation_token(
+    tmp_path: Path,
+    cleanwin_plan_file: CleanWinPlanFile,
+    cleanwin_json: CleanWinJSON,
+    make_temp_plan_fixture: MakeTempPlan,
+    assert_payload_schema: AssertPayloadSchema,
+    assert_payload_status_true: AssertPayloadStatus,
+    assert_payload_status_false: AssertPayloadStatus,
+    assert_field_values: AssertFieldValues,
+) -> None:
+    _, _, env = make_temp_plan_fixture(tmp_path, False)
+    plan_file = tmp_path / "plan.json"
+    cleanwin_plan_file(plan_file, "--categories", "temp", "--older-than-days", "0", env=env)
+
+    payload = cleanwin_json(
+        "policy-simulate",
+        "--plan-file", str(plan_file),
+        "--execute",
+        "--operation-log", str(tmp_path / "ops.jsonl"),
+        "--require-confirmation-token",
+        "--no-require-plan-context",
+        env=env,
+    )
+    assert_payload_schema(payload, "cleanwin.ai-policy-simulation.v1")
+    assert_payload_status_true(payload, "validation", "valid")
+    assert_field_values(payload, {"execute_intent": True})
+    assert_payload_status_false(payload, "decision", "allowed")
+    assert_payload_status_false(payload, "safe_to_execute")
+
+
+def test_policy_simulate_rejects_invalid_plan(
+    tmp_path: Path,
+    run_cleanwin: RunCleanWin,
+    make_temp_plan_fixture: MakeTempPlan,
+    write_text_file: WriteTextFile,
+    assert_returncode: AssertReturnCode,
+) -> None:
+    _, _, env = make_temp_plan_fixture(tmp_path, False)
+    plan_file = tmp_path / "plan.json"
+    write_text_file(plan_file, '{"schema": "bogus"}')
+
+    result = run_cleanwin(
+        "policy-simulate",
+        "--plan-file", str(plan_file),
+        "--no-require-plan-context",
+        env=env,
+    )
+    assert_returncode(result, 2)
+
+
 def test_execute_plan_dry_run_reports_candidate_results_without_deleting(
     tmp_path: Path,
     cleanwin_plan_file: CleanWinPlanFile,
