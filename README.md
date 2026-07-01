@@ -89,6 +89,11 @@ python3 cleanwin.py --json capabilities
 .\cleanwin.exe --json doctor
 .\cleanwin.exe --json inspect --categories temp,dev-cache --max-items 10
 
+# 📦 Scoop (recommended for Windows users)
+scoop bucket add cleanwin https://github.com/imajinyun/cleanwin-bucket
+scoop install cleanwin
+cleanwin --json doctor
+
 # 🧰 Install the Windows portable release into the user PATH
 irm https://github.com/imajinyun/cleanwin/releases/latest/download/install.ps1 -OutFile install-cleanwin.ps1
 powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1
@@ -120,6 +125,22 @@ and replaces it in place. To uninstall:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1 -Uninstall
 ```
+
+### Scoop
+
+The [cleanwin-bucket](https://github.com/imajinyun/cleanwin-bucket) repo hosts a
+Scoop bucket for cleanwin. Download URLs include mainland China mirrors with
+GitHub as fallback.
+
+```powershell
+scoop bucket add cleanwin https://github.com/imajinyun/cleanwin-bucket
+scoop install cleanwin
+scoop update cleanwin
+scoop uninstall cleanwin
+```
+
+The bucket is automatically updated on every cleanwin release via
+`repository_dispatch`.
 
 ---
 

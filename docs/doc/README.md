@@ -52,6 +52,11 @@ irm https://github.com/imajinyun/cleanwin/releases/latest/download/install.ps1 -
 powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1
 cleanwin --json doctor
 
+# Install via Scoop (recommended for Windows users)
+scoop bucket add cleanwin https://github.com/imajinyun/cleanwin-bucket
+scoop install cleanwin
+cleanwin --json doctor
+
 # Install from PyPI with pipx after publication
 pipx install cleanwin
 cleanwin --json doctor
@@ -66,6 +71,12 @@ cleanwin-mcp
 ```
 
 Project metadata lives in `pyproject.toml`; the console scripts are `cleanwin` and `cleanwin-mcp`.
+
+The Scoop bucket at [imajinyun/cleanwin-bucket](https://github.com/imajinyun/cleanwin-bucket)
+provides the recommended Windows install path. The manifest uses a China-friendly
+mirror fallback chain (ghproxy.net → mirror.ghproxy.com → github.com), installs
+both `cleanwin` and `cleanwin-mcp` shims, and auto-updates on new releases.
+
 Windows portable release builds produce `cleanwin-<version>-windows-x64.zip`
 with `cleanwin.exe`, `cleanwin-mcp.exe`, `LICENSE`, `README.md`, and a SHA256
 checksum. `install.ps1` is attached to GitHub Releases and gives a

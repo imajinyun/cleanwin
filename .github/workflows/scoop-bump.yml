@@ -1,0 +1,32 @@
+name: Bump Scoop Bucket (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to bump (e.g. 0.1.0)"
+        required: true
+      sha256:
+        description: "SHA256 of cleanwin-windows-x64.zip"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  bump-bucket:
+    name: Notify scoop bucket of new version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dispatch version bump to scoop bucket
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BUCKET_DISPATCH_TOKEN }}
+          repository: imajinyun/cleanwin-bucket
+          event-type: version-bump
+          client-payload: |
+            {
+              "version": "${{ github.event.inputs.version }}",
+              "sha256": "${{ github.event.inputs.sha256 }}"
+            }

@@ -51,6 +51,11 @@ irm https://github.com/imajinyun/cleanwin/releases/latest/download/install.ps1 -
 powershell -ExecutionPolicy Bypass -File .\install-cleanwin.ps1
 cleanwin --json doctor
 
+# 通过 Scoop 安装（推荐 Windows 用户使用）
+scoop bucket add cleanwin https://github.com/imajinyun/cleanwin-bucket
+scoop install cleanwin
+cleanwin --json doctor
+
 # 发布到 PyPI 后通过 pipx 安装
 pipx install cleanwin
 cleanwin --json doctor
@@ -65,6 +70,12 @@ cleanwin-mcp
 ```
 
 项目元数据位于 `pyproject.toml`；命令入口是 `cleanwin` 和 `cleanwin-mcp`。
+
+Scoop bucket [imajinyun/cleanwin-bucket](https://github.com/imajinyun/cleanwin-bucket)
+是推荐的 Windows 安装方式。Manifest 使用面向国内的镜像回退链
+（ghproxy.net → mirror.ghproxy.com → github.com），同时安装
+`cleanwin` 和 `cleanwin-mcp` shim，并在新版本发布时自动更新。
+
 Windows portable release 会产出 `cleanwin-<version>-windows-x64.zip`，其中
 包含 `cleanwin.exe`、`cleanwin-mcp.exe`、`LICENSE`、`README.md` 和 SHA256
 checksum。`install.ps1` 会作为 GitHub Release asset 发布，提供不依赖 WinGet

@@ -195,3 +195,34 @@ jobs:
             artifacts/cleanwin-*-windows-x64.zip.sha256
             artifacts/windows-portable-release.json
             install.ps1
+
+  scoop-bump:
+    name: Bump scoop bucket
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release asset to compute hash
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}/cleanwin-${VERSION}-windows-x64.zip"
+          echo "Downloading $URL ..."
+          curl -sL -o /tmp/cleanwin.zip "$URL"
+          SHA256=$(sha256sum /tmp/cleanwin.zip | awk '{print $1}')
+          echo "sha256=$SHA256" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Dispatch version bump to scoop bucket
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.BUCKET_DISPATCH_TOKEN }}
+          repository: imajinyun/cleanwin-bucket
+          event-type: version-bump
+          client-payload: |
+            {
+              "version": "${{ env.version }}",
+              "sha256": "${{ env.sha256 }}"
+            }
