@@ -9,7 +9,7 @@ endif
 
 DEV_PYTHON ?= $(VENV_PYTHON)
 
-.PHONY: venv dev-install test pytest test-clean lint type compile pytest-governance-smoke ci-smoke quality package-smoke package-install-smoke sdist-install-smoke mcp-install-smoke docs-smoke ai-smoke mcp-smoke version-smoke docker-quality clean
+.PHONY: venv dev-install test pytest test-clean lint type compile pytest-governance-smoke ci-smoke quality package-smoke package-install-smoke sdist-install-smoke mcp-install-smoke docs-smoke ai-smoke mcp-smoke version-smoke coverage coverage-smoke docker-quality clean
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -39,7 +39,7 @@ compile: dev-install
 pytest-governance-smoke: dev-install
 	@status=0; $(DEV_PYTHON) -m pytest tests/test_pytest_governance.py tests/test_ai_readiness.py::test_ai_readiness_release_gates_use_pytest_workflow -q || status=$$?; if [ $$status -eq 0 ]; then $(DEV_PYTHON) -c "from pathlib import Path; makefile=Path('Makefile').read_text(encoding='utf-8'); dockerfile=Path('Dockerfile.test').read_text(encoding='utf-8'); workflow=Path('.github/workflows/ci.yml').read_text(encoding='utf-8'); assert 'ci-smoke:' in makefile; assert 'unittest discover' not in dockerfile; assert 'make pytest-governance-smoke' in workflow; assert 'make docker-quality' in workflow; assert 'python-version' in workflow" || status=$$?; fi; $(MAKE) --no-print-directory test-clean; exit $$status
 
-ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke test-clean
+ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke coverage-smoke pytest-governance-smoke test-clean
 
 package-smoke: dev-install
 	$(DEV_PYTHON) -m build --sdist --wheel
@@ -70,6 +70,12 @@ mcp-smoke: dev-install
 
 version-smoke: dev-install
 	$(DEV_PYTHON) -c "from cleanwincli.core import doctor_report; check=next(item for item in doctor_report()['checks'] if item['id'] == 'version_consistency'); raise SystemExit(0 if check['passed'] else 1)"
+
+coverage: dev-install
+	@status=0; $(DEV_PYTHON) -m pytest -q --cov --cov-report=term-missing --cov-report=xml || status=$$?; $(MAKE) --no-print-directory test-clean; exit $$status
+
+coverage-smoke: dev-install
+	$(DEV_PYTHON) -m pytest -q --cov --cov-fail-under=60 || status=$$?; $(MAKE) --no-print-directory test-clean; exit $$status
 
 docker-quality:
 	docker build -f Dockerfile.test -t cleanwin-test .

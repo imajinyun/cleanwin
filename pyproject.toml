@@ -39,6 +39,7 @@ Changelog = "https://github.com/imajinyun/cleanwin/blob/main/CHANGELOG.md"
 dev = [
     "mypy>=1.13",
     "pytest>=8.3",
+    "pytest-cov>=5.0",
     "ruff>=0.8",
 ]
 
@@ -77,3 +78,18 @@ pretty = true
 minversion = "8.0"
 testpaths = ["tests"]
 addopts = "--strict-config --strict-markers"
+
+[tool.coverage.run]
+source = ["cleanwin.py", "cleanwincli"]
+branch = true
+omit = [
+    "cleanwincli/__main__.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"
