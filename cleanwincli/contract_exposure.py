@@ -134,7 +134,7 @@ def _source_snapshot() -> dict[str, str]:
 
 def _registry_schema_names_from_source() -> set[str]:
     names: set[str] = set()
-    source = _read_text(REPO_ROOT / "cleanwincli" / "ai_versioning.py")
+    source = _read_text(REPO_ROOT / "cleanwincli" / "ai_schema_registry.py")
     for line in source.splitlines():
         stripped = line.strip()
         if stripped.startswith('("cleanwin.'):
