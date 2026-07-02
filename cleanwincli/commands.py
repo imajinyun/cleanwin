@@ -35,6 +35,7 @@ from cleanwincli.promotion_gates import promotion_gates_report
 from cleanwincli.recovery import recovery_readiness_report
 from cleanwincli.rule_catalog import rule_pack_catalog_report, rule_quality_dashboard_report
 from cleanwincli.scan_governance import scan_governance_report
+from cleanwincli.self_update import self_update_report
 from cleanwincli.startup_inventory import startup_service_inventory_report
 from cleanwincli.system_health import system_health_report
 from cleanwincli.windows_artifact_validation import artifact_layout_report, artifact_validation_report
@@ -185,3 +186,6 @@ def windows_smoke_matrix_command() -> dict[str, Any]:
 
 def windows_evidence_bundle_command() -> dict[str, Any]:
     return windows_evidence_bundle_report()
+
+def self_update_command(*, execute: bool = False, version: str = "latest") -> dict[str, Any]:
+    return self_update_report(execute=execute, version=version)

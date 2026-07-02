@@ -38,6 +38,7 @@ from cleanwincli.commands import (
     rule_pack_catalog_command,
     rule_quality_dashboard_command,
     scan_governance_command,
+    self_update_command,
     service_task_disable_plan_command,
     startup_service_inventory_command,
     system_health_report_command,
@@ -163,6 +164,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("schema-registry", help="show machine-readable schema registry")
     subparsers.add_parser("doctor", help="run non-destructive engineering health checks")
+    self_update_parser = subparsers.add_parser("self-update", help="check for newer cleanwin versions (Windows portable only)")
+    self_update_parser.add_argument("--execute", action="store_true", help="download and replace the current install via install.ps1")
+    self_update_parser.add_argument("--version", default="latest", help="target version (default: latest)")
     subparsers.add_parser("backup-delete-contract", help="show non-executable backup-then-delete contracts")
     subparsers.add_parser("file-report", help="show read-only large-file and duplicate-file report")
     subparsers.add_parser("recovery-readiness", help="show non-destructive recovery readiness gates")
@@ -292,6 +296,10 @@ def main(argv: list[str] | None = None) -> int:
             payload = doctor_report()
             emit(payload, as_json=args.json)
             return 0 if payload["ready"] else 2
+        if args.command == "self-update":
+            payload = self_update_command(execute=args.execute, version=args.version)
+            emit(payload, as_json=args.json)
+            return 0 if payload["executed"] or payload["dry_run"] else 1
         if args.command == "backup-delete-contract":
             emit(backup_delete_contract_command(), as_json=args.json)
             return 0

@@ -114,6 +114,8 @@ jobs:
           Compress-Archive -Path artifacts\portable\* -DestinationPath "artifacts\$archive" -Force
           $hash = (Get-FileHash "artifacts\$archive" -Algorithm SHA256).Hash
           "$hash  $archive" | Set-Content -Encoding ascii "artifacts\$archive.sha256"
+          $installerHash = (Get-FileHash "install.ps1" -Algorithm SHA256).Hash
+          "$installerHash  install.ps1" | Set-Content -Encoding ascii "artifacts\install.ps1.sha256"
           @{
             schema = "cleanwin.windows-portable-release.v1"
             version = $version
@@ -183,6 +185,7 @@ jobs:
           path: |
             artifacts/cleanwin-*-windows-x64.zip
             artifacts/cleanwin-*-windows-x64.zip.sha256
+            artifacts/install.ps1.sha256
             artifacts/windows-portable-release.json
             install.ps1
 
@@ -193,6 +196,7 @@ jobs:
           files: |
             artifacts/cleanwin-*-windows-x64.zip
             artifacts/cleanwin-*-windows-x64.zip.sha256
+            artifacts/install.ps1.sha256
             artifacts/windows-portable-release.json
             install.ps1
 
