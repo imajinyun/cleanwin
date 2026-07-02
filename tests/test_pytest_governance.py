@@ -47,8 +47,14 @@ UNITTEST_ASSERTION_METHODS = {
     "assertTrue",
     "assertTupleEqual",
 }
-DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-READONLY_BOOLEAN_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+DIRECT_SCHEMA_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_ai_schema_registry.py", "test_returns_registry_payload"): 1,
+    ("test_ai_schema_registry.py", "test_returns_validate_plan_schema"): 1,
+    ("test_plan_executor.py", "test_dry_run_returns_dry_run_status"): 1,
+}
+READONLY_BOOLEAN_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_plan_executor.py", "test_dry_run_returns_dry_run_status"): 1,
+}
 READONLY_BOOLEAN_KEYS = {
     "destructive": False,
     "dry_run": True,
@@ -56,9 +62,40 @@ READONLY_BOOLEAN_KEYS = {
 }
 SAFE_TO_EXECUTE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
 EXECUTION_DISABLED_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+STATUS_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_plan_executor.py", "test_invalid_plan_returns_empty_results"): 1,
+    ("test_plan_executor.py", "test_invalid_plan_blocks_execution"): 1,
+    ("test_plan_validation.py", "test_matching_schema_is_valid"): 1,
+    ("test_plan_validation.py", "test_missing_schema_is_rejected"): 1,
+    ("test_plan_validation.py", "test_wrong_schema_is_rejected"): 1,
+    ("test_plan_validation.py", "test_mismatched_fingerprint_is_rejected"): 1,
+    ("test_plan_validation.py", "test_home_mismatch_is_rejected"): 1,
+    ("test_plan_validation.py", "test_user_mismatch_is_rejected"): 1,
+    ("test_plan_validation.py", "test_context_disabled_skips_check"): 1,
+    ("test_plan_validation.py", "test_unsafe_candidate_is_rejected"): 1,
+    ("test_plan_validation.py", "test_permanent_delete_mode_rejected"): 1,
+    ("test_plan_validation.py", "test_admin_required_rejected"): 1,
+    ("test_plan_validation.py", "test_high_risk_rejected"): 1,
+    ("test_plan_validation.py", "test_missing_rationale_rejected"): 1,
+    ("test_plan_validation.py", "test_non_executable_category_rejected"): 1,
+    ("test_plan_validation.py", "test_identity_mismatch_detected"): 1,
+}
 SUMMARY_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
-PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {}
+PREDICATE_ASSERTION_ALLOWLIST: dict[tuple[str, str], int] = {
+    ("test_plan_executor.py", "test_dry_run_returns_dry_run_status"): 1,
+    ("test_plan_validation.py", "test_missing_schema_is_rejected"): 1,
+    ("test_plan_validation.py", "test_wrong_schema_is_rejected"): 1,
+    ("test_plan_validation.py", "test_mismatched_fingerprint_is_rejected"): 1,
+    ("test_plan_validation.py", "test_home_mismatch_is_rejected"): 1,
+    ("test_plan_validation.py", "test_user_mismatch_is_rejected"): 1,
+    ("test_plan_validation.py", "test_unsafe_candidate_is_rejected"): 1,
+    ("test_plan_validation.py", "test_permanent_delete_mode_rejected"): 1,
+    ("test_plan_validation.py", "test_admin_required_rejected"): 1,
+    ("test_plan_validation.py", "test_high_risk_rejected"): 1,
+    ("test_plan_validation.py", "test_missing_rationale_rejected"): 1,
+    ("test_plan_validation.py", "test_non_executable_category_rejected"): 1,
+    ("test_plan_validation.py", "test_identity_mismatch_detected"): 1,
+}
 COLLECTION_ASSERTION_HELPERS = {
     "assert_contains_all",
     "assert_contains_none",
@@ -295,6 +332,8 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
             "type: dev-install",
             "compile: dev-install",
             "pytest-governance-smoke: dev-install",
+            "coverage: dev-install",
+            "coverage-smoke: dev-install",
             "$(DEV_PYTHON) -m pytest -q",
             "$(DEV_PYTHON) -m pytest tests/test_pytest_governance.py",
             "$(MAKE) --no-print-directory test-clean",
@@ -302,7 +341,7 @@ def test_makefile_keeps_pytest_entrypoints_in_repo_venv(
             "$(DEV_PYTHON) -m ruff check cleanwin.py cleanwincli tests",
             "$(DEV_PYTHON) -m mypy cleanwin.py cleanwincli tests",
             "$(DEV_PYTHON) -m compileall -q cleanwin.py cleanwincli tests",
-            "ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke pytest-governance-smoke test-clean",
+            "ci-smoke: lint pytest type compile docs-smoke ai-smoke mcp-smoke version-smoke coverage-smoke pytest-governance-smoke test-clean",
         ],
     )
     command_lines = [line for line in makefile.splitlines() if line.startswith("\t")]

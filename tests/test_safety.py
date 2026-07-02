@@ -82,3 +82,32 @@ def test_browser_profile_sensitivity_is_classified(
     path: str, expected: bool, assert_field_values: AssertFieldValues
 ) -> None:
     assert_field_values({"sensitive": is_sensitive_user_data(path)}, {"sensitive": expected})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"C:\Users\alice\.ssh\id_rsa",
+        r"C:\Users\alice\.gnupg\private-keys-v1.d",
+        r"C:\Users\alice\.aws\credentials",
+        r"C:\Users\alice\.kube\config",
+        r"C:\Users\alice\.azure\azureProfile.json",
+        r"C:\Users\alice\.config\gcloud\credentials.db",
+        r"C:\Users\alice\AppData\Roaming\Thunderbird\Profiles\xxxxxxxx.default-release",
+        r"C:\Users\alice\AppData\Local\Microsoft\Outlook\outlook.pst",
+    ],
+)
+def test_sensitive_user_data_paths_are_detected(path: str) -> None:
+    assert is_sensitive_user_data(path)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"C:\Users\alice\AppData\Local\npm-cache",
+        r"C:\Users\alice\AppData\Local\Temp",
+        r"C:\Users\alice\AppData\Local\Google\Chrome\User Data\Default\Cache",
+    ],
+)
+def test_non_sensitive_paths_pass(path: str) -> None:
+    assert not is_sensitive_user_data(path)

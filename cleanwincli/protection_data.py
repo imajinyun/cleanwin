@@ -63,6 +63,10 @@ SENSITIVE_USER_SEGMENTS = frozenset(
     {
         ".ssh",
         ".gnupg",
+        ".aws",
+        ".kube",
+        ".azure",
+        ".config\\gcloud",
         "appdata\\roaming\\microsoft\\credentials",
         "appdata\\roaming\\microsoft\\protect",
         "appdata\\roaming\\microsoft\\systemcertificates",
@@ -77,6 +81,8 @@ SENSITIVE_USER_SEGMENTS = frozenset(
         "appdata\\local\\docker\\wsl",
         "appdata\\local\\docker\\volumes",
         "appdata\\local\\packages\\canonicalgrouplimited",
+        "appdata\\roaming\\thunderbird\\profiles",
+        "appdata\\local\\microsoft\\outlook",
     }
 )
 
