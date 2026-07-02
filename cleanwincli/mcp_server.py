@@ -19,7 +19,8 @@ from typing import Any
 from cleanwincli import __version__
 from cleanwincli.ai_host_policy import evaluate_ai_host_tool_call
 from cleanwincli.ai_schema import AI_TOOL_DEFINITIONS, validate_tool_arguments
-from cleanwincli.core import ai_tools_report, host_policy_report
+from cleanwincli.commands import host_policy_report
+from cleanwincli.core import ai_tools_report
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 

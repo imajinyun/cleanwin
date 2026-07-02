@@ -9,38 +9,28 @@ from pathlib import Path
 from typing import Any
 
 from cleanwincli.collectors import parse_categories, parse_rule_ids
-from cleanwincli.core import (
+from cleanwincli.commands import (
     ai_readiness_command,
     ai_runbook_command,
     ai_self_test_command,
-    ai_tools_report,
     appx_removal_plan_command,
     backup_delete_contract_command,
     browser_profile_inventory_command,
-    build_plan,
-    capabilities,
     contract_exposure_matrix_command,
     debloat_privacy_report_command,
     disable_revert_contract_command,
-    doctor_report,
     environment_index_command,
-    execute_plan,
-    external_rule_translate_command,
     file_report_command,
     host_policy_report,
-    inspect,
     installed_app_inventory_command,
-    load_plan,
     low_risk_cache_readiness_command,
     official_command_plan_command,
     operation_log_readiness_command,
     permanent_delete_denial_command,
-    policy_simulate,
     preset_catalog_command,
     promotion_gates_command,
     recovery_readiness_command,
     registry_privacy_plan_command,
-    review_plan,
     rollback_drill_report_command,
     rule_pack_catalog_command,
     rule_quality_dashboard_command,
@@ -48,18 +38,30 @@ from cleanwincli.core import (
     service_task_disable_plan_command,
     startup_service_inventory_command,
     system_health_report_command,
-    validate_plan_payload,
     windows_artifact_layout_command,
     windows_artifact_validate_command,
     windows_evidence_bundle_command,
     windows_inventory_command,
     windows_native_artifacts_command,
     windows_smoke_matrix_command,
-    workflow_decision_command,
     workflow_router_command,
     workflow_trace_command,
 )
+from cleanwincli.core import (
+    ai_tools_report,
+    build_plan,
+    capabilities,
+    doctor_report,
+    external_rule_translate_command,
+    inspect,
+    load_plan,
+    policy_simulate,
+    validate_plan_payload,
+    workflow_decision_command,
+)
 from cleanwincli.output import render_human_payload
+from cleanwincli.plan_executor import execute_plan
+from cleanwincli.plan_review import review_plan
 
 
 def emit(payload: dict[str, Any], *, as_json: bool) -> None:

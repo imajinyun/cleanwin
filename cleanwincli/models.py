@@ -28,6 +28,8 @@ ALL_CATEGORIES: tuple[str, ...] = (
     CATEGORY_APP_LEFTOVERS,
 )
 
+EXECUTABLE_CACHE_CATEGORIES = frozenset({CATEGORY_TEMP, CATEGORY_DEV_CACHE, CATEGORY_PACKAGE_CACHE, CATEGORY_BROWSER_CACHE})
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
