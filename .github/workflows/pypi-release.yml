@@ -52,6 +52,9 @@ jobs:
       - name: Governance smoke
         run: make pytest-governance-smoke
 
+      - name: Package install smoke
+        run: make mcp-install-smoke
+
   pypi-publish:
     name: Build and publish to PyPI
     needs: quality
