@@ -21,7 +21,6 @@ workspace:
     - ".github/*"
     - ".github/workflows/*"
     - "scripts/**/*"
-    - "scaffold/**/*"
     - "cleanwincli/**/*"
     - "tests/**/*"
     - "docs/**/*"
