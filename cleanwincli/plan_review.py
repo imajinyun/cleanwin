@@ -10,11 +10,10 @@ from cleanwincli.models import (
     EXECUTABLE_CACHE_CATEGORIES,
     Plan,
 )
+from cleanwincli.plan_validation import validate_plan_payload
 
 
 def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: bool) -> dict[str, Any]:
-    from cleanwincli.core import capabilities, validate_plan_payload
-
     validation = validate_plan_payload(plan, raw_payload, require_context=require_context)
     candidates = list(plan.candidates)
     unique_rule_ids = sorted({candidate.rule_id for candidate in candidates if candidate.rule_id})
@@ -42,6 +41,8 @@ def review_plan(plan: Plan, raw_payload: dict[str, Any], *, require_context: boo
         {"risk": risk, "candidate_count": count}
         for risk, count in sorted(risk_counts.items())
     ]
+    from cleanwincli.core import capabilities
+
     read_only_categories = set(capabilities().get("read_only_categories", []))
     manual_only_categories = sorted(category for category in plan.categories if category in read_only_categories)
     candidate_categories = {candidate.category for candidate in candidates}

@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from cleanwincli.ai_policy_simulate import policy_simulate
+from cleanwincli.ai_tools import ai_tools_report
 from cleanwincli.collectors import parse_categories, parse_rule_ids
 from cleanwincli.commands import (
     ai_readiness_command,
@@ -20,6 +22,7 @@ from cleanwincli.commands import (
     debloat_privacy_report_command,
     disable_revert_contract_command,
     environment_index_command,
+    external_rule_translate_command,
     file_report_command,
     host_policy_report,
     installed_app_inventory_command,
@@ -44,24 +47,19 @@ from cleanwincli.commands import (
     windows_inventory_command,
     windows_native_artifacts_command,
     windows_smoke_matrix_command,
+    workflow_decision_command,
     workflow_router_command,
     workflow_trace_command,
 )
 from cleanwincli.core import (
-    ai_tools_report,
-    build_plan,
     capabilities,
-    doctor_report,
-    external_rule_translate_command,
-    inspect,
-    load_plan,
-    policy_simulate,
-    validate_plan_payload,
-    workflow_decision_command,
 )
+from cleanwincli.doctor import doctor_report
 from cleanwincli.output import render_human_payload
 from cleanwincli.plan_executor import execute_plan
+from cleanwincli.plan_io import build_plan, inspect, load_plan
 from cleanwincli.plan_review import review_plan
+from cleanwincli.plan_validation import validate_plan_payload
 
 
 def emit(payload: dict[str, Any], *, as_json: bool) -> None:

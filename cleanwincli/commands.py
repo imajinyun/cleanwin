@@ -25,6 +25,7 @@ from cleanwincli.execution_contracts import (
     rollback_drill_report,
     service_task_disable_plan_report,
 )
+from cleanwincli.external_rules import translate_external_rules_file
 from cleanwincli.file_reports import file_report
 from cleanwincli.installed_apps import installed_app_inventory_report
 from cleanwincli.official_commands import official_command_plan_report
@@ -40,7 +41,7 @@ from cleanwincli.windows_artifact_validation import artifact_layout_report, arti
 from cleanwincli.windows_inventory import windows_inventory_report
 from cleanwincli.windows_native_artifacts import windows_native_artifacts_report
 from cleanwincli.windows_smoke import windows_smoke_matrix_report
-from cleanwincli.workflow_artifacts import workflow_trace_report
+from cleanwincli.workflow_artifacts import workflow_decision_report, workflow_trace_report
 from cleanwincli.workflow_router import workflow_router_report
 
 
@@ -76,6 +77,30 @@ def environment_index_command() -> dict[str, Any]:
 
 def workflow_trace_command() -> dict[str, Any]:
     return workflow_trace_report()
+
+def workflow_decision_command(
+    *,
+    route_id: str,
+    requested_tool: str | None = None,
+    artifacts: list[str] | None = None,
+) -> dict[str, Any]:
+    return workflow_decision_report(route_id=route_id, requested_tool=requested_tool, artifacts=artifacts or [])
+
+def external_rule_translate_command(
+    path: Path,
+    *,
+    source_format: str,
+    upstream_project: str | None,
+    upstream_rule_id_or_commit: str,
+    license_name: str,
+) -> dict[str, Any]:
+    return translate_external_rules_file(
+        path,
+        source_format=source_format,
+        upstream_project=upstream_project,
+        upstream_rule_id_or_commit=upstream_rule_id_or_commit,
+        license_name=license_name,
+    )
 
 def recovery_readiness_command() -> dict[str, Any]:
     return recovery_readiness_report()

@@ -8,8 +8,8 @@ from cleanwincli import __version__
 from cleanwincli.ai_readiness import ai_readiness_report, validate_ai_readiness
 from cleanwincli.ai_runbook import ai_runbook_report
 from cleanwincli.ai_self_test import ai_self_test_report
-from cleanwincli.core import doctor_report
 from cleanwincli.debloat_privacy import DEBLOAT_PRIVACY_REPORT_SCHEMA
+from cleanwincli.doctor import doctor_report
 from cleanwincli.environment_index import ENVIRONMENT_INDEX_SCHEMA, environment_index_report
 from cleanwincli.installed_apps import INSTALLED_APP_INVENTORY_SCHEMA
 from cleanwincli.official_commands import OFFICIAL_COMMAND_PLAN_SCHEMA

@@ -8,6 +8,7 @@ from typing import Any
 from cleanwincli.ai_schema import CONFIRMATION_PHRASE
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.models import Plan
+from cleanwincli.plan_validation import confirmation_token_for_plan, validate_plan_payload
 
 
 def execution_result_summary(results: list[dict[str, str]]) -> dict[str, Any]:
@@ -30,8 +31,6 @@ def execute_plan(
     confirmation_phrase: str | None = None,
     confirmation_token: str | None = None,
 ) -> dict[str, Any]:
-    from cleanwincli.core import confirmation_token_for_plan, validate_plan_payload
-
     validation = validate_plan_payload(plan, raw_payload, require_context=require_context)
     if not validation["valid"]:
         return {"schema": "cleanwin.execute.v1", "executed": False, "validation": validation, "results": []}

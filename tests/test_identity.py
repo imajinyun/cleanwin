@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from cleanwincli.core import validate_plan_payload
 from cleanwincli.delete_ops import safe_delete
 from cleanwincli.identity import capture_filesystem_identity, compare_identity
 from cleanwincli.models import plan_from_dict
+from cleanwincli.plan_validation import validate_plan_payload
 from cleanwincli.windows_identity import capture_windows_native_identity
 
 JSONPayload = dict[str, Any]

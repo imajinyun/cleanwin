@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_SOURCE = REPO_ROOT / "cleanwincli" / "cli.py"
 CORE_SOURCE = REPO_ROOT / "cleanwincli" / "core.py"
 MCP_SOURCE = REPO_ROOT / "cleanwincli" / "mcp_server.py"
+AI_TOOLS_SOURCE = REPO_ROOT / "cleanwincli" / "ai_tools.py"
 WORKFLOW_TRACE_SOURCE = REPO_ROOT / "cleanwincli" / "workflow_artifacts.py"
 EVIDENCE_BUNDLE_SOURCE = REPO_ROOT / "cleanwincli" / "evidence_bundle.py"
 DOC_PATHS = (REPO_ROOT / "docs" / "doc" / "README.md", REPO_ROOT / "docs" / "doc" / "README.CN.md")
@@ -142,9 +143,8 @@ def _registry_schema_names_from_source() -> set[str]:
 
 
 def _provider_names() -> set[str]:
-    source = _read_text(CORE_SOURCE)
+    source = _read_text(AI_TOOLS_SOURCE)
     providers: set[str] = set()
-    if_marker = 'if provider == "'
     in_registry = False
     for line in source.splitlines():
         stripped = line.strip()
@@ -156,8 +156,6 @@ def _provider_names() -> set[str]:
                 break
             if stripped.startswith('"') and '":' in stripped:
                 providers.add(stripped.removeprefix('"').split('":', 1)[0])
-        if stripped.startswith(if_marker):
-            providers.add(stripped.removeprefix(if_marker).split('"', 1)[0])
     return providers
 
 

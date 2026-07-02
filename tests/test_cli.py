@@ -6,9 +6,9 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from cleanwincli.core import validate_plan_payload
 from cleanwincli.identity import capture_filesystem_identity
 from cleanwincli.models import Candidate, Plan
+from cleanwincli.plan_validation import validate_plan_payload
 
 JSONPayload = dict[str, Any]
 RunCleanWin = Callable[..., subprocess.CompletedProcess[str]]
